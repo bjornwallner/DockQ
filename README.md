@@ -1,7 +1,18 @@
 # DockQ
 Requires `Biopython` and `numpy` 
 
-Compile using `make`
+Installation
+```
+git clone https://github.com/bjornwallner/DockQ/
+cd DockQ
+make
+```
+Install `Biopython` and `numpy` 
+- Biopython: http://biopython.org/wiki/Download#Installation_Instructions
+- Numpy: http://www.scipy.org/install.html
+
+
+
 
 Run with
 `./DockQ.py <model> <native>`
