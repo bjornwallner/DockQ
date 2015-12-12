@@ -6,6 +6,7 @@ Compile using `make`
 Run with
 `./DockQ.py <model> <native>`
 
+```
 Example
 `bash$ ./DockQ.py model.pdb native.pdb`
 `*** DockQ and other docking quality measures *** `
