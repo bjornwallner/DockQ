@@ -52,6 +52,19 @@ def capri_class(fnat,iRMS,LRMS):
 
 
 
+def capri_class_DockQ(DockQ):
+
+    (c1,c2,c3)=(0.23,0.49,0.80)
+    if(DockQ< c1):
+        return 'Incorrect'
+    elif(DockQ>=c1 and DockQ<=c2):
+        return 'Acceptable'
+    elif(DockQ>=c2 and DockQ<=c3):
+        return 'Medium'
+    elif(DockQ>c3):
+        return 'High'
+    else:
+        return 'Undef'
 
 
 exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -235,6 +248,7 @@ print 'iRMS ' + str(irms)
 print 'LRMS ' + str(Lrms) #+ ' Ligand RMS'
 #print 'RRMS ' + str(Rrms) + ' Receptor RMS'
 print 'CAPRI ' + capri_class(fnat,irms,Lrms)
+print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
 print 'DockQ ' + str(DockQ)
 
 #for f in np.arange(0,1.01,0.2):
