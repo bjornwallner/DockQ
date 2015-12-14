@@ -61,7 +61,7 @@ int main(argc,argv)		/* Main routine */
     }
   else
     {
-      printf("Usage: fnat [pdb_file] [native] cutoff(for binary otherwise distance)\n");
+      printf("Usage: fnat [pdb_file] [native] cutoff\n");
       exit(1);
     }
 
@@ -195,7 +195,7 @@ int main(argc,argv)		/* Main routine */
       for(j=0;j<interface_contacts_model;j++) {
 	if(nativeA[i] == modelA[j] &&
 	   nativeB[i] == modelB[j]) {
-	  printf("Overlap %d%c %d%c\n",nativeA[i],chainA,nativeB[i],chainB);
+	  printf("OverlapMODEL-NATIVE %d%c %d%c\n",nativeA[i],chainA,nativeB[i],chainB);
 	  matches++;
 
 	}
@@ -205,7 +205,16 @@ int main(argc,argv)		/* Main routine */
 
   }
 
-  printf("Fnat %d %d %f\n",matches,interface_contacts,(float)matches/(float)interface_contacts);
+  if(interface_contacts!=0) { 
+    printf("Fnat %d %d %f\n",matches,interface_contacts,(float)matches/(float)interface_contacts);
+  } else {
+    printf("Fnat %d %d %f\n",0,0,0.0);
+  }
+  if(interface_contacts_model!=0) { 
+    printf("Fnonnat %d %d %f\n",interface_contacts_model-matches,interface_contacts_model,(float)(interface_contacts_model-matches)/(float)interface_contacts_model);
+  } else {
+    printf("Fnonnat %d %d %f\n",0,0,0.0);
+  }
   
 
 }
