@@ -50,18 +50,21 @@ int main(argc,argv)		/* Main routine */
   char chainA,chainB,chainA2,chainB2;
   int interface_contacts=0;
   int interface_contacts_model=0;
+  int verbose=0;
   //float        sum=0;
   /* Parse command line for PDB filename */
-  if(argc==4)
+  if(argc>=4)
     {
       strcpy(m[0].filename,argv[2]);
       strcpy(model[0].filename,argv[1]);
       cutoff=strtod(argv[3],(char**)(argv[3]+strlen(argv[3])));
       cutoff=cutoff*cutoff;
+      if(argc>4)
+	verbose=1;
     }
   else
     {
-      printf("Usage: fnat [pdb_file] [native] cutoff\n");
+      printf("Usage: fnat [pdb_file] [native] cutoff [verbose (default off)]]\n");
       exit(1);
     }
 
@@ -98,7 +101,8 @@ int main(argc,argv)		/* Main routine */
 			//		printf("HEJ %d %d %d %d %f %f\n",current_res_j,current_res_i,i,j,crd(m,i,j),crd(m,j,i));
 			d=crd(m,i,j);
 			//			printf("%d %d %d %d %s %s %f\n",m[0].atm[j].resnum,m[0].atm[i].resnum,i,j,m[0].atm[j].chain,m[0].atm[i].chain,d);
-			printf("ALLNATIVE: %d%s %d%s %f %d %d %d\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d),current_res_i,current_res_j,contacts[current_res_i][current_res_j]);
+			if(verbose)
+			  printf("ALLNATIVE: %d%s %d%s %f %d %d %d\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d),current_res_i,current_res_j,contacts[current_res_i][current_res_j]);
 			chainA=m[0].atm[i].chain[0];
 			chainB=m[0].atm[j].chain[0];
 			if(contacts[current_res_i][current_res_j]==0 && crd(m,i,j)<cutoff)
@@ -108,6 +112,7 @@ int main(argc,argv)		/* Main routine */
 			    interface_contacts++;
 
 			    d=crd(m,i,j);
+
 			    printf("NATIVE: %d%s %d%s %f\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d));
 			    contacts[current_res_i][current_res_j]=1;
 			    contacts[current_res_j][current_res_i]=1;
@@ -168,7 +173,8 @@ int main(argc,argv)		/* Main routine */
 			    interface_contacts_model++;
 
 			    d=crd(model,i,j);
-			    printf("MODEL: %d%s %d%s %f %d %d\n",model[0].atm[i].resnum,model[0].atm[i].chain,model[0].atm[j].resnum,model[0].atm[j].chain,sqrt(d),current_res_i,current_res_j);
+			    if(verbose)
+			      printf("MODEL: %d%s %d%s %f %d %d\n",model[0].atm[i].resnum,model[0].atm[i].chain,model[0].atm[j].resnum,model[0].atm[j].chain,sqrt(d),current_res_i,current_res_j);
 			    contacts2[current_res_i][current_res_j]=1;
 			    contacts2[current_res_j][current_res_i]=1;
 			  //res_contacts[get_res(model[0].atm[i].residue)][get_res(model[0].atm[j].residue)]++;
@@ -195,7 +201,8 @@ int main(argc,argv)		/* Main routine */
       for(j=0;j<interface_contacts_model;j++) {
 	if(nativeA[i] == modelA[j] &&
 	   nativeB[i] == modelB[j]) {
-	  printf("OverlapMODEL-NATIVE %d%c %d%c\n",nativeA[i],chainA,nativeB[i],chainB);
+	  if(verbose)
+	    printf("OverlapMODEL-NATIVE %d%c %d%c\n",nativeA[i],chainA,nativeB[i],chainB);
 	  matches++;
 
 	}

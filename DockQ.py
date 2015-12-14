@@ -8,6 +8,7 @@ import numpy as np
 from Bio.SVDSuperimposer import SVDSuperimposer
 from math import sqrt
 
+
 def parse_fnat(fnat_out):
     fnat=0;
     inter=[]
@@ -20,6 +21,11 @@ def parse_fnat(fnat_out):
             fnat=list[3]
             nat_correct=list[1]
             nat_total=list[2]
+        elif(re.search(r'^Fnonnat',line)):
+            list=line.split(' ')
+            fnonnat=list[3]
+            nonnat_count=list[1]
+            model_total=list[2]    
         elif(match):
             #print line
             res1=match.group(1)
@@ -29,7 +35,7 @@ def parse_fnat(fnat_out):
            # print res1 + ' ' + chain1 + ' ' + res2 + ' ' + chain2
             inter.append(res1 + chain1)
             inter.append(res2 + chain2)
-    return (fnat,nat_correct,nat_total,inter)
+    return (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,inter)
 
 def capri_class(fnat,iRMS,LRMS):
 
@@ -44,26 +50,32 @@ def capri_class(fnat,iRMS,LRMS):
     else:
         return 'Undef'
 
+
+
+
+
 exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
 model=sys.argv[1]
 native=sys.argv[2]
+use_CA_only=False
+
+
+atom_for_sup=['CA','C','N','O']
+if(use_CA_only):
+    atom_for_sup=['CA']
+
+
+
 
 cmd=exec_path + '/fnat ' + model + ' ' + native + ' 5'
 
 
 fnat_out = os.popen(cmd).readlines()
-(fnat,nat_correct,nat_total,interface)=parse_fnat(fnat_out)
-#print inter_pairs
-#fnat=grep(re('^Fnat',fnat_out))
+(fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface)=parse_fnat(fnat_out)
+
+
 
           
-
-
-# Select what residues numbers you wish to align
-# and put them in a list
-start_id = 100
-end_id   = 200
-atoms_to_be_aligned = range(start_id, end_id + 1)
 
 # Start the parser
 pdb_parser = Bio.PDB.PDBParser(QUIET = True)
@@ -97,8 +109,11 @@ for sample_chain in sample_model:
     chain_res[chain].append(key)
 #    chain_res[chain].append(sample_res)
     if key in interface:
- #     print key  
-      sample_atoms.append(sample_res['CA'])
+ #     print key
+      for a in atom_for_sup:  
+ #         sample_atoms.append(sample_res['CA'])
+        sample_atoms.append(sample_res[a])
+                        
       common_interface.append(key)
 
 #print inter_pairs
@@ -120,14 +135,17 @@ for ref_chain in ref_model:
      # print chain_res.values()
       if key in chain_res[chain]: # if key is present in sample
           #print key
-          chain_ref[chain].append(ref_res['CA'])
+          for a in atom_for_sup:  
+              chain_ref[chain].append(ref_res[a])
           common_residues.append(key)
           #chain_sample.append((ref_res['CA'])
       if key in common_interface:
       # Check if residue number ( .get_id() ) is in the list
       # Append CA atom to list
         #print key  
-        ref_atoms.append(ref_res['CA'])
+        for a in atom_for_sup:
+            ref_atoms.append(ref_res[a])
+            
 
 #get the ones that were present in native        
 chain_sample={}
@@ -139,7 +157,9 @@ for sample_chain in sample_model:
     resname=sample_res.get_id()[1]
     key=str(resname) + chain
     if key in common_residues:
-        chain_sample[chain].append(sample_res['CA'])
+        for a in atom_for_sup:
+            chain_sample[chain].append(sample_res[a])
+
     #if key in common_residues:
  #     print key  
       #sample_atoms.append(sample_res['CA'])
@@ -209,7 +229,8 @@ DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/
 print '*** DockQ and other docking quality measures *** '
 print 'Number of equivalent residues in chain ' + chain1 + ' ' + str(len1) + ' (' + class1 + ')'
 print 'Number of equivalent residues in chain ' + chain2 + ' ' + str(len2) + ' (' + class2 + ')'
-print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total
+print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total + ' native contacts'
+print 'Fnonnat ' + fnonnat + ' ' + nonnat_count + ' non-native of ' + model_total + ' model contacts'
 print 'iRMS ' + str(irms)
 print 'LRMS ' + str(Lrms) #+ ' Ligand RMS'
 #print 'RRMS ' + str(Rrms) + ' Receptor RMS'
