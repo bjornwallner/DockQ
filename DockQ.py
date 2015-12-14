@@ -199,6 +199,10 @@ ligand_chain=chain1
 receptor_chain=chain2
 len1=len(chain_sample[chain1])
 len2=len(chain_sample[chain2])
+
+assert len1!=0, "%s chain has zero length!\n" % chain1
+assert len2!=0, "%s chain has zero length!\n" % chain2
+
 class1='ligand'
 class2='receptor'
 if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
@@ -208,6 +212,9 @@ if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
     class2='ligand'
 
 
+
+#print len1
+#print len2
 #print chain_sample.keys()
 
 #Set to align on receptor
@@ -220,11 +227,18 @@ receptor_chain_rms=super_imposer.rms
 
 #Grep out the transformed ligand coords
 
+
+#print chain_ref[ligand_chain]
+#print chain_sample[ligand_chain]
+
 coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
 coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
 
 #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
 #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
+
+
+
 sup=SVDSuperimposer()
 Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not superimpose
 
