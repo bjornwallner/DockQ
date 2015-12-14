@@ -51,6 +51,7 @@ int main(argc,argv)		/* Main routine */
   int interface_contacts=0;
   int interface_contacts_model=0;
   int verbose=0;
+  char set='a';
   //float        sum=0;
   /* Parse command line for PDB filename */
   if(argc>=4)
@@ -60,16 +61,18 @@ int main(argc,argv)		/* Main routine */
       cutoff=strtod(argv[3],(char**)(argv[3]+strlen(argv[3])));
       cutoff=cutoff*cutoff;
       if(argc>4)
+	set='b';
+      if(argc>5)
 	verbose=1;
     }
   else
     {
-      printf("Usage: fnat [pdb_file] [native] cutoff [verbose (default off)]]\n");
+      printf("Usage: fnat [pdb_file] [native] cutoff [set default all-atom] [verbose (default off)]]\n");
       exit(1);
     }
 
 
-  error=read_molecules(m,'a');
+  error=read_molecules(m,set);
 
   if(error==0)
     {  
@@ -132,7 +135,7 @@ int main(argc,argv)		/* Main routine */
     }
 
 
-  error2=read_molecules(model,'a');
+  error2=read_molecules(model,set);
   if(error2==0)
     { 
       residues2=model[0].residues;

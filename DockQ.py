@@ -80,14 +80,17 @@ if(use_CA_only):
 
 
 
-cmd=exec_path + '/fnat ' + model + ' ' + native + ' 5'
+cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
+cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
 
 
-fnat_out = os.popen(cmd).readlines()
-(fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface)=parse_fnat(fnat_out)
+fnat_out = os.popen(cmd_fnat).readlines()
+(fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
+inter_out = os.popen(cmd_interface).readlines()
+(fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
 
-
-
+#Use same interface as for fnat for iRMS
+#interface=interface5A
           
 
 # Start the parser
