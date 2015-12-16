@@ -10,7 +10,12 @@ from math import sqrt
 
 
 def parse_fnat(fnat_out):
-    fnat=0;
+    fnat=-1;
+    nat_correct=-1
+    nat_total=-1
+    fnonnat=-1
+    nonnat_count=-1
+    model_total=-1
     inter=[]
     for line in fnat_out:
 #        print line
@@ -87,9 +92,12 @@ cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
 
 fnat_out = os.popen(cmd_fnat).readlines()
 (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
+assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
 inter_out = os.popen(cmd_interface).readlines()
 (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
+assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
 
+print fnat
 #Use same interface as for fnat for iRMS
 #interface=interface5A
           
