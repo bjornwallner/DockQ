@@ -36,10 +36,10 @@ Number of equivalent residues in chain A 1492 (receptor)
 Number of equivalent residues in chain B 912 (ligand)
 Fnat 0.533 32 correct of 60 native contacts
 Fnonnat 0.238 10 non-native of 42 model contacts
-iRMS 1.304
+iRMS 1.232
 LRMS 1.516
 CAPRI Medium
 DockQ_CAPRI Medium
-DockQ 0.691
+DockQ 0.700
 
 
