@@ -95,7 +95,8 @@ if(use_CA_only):
 
 
 cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
-cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
+#cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
+cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
 
 
 fnat_out = os.popen(cmd_fnat).readlines()
