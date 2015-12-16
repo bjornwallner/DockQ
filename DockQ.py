@@ -66,13 +66,14 @@ def capri_class_DockQ(DockQ):
     else:
         return 'Undef'
 
+ 
 
 exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
 model=sys.argv[1]
 native=sys.argv[2]
 use_CA_only=False
 
-
+ 
 atom_for_sup=['CA','C','N','O']
 if(use_CA_only):
     atom_for_sup=['CA']
@@ -111,9 +112,36 @@ ref_atoms = []
 sample_atoms = []
 
 common_interface=[]
+
 chain_res={}
 
-# Do the same for the sample structure
+
+#find atoms common in both sample and native
+atoms_def_sample=[]
+atoms_def_in_both=[]
+
+for sample_chain in sample_model:
+  chain=sample_chain.id
+  for sample_res in sample_chain:
+    resname=sample_res.get_id()[1]
+    key=str(resname) + chain
+    for a in atom_for_sup:
+        atom_key=key + '.' + a
+        if a in sample_res:
+            atoms_def_sample.append(atom_key)
+
+for ref_chain in ref_model:
+  chain=ref_chain.id
+  for ref_res in ref_chain:
+    resname=ref_res.get_id()[1]
+    key=str(resname) + chain
+    for a in atom_for_sup:
+        atom_key=key + '.' + a
+        if a in ref_res and atom_key in atoms_def_sample:
+            atoms_def_in_both.append(atom_key)
+
+
+
 for sample_chain in sample_model:
   chain=sample_chain.id
   if chain not in chain_res.keys():
@@ -126,33 +154,41 @@ for sample_chain in sample_model:
 #    chain_res[chain].append(sample_res)
     if key in interface:
  #     print key
-      for a in atom_for_sup:  
+      for a in atom_for_sup:
+        atom_key=key + '.' + a
  #         sample_atoms.append(sample_res['CA'])
-        sample_atoms.append(sample_res[a])
-                        
+        if a in sample_res and atom_key in atoms_def_in_both:
+            sample_atoms.append(sample_res[a])
       common_interface.append(key)
 
 #print inter_pairs
 
 chain_ref={}
 common_residues=[]
+
+
+
 # Iterate of all chains in the model in order to find all residues
 for ref_chain in ref_model:
   # Iterate of all residues in each model in order to find proper atoms
 #  print dir(ref_chain)
   chain=ref_chain.id
+#  print chain
   if chain not in chain_ref.keys():
       chain_ref[chain]=[]
   for ref_res in ref_chain:
       resname=ref_res.get_id()[1]
       key=str(resname) + chain
+      
       #print ref_res
 #      print key
      # print chain_res.values()
       if key in chain_res[chain]: # if key is present in sample
           #print key
-          for a in atom_for_sup:  
-              chain_ref[chain].append(ref_res[a])
+          for a in atom_for_sup:
+              atom_key=key + '.' + a
+              if a in ref_res and atom_key in atoms_def_in_both:
+                  chain_ref[chain].append(ref_res[a])
           common_residues.append(key)
           #chain_sample.append((ref_res['CA'])
       if key in common_interface:
@@ -160,7 +196,10 @@ for ref_chain in ref_model:
       # Append CA atom to list
         #print key  
         for a in atom_for_sup:
-            ref_atoms.append(ref_res[a])
+            atom_key=key + '.' + a
+            if a in ref_res and atom_key in atoms_def_in_both:
+                ref_atoms.append(ref_res[a])
+                
             
 
 #get the ones that were present in native        
@@ -174,7 +213,9 @@ for sample_chain in sample_model:
     key=str(resname) + chain
     if key in common_residues:
         for a in atom_for_sup:
-            chain_sample[chain].append(sample_res[a])
+            atom_key=key + '.' + a
+            if a in sample_res and atom_key in atoms_def_in_both:
+                chain_sample[chain].append(sample_res[a])
 
     #if key in common_residues:
  #     print key  
@@ -186,6 +227,12 @@ for sample_chain in sample_model:
 #print sample_atoms
 #print sample_model.get_atoms()
 # Now we initiate the superimposer:
+
+#print len(ref_atoms)
+#print len(sample_atoms)
+
+assert len(ref_atoms)==len(sample_atoms), "Different number of atoms in native and model %d %d\n" % (len(ref_atoms),len(sample_atoms))
+
 super_imposer = Bio.PDB.Superimposer()
 super_imposer.set_atoms(ref_atoms, sample_atoms)
 super_imposer.apply(sample_model.get_atoms())
@@ -218,6 +265,8 @@ if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
 #print chain_sample.keys()
 
 #Set to align on receptor
+assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model %d %d\n" % (len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
+
 super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
 super_imposer.apply(sample_model.get_atoms())
 receptor_chain_rms=super_imposer.rms
