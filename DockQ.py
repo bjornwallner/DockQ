@@ -97,7 +97,7 @@ inter_out = os.popen(cmd_interface).readlines()
 (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
 assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
 
-print fnat
+#print fnat
 #Use same interface as for fnat for iRMS
 #interface=interface5A
           
