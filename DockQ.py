@@ -71,7 +71,12 @@ def capri_class_DockQ(DockQ):
     else:
         return 'Undef'
 
- 
+
+
+if(float(Bio.__version__) < 1.64):
+    print "Biopython version (%s) need is too old at least >=1.64" % (Bio.__version__)
+    sys.exit()
+
 
 exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
 model=sys.argv[1]
