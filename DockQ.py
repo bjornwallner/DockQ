@@ -62,11 +62,11 @@ def capri_class_DockQ(DockQ):
     (c1,c2,c3)=(0.23,0.49,0.80)
     if(DockQ < c1):
         return 'Incorrect'
-    elif(DockQ >= c1 and DockQ <= c2):
+    elif(DockQ >= c1 and DockQ < c2):
         return 'Acceptable'
-    elif(DockQ >= c2 and DockQ <= c3):
+    elif(DockQ >= c2 and DockQ < c3):
         return 'Medium'
-    elif(DockQ > c3):
+    elif(DockQ >= c3):
         return 'High'
     else:
         return 'Undef'
