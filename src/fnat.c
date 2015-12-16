@@ -108,7 +108,7 @@ int main(argc,argv)		/* Main routine */
 			  printf("ALLNATIVE: %d%s %d%s %f %d %d %d\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d),current_res_i,current_res_j,contacts[current_res_i][current_res_j]);
 			chainA=m[0].atm[i].chain[0];
 			chainB=m[0].atm[j].chain[0];
-			if(contacts[current_res_i][current_res_j]==0 && crd(m,i,j)<cutoff)
+			if(contacts[current_res_i][current_res_j]==0 && crd(m,i,j)<=cutoff)
 			  {
 			    nativeA[interface_contacts]=m[0].atm[i].resnum;
 			    nativeB[interface_contacts]=m[0].atm[j].resnum;
@@ -169,7 +169,7 @@ int main(argc,argv)		/* Main routine */
 			
 			chainA2=model[0].atm[i].chain[0];
 			chainB2=model[0].atm[j].chain[0];
-			if(contacts2[current_res_i][current_res_j]==0 && crd(model,i,j)<cutoff)
+			if(contacts2[current_res_i][current_res_j]==0 && crd(model,i,j)<=cutoff)
 			  {
 			    modelA[interface_contacts_model]=model[0].atm[i].resnum;
 			    modelB[interface_contacts_model]=model[0].atm[j].resnum;
