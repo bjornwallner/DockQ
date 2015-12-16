@@ -19,12 +19,15 @@ Run with
 
 Example
 ```
-bash$ ./DockQ.py model.pdb native.pdb
+bash$ ./DockQ.py examples/model.pdb examples/native.pdb
 *** DockQ and other docking quality measures *** 
-Number of equivalent residues in chain A 373 (receptor)
-Number of equivalent residues in chain B 228 (ligand)
-Fnat 0.533333 32 correct of 60
-iRMS 1.15759298174
-LRMS 1.50152873613
+Number of equivalent residues in chain A 1492 (receptor)
+Number of equivalent residues in chain B 912 (ligand)
+Fnat 0.533333 32 correct of 60 native contacts
+Fnonnat 0.238095 10 non-native of 42 model contacts
+iRMS 1.30439307514
+LRMS 1.51595045277
 CAPRI Medium
-DockQ 0.70993637399
+DockQ_CAPRI Medium
+DockQ 0.690639443815
+
