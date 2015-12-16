@@ -231,6 +231,8 @@ for sample_chain in sample_model:
 #print len(ref_atoms)
 #print len(sample_atoms)
 
+assert len(ref_atoms)!=0, "length of native is zero"
+assert len(sample_atoms)!=0, "length of model is zero"
 assert len(ref_atoms)==len(sample_atoms), "Different number of atoms in native and model %d %d\n" % (len(ref_atoms),len(sample_atoms))
 
 super_imposer = Bio.PDB.Superimposer()
