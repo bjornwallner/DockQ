@@ -8,7 +8,7 @@ cd DockQ
 make
 ```
 Install `Biopython` and `numpy` 
-- Biopython: http://biopython.org/wiki/Download#Installation_Instructions
+- Biopython version >=1.64: http://biopython.org/wiki/Download#Installation_Instructions
 - Numpy: http://www.scipy.org/install.html
 
 
