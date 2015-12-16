@@ -23,14 +23,14 @@ def parse_fnat(fnat_out):
         match=re.search(r'NATIVE: (\d+)(\w) (\d+)(\w)',line)
         if(re.search(r'^Fnat',line)):
             list=line.split(' ')
-            fnat=list[3]
-            nat_correct=list[1]
-            nat_total=list[2]
+            fnat=float(list[3])
+            nat_correct=int(list[1])
+            nat_total=int(list[2])
         elif(re.search(r'^Fnonnat',line)):
             list=line.split(' ')
-            fnonnat=list[3]
-            nonnat_count=list[1]
-            model_total=list[2]    
+            fnonnat=float(list[3])
+            nonnat_count=int(list[1])
+            model_total=int(list[2])
         elif(match):
             #print line
             res1=match.group(1)
@@ -336,14 +336,19 @@ print '*   For comments, please email: bjornw@ifm.liu.se         *'
 print '***********************************************************\n'
 print 'Number of equivalent residues in chain ' + chain1 + ' ' + str(len1) + ' (' + class1 + ')'
 print 'Number of equivalent residues in chain ' + chain2 + ' ' + str(len2) + ' (' + class2 + ')'
-print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total + ' native contacts'
-print 'Fnonnat ' + fnonnat + ' ' + nonnat_count + ' non-native of ' + model_total + ' model contacts'
-print 'iRMS ' + str(irms)
-print 'LRMS ' + str(Lrms) #+ ' Ligand RMS'
+#print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total + ' native contacts'
+#print 'Fnonnat ' + fnonnat + ' ' + nonnat_count + ' non-native of ' + model_total + ' model contacts'
+#print 'iRMS ' + str(irms)
+#print 'LRMS ' + str(Lrms) #+ ' Ligand RMS'
 #print 'RRMS ' + str(Rrms) + ' Receptor RMS'
+
+print("Fnat %.3f %d correct of %d native contacts" % (fnat,nat_correct,nat_total))
+print("Fnonnat %.3f %d non-native of %d model contacts" % (fnonnat,nonnat_count,model_total))
+print("iRMS %.3f" % irms)
+print("LRMS %.3f" % Lrms)
 print 'CAPRI ' + capri_class(fnat,irms,Lrms)
 print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
-print 'DockQ ' + str(DockQ)
+print("DockQ %.3f" % DockQ)
 
 #for f in np.arange(0,1.01,0.2):
 #    
