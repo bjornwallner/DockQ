@@ -77,6 +77,9 @@ if(float(Bio.__version__) < 1.64):
     print "Biopython version (%s) need is too old at least >=1.64" % (Bio.__version__)
     sys.exit()
 
+if(len(sys.argv)!=3):
+    print "Usage: ./Dock.py <model> <native>"
+    sys.exit()
 
 exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
 model=sys.argv[1]
@@ -320,7 +323,17 @@ Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not s
 #print np.sqrt(np.sum(diff**2)/l) 
 
 DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
-print '*** DockQ and other docking quality measures *** '
+print '***********************************************************'
+print '*                       DockQ                             *'
+print '*   Scoring function for protein-protein docking models   *'
+print '*   Statistics on CAPRI data:                             *'
+print '*    0    <  DockQ <  0.23 - Incorrect                    *'
+print '*    0.23 <= DockQ <  0.49 - Acceptable quality           *'
+print '*    0.40 <= DockQ <  0.79 - Medium quality               *'
+print '*            DockQ >= 0.79 - High quality                 *'  
+print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
+print '*   For comments, please email: bjornw@ifm.liu.se         *'
+print '***********************************************************\n'
 print 'Number of equivalent residues in chain ' + chain1 + ' ' + str(len1) + ' (' + class1 + ')'
 print 'Number of equivalent residues in chain ' + chain2 + ' ' + str(len2) + ' (' + class2 + ')'
 print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total + ' native contacts'
