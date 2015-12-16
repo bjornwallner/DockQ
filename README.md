@@ -20,14 +20,26 @@ Run with
 Example
 ```
 bash$ ./DockQ.py examples/model.pdb examples/native.pdb
-*** DockQ and other docking quality measures *** 
+***********************************************************
+*                       DockQ                             *
+*   Scoring function for protein-protein docking models   *
+*   Statistics on CAPRI data:                             *
+*    0    <  DockQ <  0.23 - Incorrect                    *
+*    0.23 <= DockQ <  0.49 - Acceptable quality           *
+*    0.40 <= DockQ <  0.79 - Medium quality               *
+*            DockQ >= 0.79 - High quality                 *
+*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *
+*   For comments, please email: bjornw@ifm.liu.se         *
+***********************************************************
+
 Number of equivalent residues in chain A 1492 (receptor)
 Number of equivalent residues in chain B 912 (ligand)
-Fnat 0.533333 32 correct of 60 native contacts
-Fnonnat 0.238095 10 non-native of 42 model contacts
-iRMS 1.30439307514
-LRMS 1.51595045277
+Fnat 0.533 32 correct of 60 native contacts
+Fnonnat 0.238 10 non-native of 42 model contacts
+iRMS 1.304
+LRMS 1.516
 CAPRI Medium
 DockQ_CAPRI Medium
-DockQ 0.690639443815
+DockQ 0.691
+
 
