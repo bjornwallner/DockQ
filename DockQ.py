@@ -44,7 +44,7 @@ def parse_fnat(fnat_out):
 
 def capri_class(fnat,iRMS,LRMS):
 
-    if(fnat < 0.1 or (LRMS > 10 and iRMS > 4.0)):
+    if(fnat < 0.1 or (LRMS > 10.0 and iRMS > 4.0)):
         return 'Incorrect'
     elif((fnat >= 0.1 and fnat < 0.3) and (LRMS <= 10.0 or iRMS <= 4.0) or (fnat >= 0.3 and LRMS > 5.0 and iRMS > 2.0)):
         return 'Acceptable'
@@ -55,20 +55,15 @@ def capri_class(fnat,iRMS,LRMS):
     else:
         return 'Undef'
 
-
-
 def capri_class_DockQ(DockQ):
 
     (c1,c2,c3)=(0.23,0.49,0.80)
     if(DockQ < c1):
         return 'Incorrect'
-#    elif(DockQ >= c1 and DockQ <= c2):
     elif(DockQ >= c1 and DockQ < c2):
         return 'Acceptable'
-#    elif(DockQ >= c2 and DockQ <= c3):
     elif(DockQ >= c2 and DockQ < c3):
         return 'Medium'
-#    elif(DockQ > c3):
     elif(DockQ >= c3):
         return 'High'
     else:
@@ -331,10 +326,10 @@ print '***********************************************************'
 print '*                       DockQ                             *'
 print '*   Scoring function for protein-protein docking models   *'
 print '*   Statistics on CAPRI data:                             *'
-print '*    0    <  DockQ <  0.23 - Incorrect                    *'
+print '*    0.00 <= DockQ <  0.23 - Incorrect                    *'
 print '*    0.23 <= DockQ <  0.49 - Acceptable quality           *'
-print '*    0.40 <= DockQ <  0.79 - Medium quality               *'
-print '*            DockQ >= 0.79 - High quality                 *'  
+print '*    0.49 <= DockQ <  0.80 - Medium quality               *'
+print '*            DockQ >= 0.80 - High quality                 *'  
 print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
 print '*   For comments, please email: bjornw@ifm.liu.se         *'
 print '***********************************************************\n'
