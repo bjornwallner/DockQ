@@ -42,7 +42,7 @@ int main(argc,argv)		/* Main routine */
   double temp;
   int tmp=0;
   int binary=1;
-  char chain_name;
+  char chain_name; 
   int nativeA[5000];
   int nativeB[5000];
   int modelA[5000];
@@ -73,7 +73,7 @@ int main(argc,argv)		/* Main routine */
 
 
   error=read_molecules(m,set);
-
+ 
   if(error==0)
     {  
       residues=m[0].residues;
