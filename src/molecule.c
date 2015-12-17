@@ -138,8 +138,8 @@ int read_molecules(molecule *m,char atomflag)	/* Reads in molecules to be superi
 		  x=atof(x_temp);
 		  y=atof(y_temp);
 		  z=atof(z_temp);
-	      
-	      //printf("test: %s %d %s %s %s %s %d %s %lf %lf %lf\n",line_flag,number,name,alt_loc,residue,chain,resnum,resname,x,y,z);
+		  //printf("test: %s %d %s %s %s %s %d %s %lf %lf %lf\n",line_flag,number,name,alt_loc,residue,chain,resnum,resname,x,y,z);
+		  // printf("test: %s %d %s %s %s %s %d %s %lf %lf %lf\n",line_flag,number,name,alt_loc,residue,chain,resnum,resname,x,y,z);
 	      //if (strcmp("N",name)==0)	   /*  Is it an N atom => new residue? */
 	      //printf("%s %s\n",old_resname,resname);
 		  if(strcmp(old_resname,resname)!=0)
@@ -582,6 +582,7 @@ double crd(molecule *m,int atomno1, int atomno2)       /* atomnoX is the first a
   int i,j;
   double dist,lowest_dist;
   lowest_dist=999999;
+  //printf("crd i: %d, j; %d\n",atomno1,atomno2);
   for(i=atomno1;m[0].atm[i].rescount == m[0].atm[atomno1].rescount;i++)  
     {
       //      if(strcmp("C  ",m[0].atm[i].name)!=0 && 
@@ -605,6 +606,7 @@ double crd(molecule *m,int atomno1, int atomno2)       /* atomnoX is the first a
     }
   //printf("%s %s %d %d\n",m[0].atm[i].residue,m[0].atm[i].name,m[0].atm[i].rescount,m[0].atm[atomno1].rescount);
   //printf("%s %s %d %d\n",m[0].atm[j].residue,m[0].atm[j].name,m[0].atm[j].rescount,m[0].atm[atomno2].rescount);
+  //  printf("lowest dist: %f\n",lowest_dist);
   return lowest_dist;
 }
 

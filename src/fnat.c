@@ -137,20 +137,20 @@ int main(argc,argv)		/* Main routine */
 
   error2=read_molecules(model,set);
   if(error2==0)
-    { 
+    {
+ 
       residues2=model[0].residues;
-      contacts2 = malloc(residues*sizeof(int *));
+      contacts2 = malloc(residues2*sizeof(int *));
       for(i=0;i<residues2;i++) {
-	contacts2[i] = malloc(residues*sizeof(int));
+	contacts2[i] = malloc(residues2*sizeof(int));
 	}
       current_res_i=0;
-      for(i=0;i<model[0].atoms;i++)  
+      for(i=0;i<model[0].atoms;i++)   
 	{
 	  if(model[0].atm[i].rescount!=current_res_i)
 	    {
 	      for(j=i,current_res_j=current_res_i+1;j<model[0].atoms;j++)
 		{
-
 		  if(model[0].atm[j].rescount!=current_res_j)
 		    {
 
@@ -166,18 +166,20 @@ int main(argc,argv)		/* Main routine */
 			//printf("%d %d %d %d %s %s %f\n",model[0].atm[j].resnum,model[0].atm[i].resnum,i,j,model[0].atm[j].chain,model[0].atm[i].chain,d);
 			//d=crd(model,i,j);
 			//printf("ALLMODEL: %d%s %d%s %f %d %d\n",model[0].atm[i].resnum,model[0].atm[i].chain,model[0].atm[j].resnum,model[0].atm[j].chain,sqrt(d),current_res_i,current_res_j);
-			
+		
 			chainA2=model[0].atm[i].chain[0];
 			chainB2=model[0].atm[j].chain[0];
 			if(contacts2[current_res_i][current_res_j]==0 && crd(model,i,j)<=cutoff)
 			  {
+			    //printf("%d %d %d %d %d %d %d\n", residues2,model[0].atm[i].resnum,model[0].atm[j].resnum,model[0].atm[i].rescount,model[0].atm[j].rescount,current_res_i,current_res_j);
 			    modelA[interface_contacts_model]=model[0].atm[i].resnum;
 			    modelB[interface_contacts_model]=model[0].atm[j].resnum;
 			    interface_contacts_model++;
-
-			    d=crd(model,i,j);
-			    if(verbose)
+			    			    
+			    if(verbose) {
+			      d=crd(model,i,j);
 			      printf("MODEL: %d%s %d%s %f %d %d\n",model[0].atm[i].resnum,model[0].atm[i].chain,model[0].atm[j].resnum,model[0].atm[j].chain,sqrt(d),current_res_i,current_res_j);
+			    }
 			    contacts2[current_res_i][current_res_j]=1;
 			    contacts2[current_res_j][current_res_i]=1;
 			  //res_contacts[get_res(model[0].atm[i].residue)][get_res(model[0].atm[j].residue)]++;
