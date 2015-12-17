@@ -262,8 +262,8 @@ irms=super_imposer.rms
 
 ligand_chain=chain1
 receptor_chain=chain2
-len1=len(chain_sample[chain1])
-len2=len(chain_sample[chain2])
+len1=len(chain_res[chain1])
+len2=len(chain_res[chain2])
 
 assert len1!=0, "%s chain has zero length!\n" % chain1
 assert len2!=0, "%s chain has zero length!\n" % chain2
