@@ -44,7 +44,7 @@ def parse_fnat(fnat_out):
 
 def capri_class(fnat,iRMS,LRMS):
 
-    if(fnat < 0.1 or (LRMS > 10 and iRMS > 4.0)):
+    if(fnat < 0.1 or (LRMS > 10.0 and iRMS > 4.0)):
         return 'Incorrect'
     elif((fnat >= 0.1 and fnat < 0.3) and (LRMS <= 10.0 or iRMS <= 4.0) or (fnat >= 0.3 and LRMS > 5.0 and iRMS > 2.0)):
         return 'Acceptable'
