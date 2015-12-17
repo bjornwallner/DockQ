@@ -139,23 +139,33 @@ atoms_def_in_both=[]
 for sample_chain in sample_model:
   chain=sample_chain.id
   for sample_res in sample_chain:
+    if sample_res.get_id()[0] != ' ': #Skip hetatm.
+        continue
     resname=sample_res.get_id()[1]
     key=str(resname) + chain
     for a in atom_for_sup:
         atom_key=key + '.' + a
         if a in sample_res:
+            if atom_key in atoms_def_sample:
+                print atom_key + ' already added (MODEL)!!!'
             atoms_def_sample.append(atom_key)
 
 for ref_chain in ref_model:
   chain=ref_chain.id
   for ref_res in ref_chain:
+    if ref_res.get_id()[0] != ' ': #Skip hetatm.
+        #print ref_res.get_id()
+        continue
     resname=ref_res.get_id()[1]
     key=str(resname) + chain
     for a in atom_for_sup:
         atom_key=key + '.' + a
         if a in ref_res and atom_key in atoms_def_sample:
+            if atom_key in atoms_def_in_both:
+                print atom_key + ' already added (Native)!!!' 
             atoms_def_in_both.append(atom_key)
 
+##########
 
 
 for sample_chain in sample_model:
@@ -163,6 +173,8 @@ for sample_chain in sample_model:
   if chain not in chain_res.keys():
       chain_res[chain]=[]
   for sample_res in sample_chain:
+    if sample_res.get_id()[0] != ' ': #Skip hetatm.
+        continue
     resname=sample_res.get_id()[1]
     key=str(resname) + chain
 #    print key
@@ -193,6 +205,9 @@ for ref_chain in ref_model:
   if chain not in chain_ref.keys():
       chain_ref[chain]=[]
   for ref_res in ref_chain:
+      if ref_res.get_id()[0] != ' ': #Skip hetatm.
+       # print ref_res.get_id()
+        continue
       resname=ref_res.get_id()[1]
       key=str(resname) + chain
       
@@ -225,6 +240,8 @@ for sample_chain in sample_model:
   if chain not in chain_sample.keys():
       chain_sample[chain]=[]
   for sample_res in sample_chain:
+    if sample_res.get_id()[0] != ' ': #Skip hetatm.
+        continue
     resname=sample_res.get_id()[1]
     key=str(resname) + chain
     if key in common_residues:
