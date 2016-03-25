@@ -26,8 +26,8 @@ bash$ ./DockQ.py examples/model.pdb examples/native.pdb
 *   Statistics on CAPRI data:                             *
 *    0    <  DockQ <  0.23 - Incorrect                    *
 *    0.23 <= DockQ <  0.49 - Acceptable quality           *
-*    0.49 <= DockQ <  0.79 - Medium quality               *
-*            DockQ >= 0.79 - High quality                 *
+*    0.49 <= DockQ <  0.80 - Medium quality               *
+*            DockQ >= 0.80 - High quality                 *
 *   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *
 *   For comments, please email: bjornw@ifm.liu.se         *
 ***********************************************************
