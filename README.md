@@ -118,6 +118,7 @@ this will be the same
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 A B`
 
 This will reverse the relative chain order of AB
+
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 B A`
 
 This will reverse the relative chain order of AB and LH
