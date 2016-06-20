@@ -109,15 +109,15 @@ interacting (A,B) -> (L H) that we are aligning to itself.
 
 This command will put the chains A,B as one partner and the
 remaining L H as the second partner. It will assume the chain
-naming is the same in the model protein.
+naming is the same in the model protein:
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B`
 
-this will be the same
+this will be the same:
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 A B`
 
-This will reverse the relative chain order of AB
+This will reverse the relative chain order of AB:
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 B A`
 
@@ -125,22 +125,22 @@ This will reverse the relative chain order of AB and LH
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -native_chain2 L H -chain1 B A -chain2 H L`
 
-To try all permutations for chain1
+To try all permutations for chain1:
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1`
 
-To try all permutations for chain1 and chain2
+To try all permutations for chain1 and chain2:
 
 `./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1 -perm2`
 
-for two dimer this is only 4 (2!*2!), however for a two tetramers
-interacting the number will be 576 (4!*4!)
+for two dimer this is only 4 (2!\*2!), however for a two tetramers
+interacting the number will be 576 (4!\*4!)
 
-24 combinations
+24 combinations:
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1`
 
-576 combinations
+576 combinations:
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1 -perm2`
 
