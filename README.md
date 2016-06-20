@@ -16,7 +16,8 @@ Quick start
 For two interacting partners (two-chain-models) run with
 `./DockQ.py <model> <native>`
 
-`vpn-77$ ./DockQ.py -h
+```
+vpn-77$ ./DockQ.py -h
 usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-perm]
                 [-chain1 chain1 [chain1 ...]] [-chain2 chain2 [chain2 ...]]
                 [-native_chain1 native_chain1 [native_chain1 ...]]
