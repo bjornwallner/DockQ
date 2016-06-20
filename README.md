@@ -140,6 +140,12 @@ interacting the number will be 576 (4!\*4!)
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1`
 
+To make it slightly more fun we can change the initial order of the model so
+the best combination is not the first one-one mapping:
+
+`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -chain1 B A C D -perm1`
+
+
 576 combinations:
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1 -perm2`
