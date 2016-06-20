@@ -104,8 +104,9 @@ alignment program `needle` from the [EMBOSS
 package](http://emboss.sourceforge.net/download/) needs to be in your
 path.
 
-To illustrate this mode we are using two dimers that are
-interacting (A,B) -> (L H) that we are aligning to itself.
+To illustrate this mode we are using two dimers that are interacting
+(A,B) -> (L H) that we are aligning to itself, i.e the best score will
+1.0.
 
 This command will put the chains A,B as one partner and the
 remaining L H as the second partner. It will assume the chain
@@ -136,7 +137,7 @@ To try all permutations for chain1 and chain2:
 for two dimer this is only 4 (2!\*2!), however for a two tetramers
 interacting the number will be 576 (4!\*4!)
 
-24 combinations:
+Tetramer example (24 combinations):
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1`
 
@@ -146,7 +147,7 @@ the best combination is not the first one-one mapping:
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -chain1 B A C D -perm1`
 
 
-576 combinations:
+Tetramer example (576 combinations):
 
 `./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1 -perm2`
 
