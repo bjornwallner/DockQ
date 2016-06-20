@@ -12,7 +12,8 @@ import numpy as np
 from Bio.SVDSuperimposer import SVDSuperimposer
 from math import sqrt
 from argparse import ArgumentParser
-
+import itertools
+import commands
 
 def parse_fnat(fnat_out):
     fnat=-1;
@@ -22,7 +23,7 @@ def parse_fnat(fnat_out):
     nonnat_count=-1
     model_total=-1
     inter=[]
-    for line in fnat_out:
+    for line in fnat_out.split("\n"):
 #        print line
         line=line.rstrip('\n')
         match=re.search(r'NATIVE: (\d+)(\w) (\d+)(\w)',line)
@@ -87,10 +88,13 @@ def calc_DockQ(model,native,use_CA_only=False):
     cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
 
 
-    fnat_out = os.popen(cmd_fnat).readlines()
+    #fnat_out = os.popen(cmd_fnat).readlines()
+    fnat_out = commands.getoutput(cmd_fnat)
+#    sys.exit()
     (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
     assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
-    inter_out = os.popen(cmd_interface).readlines()
+#    inter_out = os.popen(cmd_interface).readlines()
+    inter_out = commands.getoutput(cmd_interface)
     (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
     assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
 
@@ -370,35 +374,61 @@ def make_two_chain_pdb(pdb,group1,group2): #renumber from 1
             c.id='A'
         if c.id in group2:
             c.id='B'
-
-    
     (code,outfile)=tempfile.mkstemp()
     io=Bio.PDB.PDBIO()
     io.set_structure(pdb_struct)
     io.save(outfile)
-    return outfile
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+    cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
+    os.system(cmd)
+    os.remove(outfile)
+    return outfile +'.renum'
+
+def change_chain(pdb_string,chain):
+    new_str=[];
+    for line in pdb_string:
+        s=list(line);
+        s[21]=chain;
+        new_str.append("".join(s));
+    return "\n".join(new_str);
 
 def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
     pdb_chains={}
     f=open(pdb);
     for line in f.readlines():
-        chain=line[21]
-        atom=line[13:16]
-        resnum=int(line[22:26])
-        print atom + ':' + str(resnum) +':'
-        if chain not in pdb_chains:
-            pdb_chains[chain]=[]
-        pdb_chains[chain].append(line)
-        print line
+        if line[0:4] == "ATOM":
+            #       s=list(line);
+            #print line
+            chain=line[21]
+            atom=line[13:16]
+            resnum=int(line[22:26])
+            #        print atom + ':' + str(resnum) +':'
+            if chain not in pdb_chains:
+                pdb_chains[chain]=[]
+            pdb_chains[chain].append(line)
+ #       print line
+ #       s[21]='B'
+ #       print "".join(s)
 #        print chain
-    sys.exit()
+
+
     f.close()
-    
+    #sys.exit()
     (code,outfile)=tempfile.mkstemp()
-    io=Bio.PDB.PDBIO()
-    io.set_structure(pdb_struct)
-    io.save(outfile)
-    return outfile
+    f=open(outfile,'w')
+    for c in group1:
+     #   print pdb_chains[c]
+        f.write(change_chain(pdb_chains[c],"A"))
+    f.write("TER\n");
+    for c in group2:
+        f.write(change_chain(pdb_chains[c],"B"))
+    f.close();
+    #print outfile
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+    cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
+    os.system(cmd)
+    os.remove(outfile)
+    return outfile +'.renum'
     
 def main():
 
@@ -406,10 +436,16 @@ def main():
     parser.add_argument('model',metavar='<model>',type=str,nargs=1,help='path to model file')
     parser.add_argument('native',metavar='<native>',type=str,nargs=1,help='path to native file')
     parser.add_argument('-short',default=False,action='store_true',help='short output')
+    parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
     parser.add_argument('-useCA',default=False,action='store_true',help='use CA instead of backbone')
-#    parser.add_argument('-perm',default=False,action='store_true',help='use all chain permutations to find maximum DockQ')
-    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='chains to group together')
-    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='chains to group together')
+    parser.add_argument('-skip_check',default=False,action='store_true',help='skip initial check fo speed up on two chain examples')
+    parser.add_argument('-perm',default=False,action='store_true',help='use all chain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting)')
+#    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
+    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='chains to group together partner 1')
+    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='chains to group together partner 2 (complement to partner 1 if undef')
+    parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='chains to group together from native partner 1')
+    parser.add_argument('-native_chain2',metavar='native_chain2', type=str,nargs='+', help='chains to group together from native partner 2 (complement to partner 1 if undef)')
+
 
     args = parser.parse_args()
     #bio_ver=1.64
@@ -427,49 +463,118 @@ def main():
 #    sys.exit()
 #    model=sys.argv[1]
 #    native=sys.argv[2]
+
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
     model=args.model[0]
+    model_in=model
     native=args.native[0]
+    native_in=native
     use_CA_only=args.useCA
-    
-    model_chains=get_pdb_chains(model)
-    native_chains=get_pdb_chains(native)
+
+    model_chains=[]
+    native_chains=[]
+    if(not args.skip_check):
+        model_chains=get_pdb_chains(model)
+        native_chains=get_pdb_chains(native)
     files_to_clean=[]
 
-  
+#    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
-       (args.chain1 == None and args.chain2 == None)):
-        print "Multi-chain model need sets of chains to group\nuse -chain1 and -chain2"
+       (args.chain1 == None and args.native_chain1 == None)):
+        print "Multi-chain model need sets of chains to group\nuse -chain1 and -native_chain1"
         sys.exit()
-
+    if not args.skip_check and (len(model_chains) < 2 or len(native_chains)< 2):
+        print "Need at least two chains in the two inputs\n";
+        sys.exit()
+        
     if len(model_chains) > 2 or len(native_chains)> 2:
         group1=model_chains[0]
         group2=model_chains[1]
+        nat_group1=native_chains[0]
+        nat_group2=native_chains[1]
         if(args.chain1 != None):
             group1=args.chain1
+            nat_group1=group1
             if(args.chain2 != None):
                 group2=args.chain2
             else:
-                #will use the complement from
+                #will use the complement from group1
                 group2=[]
                 for c in model_chains:
                     if c not in group1:
                         group2.append(c)
+            nat_group1=group1
+            nat_group2=group2
+            
+
+        if(args.native_chain1 != None):
+            nat_group1=args.native_chain1
+            if(args.native_chain2 != None):
+                nat_group2=args.native_chain2
+            else:
+                #will use the complement from group1
+                nat_group2=[]
+                for c in native_chains:
+                    if c not in nat_group1:
+                        nat_group2.append(c)
+                        
+        if(args.chain1 == None):
+            group1=nat_group1
+            group2=nat_group2
 
         print group1
         print group2
 
-    
-        native=make_two_chain_pdb(native,group1,group2)
-        model=make_two_chain_pdb(model,group1,group2)
-        os.popen('cp ' + native + ' native_multichain.pdb')
-        os.popen('cp ' + model + ' model_multichain.pdb')
+        print "native"
+        print nat_group1
+        print nat_group2
+        native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
-        files_to_clean.append(model)
-   #    sys.exit()
+        pe=0
+        if args.perm:
+            best_DockQ=-1;
+            best_g1=[]
+            best_g2=[]
+            for g1 in itertools.permutations(group1):
+                for g2 in itertools.permutations(group2):
+                    pe=pe+1
+#            print pe
+#            print group1
+#            print group2
+            pe_tot=pe
+            pe=1
+            for g1 in itertools.permutations(group1):
+                for g2 in itertools.permutations(group2):
+                #g2=group2    
+                    model=make_two_chain_pdb_perm(model_in,g1,g2)
+                    test_dict=calc_DockQ(model,native,use_CA_only)
+                    os.remove(model)
+#                    if args.verbose:
+                    print str(pe)+'/'+str(pe_tot) + ' ' + str(g1) + ' ' + str(g2) + ' ' + str(test_dict['DockQ'])
+                    if(test_dict['DockQ'] > best_DockQ):
+                        best_DockQ=test_dict['DockQ'];
+                        dict=test_dict
+                        best_g1=g1
+                        best_g2=g2
+ #                       if args.verbose:
+                        print "Current best " + str(best_DockQ)
+                    pe=pe+1
+            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
+        else:
+            model=make_two_chain_pdb_perm(model,group1,group2)
+            dict=calc_DockQ(model,native,use_CA_only)
+        
+            os.system('cp ' + native + ' native_multichain.pdb')
+            os.system('cp ' + model + ' model_multichain.pdb')
 
+            files_to_clean.append(model)
+   #    sys.exit()
+     
  #   print native
  #   print model
-    dict=calc_DockQ(model,native,use_CA_only)
+    else:
+        dict=calc_DockQ(model,native,use_CA_only)
+    
     irms=dict['irms']
     Lrms=dict['Lrms']
     fnat=dict['fnat']
