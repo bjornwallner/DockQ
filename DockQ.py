@@ -523,12 +523,14 @@ def main():
             group1=nat_group1
             group2=nat_group2
 
-        print group1
-        print group2
+        #print group1
+        #print group2
 
-        print "native"
-        print nat_group1
-        print nat_group2
+        #print "native"
+        #print nat_group1
+        #print nat_group2
+        print str(group1) + ' -> ' + str(nat_group1)
+        print str(group2) + ' -> ' + str(nat_group2)
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
@@ -554,7 +556,7 @@ def main():
             for g1 in combos1:
                 for g2 in combos2:
                     pe=pe+1
-                    print str(g1)+' '+str(g2)
+                   # print str(g1)+' '+str(g2)
 #            print pe
 #            print group1
 #            print group2

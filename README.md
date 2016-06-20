@@ -95,39 +95,41 @@ For targets with more than two interacting chains. For instance a
 dimer interacting with a partner. There are options to control which
 chains to group together and also in which order to combine
 them. There are also options to try all possible chain combinations
-(`-perm`), this is important if for instance a partner is interacting
+(`-perm1` and `-perm2`), this is important if for instance a partner is interacting
 asymmetrically with a dimer. This should only be performed for
-symmetric oligomers.
+symmetric oligomers, where multiple solution are correct.
 
 For this mode to work if there are missing residues the global
 alignment program `needle` from the [EMBOSS
 package](http://emboss.sourceforge.net/download/) needs to be in your
 path.
 
-To illustrate this mode we are using a two dimers that are
+To illustrate this mode we are using two dimers that are
 interacting (A,B) -> (L H) that we are aligning to itself.
 
 This command will put the chains A,B as one partner and the
 remaining L H as the second partner. It will assume the chain
 naming is the same in the model protein.
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B`
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B`
 this will be the same
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -chain1 A B`
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 A B`
 
 This will reverse the relative chain order of AB
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -chain1 B A`
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 B A`
 
 This will reverse the relative chain order of AB and LH
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -native_chain2 L H -chain1 B A -chain2 H L`
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -native_chain2 L H -chain1 B A -chain2 H L`
 
 To try all permutations for chain1
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -perm1`
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1`
 
 To try all permutations for chain1 and chain2
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -perm1 -perm2`
-
-
-
-
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1 -perm2`
+for two dimer this is only 4 (2!*2!), however for a two tetramers
+interacting the number will be 576 (4!*4!)
+24 combinations
+`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1`
+576 combinations
+`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1 -perm2`
 
 
