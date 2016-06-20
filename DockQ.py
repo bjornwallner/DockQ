@@ -439,7 +439,8 @@ def main():
     parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
     parser.add_argument('-useCA',default=False,action='store_true',help='use CA instead of backbone')
     parser.add_argument('-skip_check',default=False,action='store_true',help='skip initial check fo speed up on two chain examples')
-    parser.add_argument('-perm',default=False,action='store_true',help='use all chain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting)')
+    parser.add_argument('-perm1',default=False,action='store_true',help='use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations')
+    parser.add_argument('-perm2',default=False,action='store_true',help='use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations')
 #    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
     parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
     parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
@@ -531,20 +532,37 @@ def main():
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
-        if args.perm:
+        if args.perm1 or args.perm2:
             best_DockQ=-1;
             best_g1=[]
             best_g2=[]
-            for g1 in itertools.permutations(group1):
-                for g2 in itertools.permutations(group2):
+            
+            iter_perm1=itertools.combinations(group1,len(group1))
+            iter_perm2=itertools.combinations(group2,len(group2))
+            if args.perm1:
+                iter_perm1=itertools.permutations(group1)
+            if args.perm2:
+                iter_perm2=itertools.permutations(group2)
+               
+            combos1=[];
+            combos2=[];
+            for g1 in iter_perm1:#_temp:
+                combos1.append(g1)
+            for g2 in iter_perm2:
+                combos2.append(g2)
+
+            for g1 in combos1:
+                for g2 in combos2:
                     pe=pe+1
+                    print str(g1)+' '+str(g2)
 #            print pe
 #            print group1
 #            print group2
             pe_tot=pe
             pe=1
-            for g1 in itertools.permutations(group1):
-                for g2 in itertools.permutations(group2):
+            #sys.exit()
+            for g1 in combos1:
+                for g2 in combos2:
                 #g2=group2    
                     model=make_two_chain_pdb_perm(model_in,g1,g2)
                     test_dict=calc_DockQ(model,native,use_CA_only)

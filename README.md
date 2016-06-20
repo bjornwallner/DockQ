@@ -47,6 +47,14 @@ DockQ 0.700
 
 Help page
 ```
+vpn-83$ ./DockQ.py -h
+usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-perm1]
+                [-perm2] [-chain1 chain1 [chain1 ...]]
+                [-chain2 chain2 [chain2 ...]]
+                [-native_chain1 native_chain1 [native_chain1 ...]]
+                [-native_chain2 native_chain2 [native_chain2 ...]]
+                <model> <native>
+
 DockQ - Quality measure for protein-protein docking models
 
 positional arguments:
@@ -59,9 +67,12 @@ optional arguments:
   -verbose              talk a lot!
   -useCA                use CA instead of backbone
   -skip_check           skip initial check fo speed up on two chain examples
-  -perm                 use all chain permutations to find maximum DockQ
-                        (number of comparisons is n!*m! = 24*24 = 576 for two
-                        tetramers interacting)
+  -perm1                use all chain1 permutations to find maximum DockQ
+                        (number of comparisons is n! = 24, if combined with
+                        -perm2 there will be n!*m! combinations
+  -perm2                use all chain2 permutations to find maximum DockQ
+                        (number of comparisons is n! = 24, if combined with
+                        -perm1 there will be n!*m! combinations
   -chain1 chain1 [chain1 ...]
                         pdb chain order to group together partner 1
   -chain2 chain2 [chain2 ...]
@@ -74,13 +85,49 @@ optional arguments:
                         pdb chain order to group together from native partner
                         2 (complement to partner 1 if undef)
 			
+			
 ```
 
 
-###### Multi-chain functionality
+##### Multi-chain functionality
+
+For targets with more than two interacting chains. For instance a
+dimer interacting with a partner. There are options to control which
+chains to group together and also in which order to combine
+them. There are also options to try all possible chain combinations
+(`-perm`), this is important if for instance a partner is interacting
+asymmetrically with a dimer. This should only be performed for
+symmetric oligomers.
+
+For this mode to work if there are missing residues the global
+alignment program `needle` from the [EMBOSS
+package](http://emboss.sourceforge.net/download/) needs to be in your
+path.
+
+To illustrate this mode we are using a two dimers that are
+interacting (A,B) -> (L H) that we are aligning to itself.
+
+This command will put the chains A,B as one partner and the
+remaining L H as the second partner. It will assume the chain
+naming is the same in the model protein.
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B`
+this will be the same
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -chain1 A B`
+
+This will reverse the relative chain order of AB
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -chain1 B A`
+
+This will reverse the relative chain order of AB and LH
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -native_chain2 L H -chain1 B A -chain2 H L`
+
+To try all permutations for chain1
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -perm1`
+
+To try all permutations for chain1 and chain2
+`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.pdb -native_chain1 A B -perm1 -perm2`
 
 
-``` 
+
 
 
 
