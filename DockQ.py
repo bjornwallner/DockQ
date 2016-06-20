@@ -300,7 +300,7 @@ if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
 #print chain_sample.keys()
 
 #Set to align on receptor
-assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model %d %d\n" % (len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
+assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model receptor (chain %c) %d %d\n" % (receptor_chain,len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
 
 super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
 super_imposer.apply(sample_model.get_atoms())
@@ -311,9 +311,20 @@ receptor_chain_rms=super_imposer.rms
 
 #Grep out the transformed ligand coords
 
+#print ligand_chain
 
-#print chain_ref[ligand_chain]
-#print chain_sample[ligand_chain]
+print chain_ref[ligand_chain]
+print chain_sample[ligand_chain]
+l1=len(chain_ref[ligand_chain])
+l2=len(chain_sample[ligand_chain])
+
+
+
+
+assert len(chain_ref[ligand_chain])!=0 or len(chain_sample[ligand_chain])!=0, "Zero number of equivalent atoms in native and model ligand (chain %s) %d %d.\nCheck that the residue numbers in model and native is consistent\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
+
+
+assert len(chain_ref[ligand_chain])==len(chain_sample[ligand_chain]), "Different number of atoms in native and model ligand (chain %c) %d %d\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
 
 coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
 coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
@@ -321,6 +332,8 @@ coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
 #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
 #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
 
+print len(coord1)
+print len(coord2)
 
 
 sup=SVDSuperimposer()
