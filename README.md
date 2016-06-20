@@ -16,6 +16,33 @@ Quick start for two interacting partners (two-chain-models) run with
 
 `./DockQ.py <model> <native>`
 
+Example
+
+```
+
+bash$ ./DockQ.py examples/model.pdb examples/native.pdb
+***********************************************************
+*                       DockQ                             *
+*   Scoring function for protein-protein docking models   *
+*   Statistics on CAPRI data:                             *
+*    0    <  DockQ <  0.23 - Incorrect                    *
+*    0.23 <= DockQ <  0.49 - Acceptable quality           *
+*    0.49 <= DockQ <  0.80 - Medium quality               *
+*            DockQ >= 0.80 - High quality                 *
+*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *
+*   For comments, please email: bjornw@ifm.liu.se         *
+***********************************************************
+
+Number of equivalent residues in chain A 1492 (receptor)
+Number of equivalent residues in chain B 912 (ligand)
+Fnat 0.533 32 correct of 60 native contacts
+Fnonnat 0.238 10 non-native of 42 model contacts
+iRMS 1.232
+LRMS 1.516
+CAPRI Medium
+DockQ_CAPRI Medium
+DockQ 0.700
+
 ```
 vpn-77$ ./DockQ.py -h
 usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-perm]
@@ -52,30 +79,10 @@ optional arguments:
 			
 
 
-Example
 
-bash$ ./DockQ.py examples/model.pdb examples/native.pdb
-***********************************************************
-*                       DockQ                             *
-*   Scoring function for protein-protein docking models   *
-*   Statistics on CAPRI data:                             *
-*    0    <  DockQ <  0.23 - Incorrect                    *
-*    0.23 <= DockQ <  0.49 - Acceptable quality           *
-*    0.49 <= DockQ <  0.80 - Medium quality               *
-*            DockQ >= 0.80 - High quality                 *
-*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *
-*   For comments, please email: bjornw@ifm.liu.se         *
-***********************************************************
+```
 
-Number of equivalent residues in chain A 1492 (receptor)
-Number of equivalent residues in chain B 912 (ligand)
-Fnat 0.533 32 correct of 60 native contacts
-Fnonnat 0.238 10 non-native of 42 model contacts
-iRMS 1.232
-LRMS 1.516
-CAPRI Medium
-DockQ_CAPRI Medium
-DockQ 0.700
+
 
 ``` 
 Multi-chain functionality
