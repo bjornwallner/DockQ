@@ -45,14 +45,8 @@ DockQ 0.700
 
 ```
 
+Help page
 ```
-vpn-77$ ./DockQ.py -h
-usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-perm]
-                [-chain1 chain1 [chain1 ...]] [-chain2 chain2 [chain2 ...]]
-                [-native_chain1 native_chain1 [native_chain1 ...]]
-                [-native_chain2 native_chain2 [native_chain2 ...]]
-                <model> <native>
-
 DockQ - Quality measure for protein-protein docking models
 
 positional arguments:
@@ -69,24 +63,24 @@ optional arguments:
                         (number of comparisons is n!*m! = 24*24 = 576 for two
                         tetramers interacting)
   -chain1 chain1 [chain1 ...]
-                        chains to group together partner 1
+                        pdb chain order to group together partner 1
   -chain2 chain2 [chain2 ...]
-                        chains to group together partner 2 (complement to
-                        partner 1 if undef
-  -native_chain1 native_chain1 [native_chain1 ...]
-                        chains to group together from native partner 1
-  -native_chain2 native_chain2 [native_chain2 ...]
-                        chains to group together from native partner 2
+                        pdb chain order to group together partner 2
                         (complement to partner 1 if undef)
+  -native_chain1 native_chain1 [native_chain1 ...]
+                        pdb chain order to group together from native partner
+                        1
+  -native_chain2 native_chain2 [native_chain2 ...]
+                        pdb chain order to group together from native partner
+                        2 (complement to partner 1 if undef)
 			
-
-
-
 ```
 
 
+=Multi-chain functionality
+
 
 ``` 
-Multi-chain functionality
+
 
 

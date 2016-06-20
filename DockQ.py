@@ -441,10 +441,10 @@ def main():
     parser.add_argument('-skip_check',default=False,action='store_true',help='skip initial check fo speed up on two chain examples')
     parser.add_argument('-perm',default=False,action='store_true',help='use all chain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting)')
 #    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
-    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='chains to group together partner 1')
-    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='chains to group together partner 2 (complement to partner 1 if undef')
-    parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='chains to group together from native partner 1')
-    parser.add_argument('-native_chain2',metavar='native_chain2', type=str,nargs='+', help='chains to group together from native partner 2 (complement to partner 1 if undef)')
+    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
+    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
+    parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='pdb chain order to group together from native partner 1')
+    parser.add_argument('-native_chain2',metavar='native_chain2', type=str,nargs='+', help='pdb chain order to group together from native partner 2 (complement to partner 1 if undef)')
 
 
     args = parser.parse_args()
