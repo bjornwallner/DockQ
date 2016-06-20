@@ -12,8 +12,8 @@ Install `Biopython` and `numpy`
 - Numpy: http://www.scipy.org/install.html
 
 
-Quick start
-For two interacting partners (two-chain-models) run with
+Quick start for two interacting partners (two-chain-models) run with
+
 `./DockQ.py <model> <native>`
 
 ```
@@ -53,7 +53,7 @@ optional arguments:
 
 
 Example
-```
+
 bash$ ./DockQ.py examples/model.pdb examples/native.pdb
 ***********************************************************
 *                       DockQ                             *
