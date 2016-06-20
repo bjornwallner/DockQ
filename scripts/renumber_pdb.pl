@@ -21,7 +21,7 @@ print OUT $file;
 sub number_pdb #Takes a pdbfile and a number to start with, and starts renumbering the file from there
 {
     my($file,$number)=@_;
-    $in_number=$number;
+    my $in_number=$number;
    # $number--;
     my $oldresno="";
     my $old_chain=" ";
@@ -42,8 +42,8 @@ sub number_pdb #Takes a pdbfile and a number to start with, and starts renumberi
 	    {
 		$number++;
 		if($old_chain ne $chain) { 
-		    #$number=$in_number;
-	#	    $new_file.="TER\n";
+		    $number=$in_number;
+		    $new_file.="TER\n" if(length($new_file)>0);
 		}
 		$temp=sprintf("%4d",$number);
 	    }
@@ -55,14 +55,15 @@ sub number_pdb #Takes a pdbfile and a number to start with, and starts renumberi
 	    #substr($line, 21, 1)="$c";
 	    $oldresno=$resno;
 	    $old_chain=$chain;
+	    $new_file.=$line;
 	}
 	if(/ENDMDL|^TER/) {
-	    $number=$in_number;
-	    $c="B";
+	 #   $number=$in_number;
+	    #$c="B";
 
 
 	}
-	$new_file.=$line;
+
     }
     return $new_file;
 }

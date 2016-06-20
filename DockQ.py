@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 
 import Bio.PDB
+import warnings
+from Bio import BiopythonWarning
+warnings.simplefilter('ignore', BiopythonWarning)
 import sys
 import os
 import re
+import tempfile
 import numpy as np
 from Bio.SVDSuperimposer import SVDSuperimposer
 from math import sqrt
+from argparse import ArgumentParser
 
 
 def parse_fnat(fnat_out):
@@ -70,326 +75,433 @@ def capri_class_DockQ(DockQ):
         return 'Undef'
 
 
-#bio_ver=1.64
-bio_ver=1.61
-if(float(Bio.__version__) < bio_ver):
-    print "Biopython version (%s) need is too old at least >=%.2f" % (Bio.__version__,bio_ver)
+def calc_DockQ(model,native,use_CA_only=False):
+    
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+    atom_for_sup=['CA','C','N','O']
+    if(use_CA_only):
+        atom_for_sup=['CA']
+
+    cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
+    #cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
+    cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
+
+
+    fnat_out = os.popen(cmd_fnat).readlines()
+    (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
+    assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
+    inter_out = os.popen(cmd_interface).readlines()
+    (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
+    assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
+
+    #print fnat
+    #Use same interface as for fnat for iRMS
+    #interface=interface5A
+
+
+    # Start the parser
+    pdb_parser = Bio.PDB.PDBParser(QUIET = True)
+
+    # Get the structures
+    ref_structure = pdb_parser.get_structure("reference", native)
+    sample_structure = pdb_parser.get_structure("model", model)
+
+    # Use the first model in the pdb-files for alignment
+    # Change the number 0 if you want to align to another structure
+    ref_model    = ref_structure[0]
+    sample_model = sample_structure[0]
+
+    # Make a list of the atoms (in the structures) you wish to align.
+    # In this case we use CA atoms whose index is in the specified range
+    ref_atoms = []
+    sample_atoms = []
+
+    common_interface=[]
+
+    chain_res={}
+
+
+    #find atoms common in both sample and native
+    atoms_def_sample=[]
+    atoms_def_in_both=[]
+    #first read in sample
+    for sample_chain in sample_model:
+#        print sample_chain
+        chain=sample_chain.id
+#        print chain
+        for sample_res in sample_chain:
+           # print sample_res
+            if sample_res.get_id()[0] != ' ': #Skip hetatm.
+                continue
+            resname=sample_res.get_id()[1]
+            key=str(resname) + chain
+            for a in atom_for_sup:
+                atom_key=key + '.' + a
+                if a in sample_res:
+                    if atom_key in atoms_def_sample:
+                        print atom_key + ' already added (MODEL)!!!'
+                    atoms_def_sample.append(atom_key)
+
+    #then read in native also present in sample
+    for ref_chain in ref_model:
+        chain=ref_chain.id
+        for ref_res in ref_chain:
+            #print ref_res
+            if ref_res.get_id()[0] != ' ': #Skip hetatm.
+#                print ref_res.get_id()
+                continue
+            resname=ref_res.get_id()[1]
+            key=str(resname) + chain
+            for a in atom_for_sup:
+                atom_key=key + '.' + a
+                if a in ref_res and atom_key in atoms_def_sample:
+                    if atom_key in atoms_def_in_both:
+                        print atom_key + ' already added (Native)!!!' 
+                    atoms_def_in_both.append(atom_key)
+
+
+#    print atoms_def_in_both
+    for sample_chain in sample_model:
+        chain=sample_chain.id
+        if chain not in chain_res.keys():
+            chain_res[chain]=[]
+        for sample_res in sample_chain:
+            if sample_res.get_id()[0] != ' ': #Skip hetatm.
+                continue
+            resname=sample_res.get_id()[1]
+            key=str(resname) + chain
+            chain_res[chain].append(key)
+            if key in interface:
+                for a in atom_for_sup:
+                    atom_key=key + '.' + a
+                    if a in sample_res and atom_key in atoms_def_in_both:
+                        sample_atoms.append(sample_res[a])
+                common_interface.append(key)
+
+    #print inter_pairs
+
+    chain_ref={}
+    common_residues=[]
+
+
+
+    # Iterate of all chains in the model in order to find all residues
+    for ref_chain in ref_model:
+        # Iterate of all residues in each model in order to find proper atoms
+        #  print dir(ref_chain)
+        chain=ref_chain.id
+        if chain not in chain_ref.keys():
+            chain_ref[chain]=[]
+        for ref_res in ref_chain:
+            if ref_res.get_id()[0] != ' ': #Skip hetatm.
+                continue
+            resname=ref_res.get_id()[1]
+            key=str(resname) + chain
+
+            #print ref_res
+            #      print key
+            # print chain_res.values()
+            if key in chain_res[chain]: # if key is present in sample
+                #print key
+                for a in atom_for_sup:
+                    atom_key=key + '.' + a
+                    if a in ref_res and atom_key in atoms_def_in_both:
+                        chain_ref[chain].append(ref_res[a])
+                        common_residues.append(key)
+                      #chain_sample.append((ref_res['CA'])
+            if key in common_interface:
+              # Check if residue number ( .get_id() ) is in the list
+              # Append CA atom to list
+                #print key  
+                for a in atom_for_sup:
+                    atom_key=key + '.' + a
+                    #print atom_key
+                    if a in ref_res and atom_key in atoms_def_in_both:
+                        ref_atoms.append(ref_res[a])
+
+
+
+    #get the ones that are present in native        
+    chain_sample={}
+    for sample_chain in sample_model:
+        chain=sample_chain.id
+        if chain not in chain_sample.keys():
+            chain_sample[chain]=[]
+        for sample_res in sample_chain:
+            if sample_res.get_id()[0] != ' ': #Skip hetatm.
+                continue
+            resname=sample_res.get_id()[1]
+            key=str(resname) + chain
+            if key in common_residues:
+                for a in atom_for_sup:
+                    atom_key=key + '.' + a
+                    if a in sample_res and atom_key in atoms_def_in_both:
+                        chain_sample[chain].append(sample_res[a])
+
+        #if key in common_residues:
+        #     print key  
+        #sample_atoms.append(sample_res['CA'])
+        #common_interface.append(key)
+
+
+    assert len(ref_atoms)!=0, "length of native is zero"
+    assert len(sample_atoms)!=0, "length of model is zero"
+    assert len(ref_atoms)==len(sample_atoms), "Different number of atoms in native and model %d %d\n" % (len(ref_atoms),len(sample_atoms))
+
+    super_imposer = Bio.PDB.Superimposer()
+    super_imposer.set_atoms(ref_atoms, sample_atoms)
+    super_imposer.apply(sample_model.get_atoms())
+
+    # Print RMSD:
+    irms=super_imposer.rms
+
+    (chain1,chain2)=chain_sample.keys()
+
+    ligand_chain=chain1
+    receptor_chain=chain2
+    len1=len(chain_res[chain1])
+    len2=len(chain_res[chain2])
+
+    assert len1!=0, "%s chain has zero length!\n" % chain1
+    assert len2!=0, "%s chain has zero length!\n" % chain2
+
+    class1='ligand'
+    class2='receptor'
+    if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
+        receptor_chain=chain1
+        ligand_chain=chain2
+        class1='receptor'
+        class2='ligand'
+
+
+
+    #print len1
+    #print len2
+    #print chain_sample.keys()
+
+    #Set to align on receptor
+    assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model receptor (chain %c) %d %d\n" % (receptor_chain,len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
+
+    super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
+    super_imposer.apply(sample_model.get_atoms())
+    receptor_chain_rms=super_imposer.rms
+    #print receptor_chain_rms
+    #print dir(super_imposer)
+    #print chain1_rms
+
+    #Grep out the transformed ligand coords
+
+    #print ligand_chain
+
+    #print chain_ref[ligand_chain]
+    #print chain_sample[ligand_chain]
+    #l1=len(chain_ref[ligand_chain])
+    #l2=len(chain_sample[ligand_chain])
+
+
+
+
+    assert len(chain_ref[ligand_chain])!=0 or len(chain_sample[ligand_chain])!=0, "Zero number of equivalent atoms in native and model ligand (chain %s) %d %d.\nCheck that the residue numbers in model and native is consistent\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
+
+
+    assert len(chain_ref[ligand_chain])==len(chain_sample[ligand_chain]), "Different number of atoms in native and model ligand (chain %c) %d %d\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
+
+    coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
+    coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
+
+    #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
+    #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
+
+    #print len(coord1)
+    #print len(coord2)
+
+    sup=SVDSuperimposer()
+    Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not superimpose
+
+
+    #super_imposer.set_atoms(chain_ref[ligand_chain], chain_sample[ligand_chain])
+    #super_imposer.apply(sample_model.get_atoms())
+    #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
+    #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
+    #Rrms= sup._rms(coord1,coord2)
+    #should give same result as above line
+    #diff = coord1-coord2
+    #l = len(diff) #number of atoms
+    #from math import sqrt
+    #print sqrt(sum(sum(diff*diff))/l)
+    #print np.sqrt(np.sum(diff**2)/l)
+    DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
+    dict={}
+    dict['DockQ']=DockQ
+    dict['irms']=irms
+    dict['Lrms']=Lrms
+    dict['fnat']=fnat
+    dict['nat_correct']=nat_correct
+    dict['nat_total']=nat_total
+
+    dict['fnonnat']=fnonnat
+    dict['nonnat_count']=nonnat_count
+    dict['model_total']=model_total
+    
+    dict['chain1']=chain1
+    dict['chain2']=chain2
+    dict['len1']=len1
+    dict['len2']=len2
+    dict['class1']=class1
+    dict['class2']=class2
+    
+    return dict
+
+def get_pdb_chains(pdb):
+    pdb_parser = Bio.PDB.PDBParser(QUIET = True)
+    pdb_struct = pdb_parser.get_structure("reference", pdb)[0]
+    chain=[]
+    for c in pdb_struct:
+        chain.append(c.id)
+    return chain
+#ATOM   3312  CA
+#ATOM   3315  CB  ALA H 126     -21.802  31.674  73.597  1.00 58.05           C  
+
+def make_two_chain_pdb(pdb,group1,group2): #renumber from 1
+    pdb_parser = Bio.PDB.PDBParser(QUIET = True)
+    pdb_struct = pdb_parser.get_structure("reference", pdb)[0]
+    for c in pdb_struct:
+        if c.id in group1:
+            c.id='A'
+        if c.id in group2:
+            c.id='B'
+
+    
+    (code,outfile)=tempfile.mkstemp()
+    io=Bio.PDB.PDBIO()
+    io.set_structure(pdb_struct)
+    io.save(outfile)
+    return outfile
+
+def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
+    pdb_chains={}
+    f=open(pdb);
+    for line in f.readlines():
+        chain=line[21]
+        atom=line[13:16]
+        resnum=int(line[22:26])
+        print atom + ':' + str(resnum) +':'
+        if chain not in pdb_chains:
+            pdb_chains[chain]=[]
+        pdb_chains[chain].append(line)
+        print line
+#        print chain
     sys.exit()
-
-if(len(sys.argv)!=3):
-    print "Usage: ./Dock.py <model> <native>"
-    sys.exit()
-
-exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
-model=sys.argv[1]
-native=sys.argv[2]
-use_CA_only=False
-
- 
-atom_for_sup=['CA','C','N','O']
-if(use_CA_only):
-    atom_for_sup=['CA']
-
-
-
-
-cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
-#cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
-cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
-
-
-fnat_out = os.popen(cmd_fnat).readlines()
-(fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
-assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
-inter_out = os.popen(cmd_interface).readlines()
-(fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
-assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
-
-#print fnat
-#Use same interface as for fnat for iRMS
-#interface=interface5A
-          
-
-# Start the parser
-pdb_parser = Bio.PDB.PDBParser(QUIET = True)
-
-# Get the structures
-ref_structure = pdb_parser.get_structure("reference", native)
-sample_structure = pdb_parser.get_structure("model", model)
-
-# Use the first model in the pdb-files for alignment
-# Change the number 0 if you want to align to another structure
-ref_model    = ref_structure[0]
-sample_model = sample_structure[0]
-
-# Make a list of the atoms (in the structures) you wish to align.
-# In this case we use CA atoms whose index is in the specified range
-ref_atoms = []
-sample_atoms = []
-
-common_interface=[]
-
-chain_res={}
-
-
-#find atoms common in both sample and native
-atoms_def_sample=[]
-atoms_def_in_both=[]
-
-for sample_chain in sample_model:
-  chain=sample_chain.id
-  for sample_res in sample_chain:
-    if sample_res.get_id()[0] != ' ': #Skip hetatm.
-        continue
-    resname=sample_res.get_id()[1]
-    key=str(resname) + chain
-    for a in atom_for_sup:
-        atom_key=key + '.' + a
-        if a in sample_res:
-            if atom_key in atoms_def_sample:
-                print atom_key + ' already added (MODEL)!!!'
-            atoms_def_sample.append(atom_key)
-
-for ref_chain in ref_model:
-  chain=ref_chain.id
-  for ref_res in ref_chain:
-    if ref_res.get_id()[0] != ' ': #Skip hetatm.
-        #print ref_res.get_id()
-        continue
-    resname=ref_res.get_id()[1]
-    key=str(resname) + chain
-    for a in atom_for_sup:
-        atom_key=key + '.' + a
-        if a in ref_res and atom_key in atoms_def_sample:
-            if atom_key in atoms_def_in_both:
-                print atom_key + ' already added (Native)!!!' 
-            atoms_def_in_both.append(atom_key)
-
-##########
-
-
-for sample_chain in sample_model:
-  chain=sample_chain.id
-  if chain not in chain_res.keys():
-      chain_res[chain]=[]
-  for sample_res in sample_chain:
-    if sample_res.get_id()[0] != ' ': #Skip hetatm.
-        continue
-    resname=sample_res.get_id()[1]
-    key=str(resname) + chain
-#    print key
-    chain_res[chain].append(key)
-#    chain_res[chain].append(sample_res)
-    if key in interface:
- #     print key
-      for a in atom_for_sup:
-        atom_key=key + '.' + a
- #         sample_atoms.append(sample_res['CA'])
-        if a in sample_res and atom_key in atoms_def_in_both:
-            sample_atoms.append(sample_res[a])
-      common_interface.append(key)
-
-#print inter_pairs
-
-chain_ref={}
-common_residues=[]
-
-
-
-# Iterate of all chains in the model in order to find all residues
-for ref_chain in ref_model:
-  # Iterate of all residues in each model in order to find proper atoms
-#  print dir(ref_chain)
-  chain=ref_chain.id
-#  print chain
-  if chain not in chain_ref.keys():
-      chain_ref[chain]=[]
-  for ref_res in ref_chain:
-      if ref_res.get_id()[0] != ' ': #Skip hetatm.
-       # print ref_res.get_id()
-        continue
-      resname=ref_res.get_id()[1]
-      key=str(resname) + chain
-      
-      #print ref_res
-#      print key
-     # print chain_res.values()
-      if key in chain_res[chain]: # if key is present in sample
-          #print key
-          for a in atom_for_sup:
-              atom_key=key + '.' + a
-              if a in ref_res and atom_key in atoms_def_in_both:
-                  chain_ref[chain].append(ref_res[a])
-          common_residues.append(key)
-          #chain_sample.append((ref_res['CA'])
-      if key in common_interface:
-      # Check if residue number ( .get_id() ) is in the list
-      # Append CA atom to list
-        #print key  
-        for a in atom_for_sup:
-            atom_key=key + '.' + a
-            if a in ref_res and atom_key in atoms_def_in_both:
-                ref_atoms.append(ref_res[a])
-                
-            
-
-#get the ones that were present in native        
-chain_sample={}
-for sample_chain in sample_model:
-  chain=sample_chain.id
-  if chain not in chain_sample.keys():
-      chain_sample[chain]=[]
-  for sample_res in sample_chain:
-    if sample_res.get_id()[0] != ' ': #Skip hetatm.
-        continue
-    resname=sample_res.get_id()[1]
-    key=str(resname) + chain
-    if key in common_residues:
-        for a in atom_for_sup:
-            atom_key=key + '.' + a
-            if a in sample_res and atom_key in atoms_def_in_both:
-                chain_sample[chain].append(sample_res[a])
-
-    #if key in common_residues:
- #     print key  
-      #sample_atoms.append(sample_res['CA'])
-      #common_interface.append(key)
-
-        
-#print ref_atoms
-#print sample_atoms
-#print sample_model.get_atoms()
-# Now we initiate the superimposer:
-
-#print len(ref_atoms)
-#print len(sample_atoms)
-
-assert len(ref_atoms)!=0, "length of native is zero"
-assert len(sample_atoms)!=0, "length of model is zero"
-assert len(ref_atoms)==len(sample_atoms), "Different number of atoms in native and model %d %d\n" % (len(ref_atoms),len(sample_atoms))
-
-super_imposer = Bio.PDB.Superimposer()
-super_imposer.set_atoms(ref_atoms, sample_atoms)
-super_imposer.apply(sample_model.get_atoms())
-
-# Print RMSD:
-irms=super_imposer.rms
-
-(chain1,chain2)=chain_sample.keys()
-
-ligand_chain=chain1
-receptor_chain=chain2
-len1=len(chain_res[chain1])
-len2=len(chain_res[chain2])
-
-assert len1!=0, "%s chain has zero length!\n" % chain1
-assert len2!=0, "%s chain has zero length!\n" % chain2
-
-class1='ligand'
-class2='receptor'
-if(len(chain_sample[chain1]) > len(chain_sample[chain2])):
-    receptor_chain=chain1
-    ligand_chain=chain2
-    class1='receptor'
-    class2='ligand'
-
-
-
-#print len1
-#print len2
-#print chain_sample.keys()
-
-#Set to align on receptor
-assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model receptor (chain %c) %d %d\n" % (receptor_chain,len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
-
-super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
-super_imposer.apply(sample_model.get_atoms())
-receptor_chain_rms=super_imposer.rms
-#print receptor_chain_rms
-#print dir(super_imposer)
-#print chain1_rms
-
-#Grep out the transformed ligand coords
-
-#print ligand_chain
-
-print chain_ref[ligand_chain]
-print chain_sample[ligand_chain]
-l1=len(chain_ref[ligand_chain])
-l2=len(chain_sample[ligand_chain])
-
-
-
-
-assert len(chain_ref[ligand_chain])!=0 or len(chain_sample[ligand_chain])!=0, "Zero number of equivalent atoms in native and model ligand (chain %s) %d %d.\nCheck that the residue numbers in model and native is consistent\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
-
-
-assert len(chain_ref[ligand_chain])==len(chain_sample[ligand_chain]), "Different number of atoms in native and model ligand (chain %c) %d %d\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
-
-coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
-coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
-
-#coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
-#coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
-
-print len(coord1)
-print len(coord2)
-
-
-sup=SVDSuperimposer()
-Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not superimpose
-
-
-#super_imposer.set_atoms(chain_ref[ligand_chain], chain_sample[ligand_chain])
-#super_imposer.apply(sample_model.get_atoms())
-#coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
-#coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
-#Rrms= sup._rms(coord1,coord2)
-#should give same result as above line
-#diff = coord1-coord2
-#l = len(diff) #number of atoms
-#from math import sqrt
-#print sqrt(sum(sum(diff*diff))/l)
-#print np.sqrt(np.sum(diff**2)/l) 
-
-DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
-print '***********************************************************'
-print '*                       DockQ                             *'
-print '*   Scoring function for protein-protein docking models   *'
-print '*   Statistics on CAPRI data:                             *'
-print '*    0.00 <= DockQ <  0.23 - Incorrect                    *'
-print '*    0.23 <= DockQ <  0.49 - Acceptable quality           *'
-print '*    0.49 <= DockQ <  0.80 - Medium quality               *'
-print '*            DockQ >= 0.80 - High quality                 *'  
-print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
-print '*   For comments, please email: bjornw@ifm.liu.se         *'
-print '***********************************************************\n'
-print 'Number of equivalent residues in chain ' + chain1 + ' ' + str(len1) + ' (' + class1 + ')'
-print 'Number of equivalent residues in chain ' + chain2 + ' ' + str(len2) + ' (' + class2 + ')'
-#print 'Fnat ' + fnat + ' ' + nat_correct + ' correct of ' + nat_total + ' native contacts'
-#print 'Fnonnat ' + fnonnat + ' ' + nonnat_count + ' non-native of ' + model_total + ' model contacts'
-#print 'iRMS ' + str(irms)
-#print 'LRMS ' + str(Lrms) #+ ' Ligand RMS'
-#print 'RRMS ' + str(Rrms) + ' Receptor RMS'
-
-print("Fnat %.3f %d correct of %d native contacts" % (fnat,nat_correct,nat_total))
-print("Fnonnat %.3f %d non-native of %d model contacts" % (fnonnat,nonnat_count,model_total))
-print("iRMS %.3f" % irms)
-print("LRMS %.3f" % Lrms)
-print 'CAPRI ' + capri_class(fnat,irms,Lrms)
-print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
-print("DockQ %.3f" % DockQ)
-
-#for f in np.arange(0,1.01,0.2):
-#    
-#    for i in np.arange(0.5,5.5,1):
-#    
-#        for L in np.arange(0.5,13.5,3):
-#            print str(f) + ' ' + str(i) + ' ' + str(L) + ' ' + capri_class(f,i,L)
-#
-
-
-# Save the aligned version of 1UBQ.pdb
-#io = Bio.PDB.PDBIO()
-#io.set_structure(sample_structure) 
-#io.save("1UBQ_aligned.pdb")
+    f.close()
+    
+    (code,outfile)=tempfile.mkstemp()
+    io=Bio.PDB.PDBIO()
+    io.set_structure(pdb_struct)
+    io.save(outfile)
+    return outfile
+    
+def main():
+
+    parser=ArgumentParser(description="DockQ - Quality measure for protein-protein docking models")
+    parser.add_argument('model',metavar='<model>',type=str,nargs=1,help='path to model file')
+    parser.add_argument('native',metavar='<native>',type=str,nargs=1,help='path to native file')
+    parser.add_argument('-short',default=False,action='store_true',help='short output')
+    parser.add_argument('-useCA',default=False,action='store_true',help='use CA instead of backbone')
+#    parser.add_argument('-perm',default=False,action='store_true',help='use all chain permutations to find maximum DockQ')
+    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='chains to group together')
+    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='chains to group together')
+
+    args = parser.parse_args()
+    #bio_ver=1.64
+    bio_ver=1.61
+    if(float(Bio.__version__) < bio_ver):
+        print "Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver)
+        sys.exit()
+
+#    if(len(sys.argv)!=3):
+#        print "Usage: ./Dock.py <model> <native>"
+#        sys.exit()
+
+#    print args
+#    print args.model[0]
+#    sys.exit()
+#    model=sys.argv[1]
+#    native=sys.argv[2]
+    model=args.model[0]
+    native=args.native[0]
+    use_CA_only=args.useCA
+    
+    model_chains=get_pdb_chains(model)
+    native_chains=get_pdb_chains(native)
+    files_to_clean=[]
+
+  
+    if((len(model_chains) > 2 or len(native_chains) > 2) and
+       (args.chain1 == None and args.chain2 == None)):
+        print "Multi-chain model need sets of chains to group\nuse -chain1 and -chain2"
+        sys.exit()
+
+    if len(model_chains) > 2 or len(native_chains)> 2:
+        group1=model_chains[0]
+        group2=model_chains[1]
+        if(args.chain1 != None):
+            group1=args.chain1
+            if(args.chain2 != None):
+                group2=args.chain2
+            else:
+                #will use the complement from
+                group2=[]
+                for c in model_chains:
+                    if c not in group1:
+                        group2.append(c)
+
+        print group1
+        print group2
+
+    
+        native=make_two_chain_pdb(native,group1,group2)
+        model=make_two_chain_pdb(model,group1,group2)
+        os.popen('cp ' + native + ' native_multichain.pdb')
+        os.popen('cp ' + model + ' model_multichain.pdb')
+        files_to_clean.append(native)
+        files_to_clean.append(model)
+   #    sys.exit()
+
+ #   print native
+ #   print model
+    dict=calc_DockQ(model,native,use_CA_only)
+    irms=dict['irms']
+    Lrms=dict['Lrms']
+    fnat=dict['fnat']
+    DockQ=dict['DockQ']
+    
+    
+    if(args.short):
+        print DockQ
+    else:
+        print '***********************************************************'
+        print '*                       DockQ                             *'
+        print '*   Scoring function for protein-protein docking models   *'
+        print '*   Statistics on CAPRI data:                             *'
+        print '*    0.00 <= DockQ <  0.23 - Incorrect                    *'
+        print '*    0.23 <= DockQ <  0.49 - Acceptable quality           *'
+        print '*    0.49 <= DockQ <  0.80 - Medium quality               *'
+        print '*            DockQ >= 0.80 - High quality                 *'  
+        print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
+        print '*   For comments, please email: bjornw@ifm.liu.se         *'
+        print '***********************************************************\n'
+        print 'Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')'
+        print 'Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')'
+        print("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total']))
+        print("Fnonnat %.3f %d non-native of %d model contacts" % (dict['fnonnat'],dict['nonnat_count'],dict['model_total']))
+        print("iRMS %.3f" % irms)
+        print("LRMS %.3f" % Lrms)
+        print 'CAPRI ' + capri_class(fnat,irms,Lrms)
+        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
+        print("DockQ %.3f" % DockQ)
+
+    for f in files_to_clean:
+        os.remove(f)
+
+if __name__ == '__main__':
+  main()    
