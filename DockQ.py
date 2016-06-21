@@ -529,8 +529,8 @@ def main():
         #print "native"
         #print nat_group1
         #print nat_group2
-        print str(group1) + ' <-> ' + str(nat_group1)
-        print str(group2) + ' <-> ' + str(nat_group2)
+        print str(group1) + ' -> ' + str(nat_group1)
+        print str(group2) + ' -> ' + str(nat_group2)
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
