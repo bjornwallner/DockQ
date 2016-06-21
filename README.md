@@ -47,10 +47,11 @@ DockQ 0.700
 
 Help page
 ```
-vpn-83$ ./DockQ.py -h
-usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-perm1]
-                [-perm2] [-chain1 chain1 [chain1 ...]]
-                [-chain2 chain2 [chain2 ...]]
+bash$ ./DockQ.py -h
+usage: DockQ.py [-h] [-short] [-verbose] [-useCA] [-skip_check] [-no_needle]
+                [-perm1] [-perm2]
+                [-model_chain1 model_chain1 [model_chain1 ...]]
+                [-model_chain2 model_chain2 [model_chain2 ...]]
                 [-native_chain1 native_chain1 [native_chain1 ...]]
                 [-native_chain2 native_chain2 [native_chain2 ...]]
                 <model> <native>
@@ -67,15 +68,19 @@ optional arguments:
   -verbose              talk a lot!
   -useCA                use CA instead of backbone
   -skip_check           skip initial check fo speed up on two chain examples
+  -no_needle            do not use global alignment to fix residue numbering
+                        between native and model during chain permutation (use
+                        only in case needle is not installed, and the residues
+                        between the chains are identical
   -perm1                use all chain1 permutations to find maximum DockQ
                         (number of comparisons is n! = 24, if combined with
                         -perm2 there will be n!*m! combinations
   -perm2                use all chain2 permutations to find maximum DockQ
                         (number of comparisons is n! = 24, if combined with
                         -perm1 there will be n!*m! combinations
-  -chain1 chain1 [chain1 ...]
+  -model_chain1 model_chain1 [model_chain1 ...]
                         pdb chain order to group together partner 1
-  -chain2 chain2 [chain2 ...]
+  -model_chain2 model_chain2 [model_chain2 ...]
                         pdb chain order to group together partner 2
                         (complement to partner 1 if undef)
   -native_chain1 native_chain1 [native_chain1 ...]
@@ -84,8 +89,9 @@ optional arguments:
   -native_chain2 native_chain2 [native_chain2 ...]
                         pdb chain order to group together from native partner
                         2 (complement to partner 1 if undef)
-			
-			
+
+
+					
 ```
 
 
@@ -95,60 +101,60 @@ For targets with more than two interacting chains. For instance a
 dimer interacting with a partner. There are options to control which
 chains to group together and also in which order to combine
 them. There are also options to try all possible chain combinations
-(`-perm1` and `-perm2`), this is important if for instance a partner is interacting
-asymmetrically with a dimer. This should only be performed for
-symmetric oligomers, where multiple solution are correct.
+(`-perm1` and `-perm2`), this is important if for instance a homo
+oligomer is interacting asymmetrically with a third partner, or if
+there are symmetries that make multiple solution possibly correct.
 
 For this mode to work if there are missing residues the global
 alignment program `needle` from the [EMBOSS
 package](http://emboss.sourceforge.net/download/) needs to be in your
 path.
 
-To illustrate this mode we are using two dimers that are interacting
-(A,B) <-> (L H) that we are aligning to itself, i.e the best score will
-1.0.
+To illustrate this mode we are using a homodimer that is interacting
+with a third partner asymmetrically (A,B) <-> C
+
 
 This command will put the chains A,B as one partner and the
-remaining L H as the second partner. It will assume the chain
+remaining C as the second partner. It will assume the chain
 naming is the same in the model protein:
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B`
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B`
 
-this will be the same:
+these are equivalent:
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 A B`
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 C` 
 
-This will reverse the relative chain order of AB:
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 A B`
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -chain1 B A`
+This will reverse the relative chain order of AB, comparing modelBA with nativeAB:
 
-This will reverse the relative chain order of AB and LH
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 B A`
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -native_chain2 L H -chain1 B A -chain2 H L`
+To try all permutations for model_chain1:
 
-To try all permutations for chain1:
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -perm1`
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1`
+To try all permutations for model_chain1 and model_chain2 (ok only 1 chain in this example:-):
 
-To try all permutations for chain1 and chain2:
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -perm1 -perm2`
 
-`./DockQ.py examples/dimer_dimer.pdb examples/dimer_dimer.model.pdb -native_chain1 A B -perm1 -perm2`
+For a dimer interacting with one partner this is only 2 (2!\*1!),
+however for larger oligomers the number of possible permutations
+explodes. For two tetramers the number will be 576 (4!\*4!)
 
-for two dimer this is only 4 (2!\*2!), however for a two tetramers
-interacting the number will be 576 (4!\*4!)
+Multimeric biological assemblies of proteins (of higher order than
+that of dimers) are also found in nature to interact: e.g., PDB IDS:
+3J07, 4IXZ, 4IY7, 4IYO, 3IYW, 2VQ0, 1E57, 2IZN etc. particularly
+common in viral envelopes / capsids. We choose an instance of two
+interacting tetramers (1EXB) to further demonstrate the multi-chain
+functionality of DockQ
 
 Tetramer example (24 combinations):
 
-`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1`
+`./DockQ.py examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb -native_chain1 A B C D -perm1`
 
-To make it slightly more fun we can change the initial order of the model so
-the best combination is not the first one-one mapping:
+Tetramer example with all possible permutations (576 combinations):
 
-`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -chain1 B A C D -perm1`
-
-
-Tetramer example (576 combinations):
-
-`./DockQ.py examples/tetramer_tetramer.pdb examples/tetramer_tetramer.pdb -native_chain1 A B C D -perm1 -perm2`
+`./DockQ.py examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb -native_chain1 A B C D -perm1 -perm2`
 
 

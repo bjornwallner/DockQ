@@ -466,7 +466,8 @@ def main():
 #    model=sys.argv[1]
 #    native=sys.argv[2]
 
-    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
+    fix_numbering=exec_path + '/scripts/fix_numbering.pl'
     model=args.model[0]
     model_in=model
     native=args.native[0]
@@ -475,6 +476,7 @@ def main():
 
     model_chains=[]
     native_chains=[]
+    best_info=''
     if(not args.skip_check):
         model_chains=get_pdb_chains(model)
         native_chains=get_pdb_chains(native)
@@ -533,8 +535,8 @@ def main():
         #print nat_group1
         #print nat_group2
         if(args.verbose):
-            print 'Merging ' + str(group1) + ' -> ' + str(nat_group1) + 'to chain A'
-            print 'Merging ' + str(group2) + ' -> ' + str(nat_group2) + 'to chain B'
+            print 'Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A'
+            print 'Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B'
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
@@ -567,31 +569,58 @@ def main():
             pe_tot=pe
             pe=1
             #sys.exit()
+            if args.verbose:
+                print 'Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')'
             for g1 in combos1:
                 for g2 in combos2:
                 #g2=group2    
-                    model=make_two_chain_pdb_perm(model_in,g1,g2)
-                    test_dict=calc_DockQ(model,native,use_CA_only)
-                    os.remove(model)
+                    model_renum=make_two_chain_pdb_perm(model_in,g1,g2)
+                    model_fixed=model_renum
+                    if not args.no_needle:
+                        fix_numbering_cmd=fix_numbering + ' ' + model_renum + ' ' + native + ' > /dev/null'
+                        model_fixed=model_renum + ".fixed"
+                        #                print fix_numbering_cmd
+                        os.system(fix_numbering_cmd)
+                        os.remove(model_renum)
+                        if not os.path.exists(model_fixed):
+                            print 'If you are sure the residues are identical you can use the options -no_needle'
+                            sys.exit()
+                    test_dict=calc_DockQ(model_fixed,native,use_CA_only)
+                    os.remove(model_fixed)
 #                    if args.verbose:
-                    print str(pe)+'/'+str(pe_tot) + ' ' + str(g1) + ' ' + str(g2) + ' ' + str(test_dict['DockQ'])
+                    print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
                     if(test_dict['DockQ'] > best_DockQ):
                         best_DockQ=test_dict['DockQ'];
                         dict=test_dict
                         best_g1=g1
                         best_g2=g2
- #                       if args.verbose:
+                        best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, A:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' B:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
+                        
+                        if args.verbose:
+                            print best_info
                         print "Current best " + str(best_DockQ)
                     pe=pe+1
-            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
+            print best_info        
+#            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
         else:
-            model=make_two_chain_pdb_perm(model,group1,group2)
-            dict=calc_DockQ(model,native,use_CA_only)
-        
-            os.system('cp ' + native + ' native_multichain.pdb')
-            os.system('cp ' + model + ' model_multichain.pdb')
+            model_renum=make_two_chain_pdb_perm(model,group1,group2)
+            model_fixed=model_renum
+            if not args.no_needle:
+                fix_numbering_cmd=fix_numbering + ' ' + model_renum + ' ' + native + ' > /dev/null'
+                model_fixed=model_renum + ".fixed"
+#                print fix_numbering_cmd
+                os.system(fix_numbering_cmd)
+                os.remove(model_renum)
+                if not os.path.exists(model_fixed):
+                    print 'If you are sure the residues are identical you can use the options -no_needle'
+                    sys.exit()
+            dict=calc_DockQ(model_fixed,native,use_CA_only)
 
-            files_to_clean.append(model)
+            os.system('cp ' + native + ' native_multichain.pdb')
+            os.system('cp ' + model_fixed + ' .')
+            os.remove(model_fixed)
+#            files_to_clean.append(model)
+#            files_to_clean.append(model_fixed)
    #    sys.exit()
      
  #   print native
@@ -621,6 +650,8 @@ def main():
         print '***********************************************************'
         print("Model  : %s" % model_in)
         print("Native : %s" % native_in)
+        if len(best_info):
+            print best_info
         print 'Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')'
         print 'Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')'
         print("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total']))

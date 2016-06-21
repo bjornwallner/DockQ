@@ -1,27 +1,22 @@
 #!/usr/bin/perl 
-#-w -I /proj/wallner/users/x_bjowa/git/source/perl/
-#/home/denny/blandat/perl
-#hej
-#require "bjornlib.pl";
 use File::Temp qw/ tempfile /;
 
 
 if(scalar(@ARGV)==0) {
-	print STDERR "\nusage: ./fix_numbering.pl <model.pdb> <template.pdb> <read_seq_from_atom_in_residue (if def)>\n OUTFILE: model.fixed\n\n ";
-
-$chneedle=`which needle`;
-print $chneedle,"\n";
-	if ($chneedle =~ m/needle/)
-	{
-	print "YOU NEED TO HAVE 'needle' INSTALLED AS PART OF THE EMBOS PACKAGE: http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/needle.html\n";
-        print "needle found to be installed in the path\n";
-	}
-	else
-	{
+    print STDERR "\nusage: ./fix_numbering.pl <model.pdb> <template.pdb> <read_seq_from_atom_in_residue (if def)>\n OUTFILE: model.fixed\n\n ";
+    
+    $chneedle=`which needle`;
+    print $chneedle,"\n";
+    if ($chneedle =~ m/needle/)
+    {
+	print "needle found to be installed in the path\n";
+    }
+    else
+    {
 	print "needle NOT found in the path\n";
-	print "YOU NEED TO HAVE 'needle' INSTALLED AS PART OF THE EMBOS PACKAGE: http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/needle.html\n";
-	}
-exit;
+	print "YOU NEED TO HAVE 'needle' INSTALLED AS PART OF THE EMBOSS PACKAGE: http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/needle.html\n";
+    }
+    exit;
 }
 
 
@@ -50,6 +45,10 @@ if($use_CA) {
 
 }
 ($ali_model,$ali_template)=align($seq_model,$seq_template);
+if(length($ali_model)==0) {
+
+    exit;
+}
 @ali_model=split(//,$ali_model);
 @ali_template=split(//,$ali_template);
 @ali_resnum_model=(); 
