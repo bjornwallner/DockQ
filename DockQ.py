@@ -442,8 +442,8 @@ def main():
     parser.add_argument('-perm1',default=False,action='store_true',help='use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations')
     parser.add_argument('-perm2',default=False,action='store_true',help='use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations')
 #    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
-    parser.add_argument('-chain1',metavar='chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
-    parser.add_argument('-chain2',metavar='chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
+    parser.add_argument('-model_chain1',metavar='model_chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
+    parser.add_argument('-model_chain2',metavar='model_chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
     parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='pdb chain order to group together from native partner 1')
     parser.add_argument('-native_chain2',metavar='native_chain2', type=str,nargs='+', help='pdb chain order to group together from native partner 2 (complement to partner 1 if undef)')
 
@@ -481,7 +481,7 @@ def main():
 
 #    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
-       (args.chain1 == None and args.native_chain1 == None)):
+       (args.model_chain1 == None and args.native_chain1 == None)):
         print "Multi-chain model need sets of chains to group\nuse -chain1 and -native_chain1"
         sys.exit()
     if not args.skip_check and (len(model_chains) < 2 or len(native_chains)< 2):
@@ -493,11 +493,11 @@ def main():
         group2=model_chains[1]
         nat_group1=native_chains[0]
         nat_group2=native_chains[1]
-        if(args.chain1 != None):
-            group1=args.chain1
+        if(args.model_chain1 != None):
+            group1=args.model_chain1
             nat_group1=group1
-            if(args.chain2 != None):
-                group2=args.chain2
+            if(args.model_chain2 != None):
+                group2=args.model_chain2
             else:
                 #will use the complement from group1
                 group2=[]
@@ -519,7 +519,7 @@ def main():
                     if c not in nat_group1:
                         nat_group2.append(c)
                         
-        if(args.chain1 == None):
+        if(args.model_chain1 == None):
             group1=nat_group1
             group2=nat_group2
 
@@ -529,8 +529,8 @@ def main():
         #print "native"
         #print nat_group1
         #print nat_group2
-        print str(group1) + ' -> ' + str(nat_group1)
-        print str(group2) + ' -> ' + str(nat_group2)
+        print str(group1) + ' <-> ' + str(nat_group1)
+        print str(group2) + ' <-> ' + str(nat_group2)
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
