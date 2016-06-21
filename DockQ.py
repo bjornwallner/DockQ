@@ -437,6 +437,7 @@ def main():
     parser.add_argument('native',metavar='<native>',type=str,nargs=1,help='path to native file')
     parser.add_argument('-short',default=False,action='store_true',help='short output')
     parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
+    parser.add_argument('-quiet',default=False,action='store_true',help='keep quiet!')
     parser.add_argument('-useCA',default=False,action='store_true',help='use CA instead of backbone')
     parser.add_argument('-skip_check',default=False,action='store_true',help='skip initial check fo speed up on two chain examples')
     parser.add_argument('-no_needle',default=False,action='store_true',help='do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical')
@@ -587,8 +588,8 @@ def main():
                             sys.exit()
                     test_dict=calc_DockQ(model_fixed,native,use_CA_only)
                     os.remove(model_fixed)
-#                    if args.verbose:
-                    print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
+                    if not args.quiet:
+                        print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
                     if(test_dict['DockQ'] > best_DockQ):
                         best_DockQ=test_dict['DockQ'];
                         dict=test_dict
@@ -598,9 +599,11 @@ def main():
                         
                         if args.verbose:
                             print best_info
-                        print "Current best " + str(best_DockQ)
+                        if not args.quiet:    
+                            print "Current best " + str(best_DockQ)
                     pe=pe+1
-            print best_info        
+            if not args.quiet:
+                print best_info        
 #            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
         else:
             model_renum=make_two_chain_pdb_perm(model,group1,group2)
@@ -635,7 +638,7 @@ def main():
     
     
     if(args.short):
-        print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in))
+        print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
     else:
         print '***********************************************************'
         print '*                       DockQ                             *'
