@@ -439,6 +439,7 @@ def main():
     parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
     parser.add_argument('-useCA',default=False,action='store_true',help='use CA instead of backbone')
     parser.add_argument('-skip_check',default=False,action='store_true',help='skip initial check fo speed up on two chain examples')
+    parser.add_argument('-no_needle',default=False,action='store_true',help='do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical')
     parser.add_argument('-perm1',default=False,action='store_true',help='use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations')
     parser.add_argument('-perm2',default=False,action='store_true',help='use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations')
 #    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
@@ -482,7 +483,7 @@ def main():
 #    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
        (args.model_chain1 == None and args.native_chain1 == None)):
-        print "Multi-chain model need sets of chains to group\nuse -chain1 and -native_chain1"
+        print "Multi-chain model need sets of chains to group\nuse -model_chain1 and/or -native_chain1"
         sys.exit()
     if not args.skip_check and (len(model_chains) < 2 or len(native_chains)< 2):
         print "Need at least two chains in the two inputs\n";
@@ -529,8 +530,9 @@ def main():
         #print "native"
         #print nat_group1
         #print nat_group2
-        print str(group1) + ' -> ' + str(nat_group1)
-        print str(group2) + ' -> ' + str(nat_group2)
+        if(args.verbose):
+            print 'Merging ' + str(group1) + ' -> ' + str(nat_group1) + 'to chain A'
+            print 'Merging ' + str(group2) + ' -> ' + str(nat_group2) + 'to chain B'
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
@@ -602,7 +604,7 @@ def main():
     
     
     if(args.short):
-        print DockQ
+        print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in))
     else:
         print '***********************************************************'
         print '*                       DockQ                             *'
@@ -614,7 +616,9 @@ def main():
         print '*            DockQ >= 0.80 - High quality                 *'  
         print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
         print '*   For comments, please email: bjornw@ifm.liu.se         *'
-        print '***********************************************************\n'
+        print '***********************************************************'
+        print("Model  : %s" % model_in)
+        print("Native : %s" % native_in)
         print 'Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')'
         print 'Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')'
         print("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total']))
