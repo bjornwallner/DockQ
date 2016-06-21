@@ -134,7 +134,8 @@ these are also equivalent:
 
 This will reverse the relative chain order of AB, comparing modelBA with nativeAB interacting with chain C:
 
-`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 B A`
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 B A` (observe how the score increases)
+
 
 To try all permutations for model_chain1, observe at the reverse
 mapping BA -> AB gets the best score:

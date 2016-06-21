@@ -619,8 +619,8 @@ def main():
                     sys.exit()
             dict=calc_DockQ(model_fixed,native,use_CA_only)
 
-            os.system('cp ' + native + ' native_multichain.pdb')
-            os.system('cp ' + model_fixed + ' .')
+            #os.system('cp ' + native + ' native_multichain.pdb')
+            #os.system('cp ' + model_fixed + ' .')
             os.remove(model_fixed)
 #            files_to_clean.append(model)
 #            files_to_clean.append(model_fixed)
