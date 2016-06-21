@@ -594,7 +594,7 @@ def main():
                         dict=test_dict
                         best_g1=g1
                         best_g2=g2
-                        best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, A:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' B:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
+                        best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, chain1:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' chain2:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
                         
                         if args.verbose:
                             print best_info

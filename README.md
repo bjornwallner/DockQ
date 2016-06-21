@@ -1,5 +1,5 @@
 # DockQ
-Requires `Biopython` and `numpy` 
+Requires python packages: `Biopython` and `numpy` 
 
 Installation
 ```
@@ -108,31 +108,71 @@ there are symmetries that make multiple solution possibly correct.
 For this mode to work if there are missing residues the global
 alignment program `needle` from the [EMBOSS
 package](http://emboss.sourceforge.net/download/) needs to be in your
-path.
+path, i.e `which needle` should return the location.
 
-To illustrate this mode we are using a homodimer that is interacting
-with a third partner asymmetrically (A,B) <-> C
+This mode is illustrated by a homodimer that is interacting with a
+third partner asymmetrically (A,B) <-> C (1A2K from docking benchmark
+5.0).
 
-
-This command will put the chains A,B as one partner and the
-remaining C as the second partner. It will assume the chain
+The following commands will put the chains A,B as one partner and the
+remaining chain, C, as the second partner. It will assume the chain
 naming is the same in the model protein:
 
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 A B -native_chain2 C -model_chain2 C`
+
+Assuming the chains are the same in the model and native it is enough to just specify one set chains to group and the second group will be formed from the complement using the the remaining chains.
+
 `./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B`
+(chain C is remaining)
 
-these are equivalent:
+these are also equivalent:
 
-`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 C` 
+`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 C`
+(chain AB is remaining)
 
 `./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 A B`
 
-This will reverse the relative chain order of AB, comparing modelBA with nativeAB:
+This will reverse the relative chain order of AB, comparing modelBA with nativeAB interacting with chain C:
 
 `./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -model_chain1 B A`
 
-To try all permutations for model_chain1:
+To try all permutations for model_chain1, observe at the reverse
+mapping BA -> AB gets the best score:
 
-`./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -perm1`
+```
+bash$ ./DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb -native_chain1 A B -perm1
+1/2 AB -> C 0.00972962403319
+Current best 0.00972962403319
+2/2 BA -> C 0.476267208558
+Current best 0.476267208558
+Best score ( 0.476267208558 ) found for model -> native, chain1:BA -> AB chain2:C -> C
+***********************************************************
+*                       DockQ                             *
+*   Scoring function for protein-protein docking models   *
+*   Statistics on CAPRI data:                             *
+*    0.00 <= DockQ <  0.23 - Incorrect                    *
+*    0.23 <= DockQ <  0.49 - Acceptable quality           *
+*    0.49 <= DockQ <  0.80 - Medium quality               *
+*            DockQ >= 0.80 - High quality                 *
+*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *
+*   For comments, please email: bjornw@ifm.liu.se         *
+***********************************************************
+Model  : examples/1A2K_r_l_b.model.pdb
+Native : examples/1A2K_r_l_b.pdb
+Best score ( 0.476267208558 ) found for model -> native, chain1:BA -> AB chain2:C -> C
+Number of equivalent residues in chain A 248 (receptor)
+Number of equivalent residues in chain B 196 (ligand)
+Fnat 0.491 26 correct of 53 native contacts
+Fnonnat 0.103 3 non-native of 29 model contacts
+iRMS 1.988
+LRMS 7.300
+CAPRI Medium
+DockQ_CAPRI Acceptable
+DockQ 0.476
+
+
+```
+
 
 To try all permutations for model_chain1 and model_chain2 (ok only 1 chain in this example:-):
 
