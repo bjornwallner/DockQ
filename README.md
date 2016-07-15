@@ -16,7 +16,7 @@ Quick start for two interacting partners (two-chain-models) run with
 
 `./DockQ.py <model> <native>`
 
-To fix the residue numbering, in case there are inconsistencies, missing residues or small sequence differences
+To fix the residue numbering, in case there are inconsistencies, missing residues or small sequence differences between `model` and `native`
 
 `scripts/fix_numbering.pl model.pdb native.pdb`
 
