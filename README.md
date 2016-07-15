@@ -20,7 +20,7 @@ To fix the residue numbering, in case there are inconsistencies, missing residue
 
 `scripts/fix_numbering.pl model.pdb native.pdb`
 
-will output a file `model.pdb.fixed` with the residue numbering corresponding to the that in the `native.pdb` based on the sequences from the two pdb files.
+will output a file, `model.pdb.fixed`, with the residue numbering corresponding to the that in the `native.pdb` based on the sequences from the two pdb files.
 
 
 Example
