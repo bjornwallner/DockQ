@@ -640,17 +640,19 @@ def main():
     if(args.short):
         print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
     else:
-        print '***********************************************************'
-        print '*                       DockQ                             *'
-        print '*   Scoring function for protein-protein docking models   *'
-        print '*   Statistics on CAPRI data:                             *'
-        print '*    0.00 <= DockQ <  0.23 - Incorrect                    *'
-        print '*    0.23 <= DockQ <  0.49 - Acceptable quality           *'
-        print '*    0.49 <= DockQ <  0.80 - Medium quality               *'
-        print '*            DockQ >= 0.80 - High quality                 *'  
-        print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ:...   *'
-        print '*   For comments, please email: bjornw@ifm.liu.se         *'
-        print '***********************************************************'
+        print '****************************************************************'
+        print '*                       DockQ                                  *'
+        print '*   Scoring function for protein-protein docking models        *'
+        print '*   Statistics on CAPRI data:                                  *'
+        print '*    0.00 <= DockQ <  0.23 - Incorrect                         *'
+        print '*    0.23 <= DockQ <  0.49 - Acceptable quality                *'
+        print '*    0.49 <= DockQ <  0.80 - Medium quality                    *'
+        print '*            DockQ >= 0.80 - High quality                      *'  
+        print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
+        print '*   measure for protein-protein docking models, submitted      *'
+        print '*                                                              *'
+        print '*   For comments, please email: bjornw@ifm.liu.se              *'
+        print '****************************************************************'
         print("Model  : %s" % model_in)
         print("Native : %s" % native_in)
         if len(best_info):
