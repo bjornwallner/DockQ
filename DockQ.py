@@ -13,7 +13,7 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 from math import sqrt
 from argparse import ArgumentParser
 import itertools
-import commands
+import subprocess
 
 def parse_fnat(fnat_out):
     fnat=-1;
@@ -24,7 +24,7 @@ def parse_fnat(fnat_out):
     model_total=-1
     inter=[]
     for line in fnat_out.split("\n"):
-#        print line
+        #        print line
         line=line.rstrip('\n')
         match=re.search(r'NATIVE: (\d+)(\w) (\d+)(\w)',line)
         if(re.search(r'^Fnat',line)):
@@ -43,7 +43,7 @@ def parse_fnat(fnat_out):
             chain1=match.group(2)
             res2=match.group(3)
             chain2=match.group(4)
-           # print res1 + ' ' + chain1 + ' ' + res2 + ' ' + chain2
+            # print res1 + ' ' + chain1 + ' ' + res2 + ' ' + chain2
             inter.append(res1 + chain1)
             inter.append(res2 + chain2)
     return (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,inter)
@@ -77,8 +77,8 @@ def capri_class_DockQ(DockQ):
 
 
 def calc_DockQ(model,native,use_CA_only=False):
-    
-    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
     atom_for_sup=['CA','C','N','O']
     if(use_CA_only):
         atom_for_sup=['CA']
@@ -89,12 +89,12 @@ def calc_DockQ(model,native,use_CA_only=False):
 
 
     #fnat_out = os.popen(cmd_fnat).readlines()
-    fnat_out = commands.getoutput(cmd_fnat)
-#    sys.exit()
+    fnat_out = subprocess.getoutput(cmd_fnat)
+    #    sys.exit()
     (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
     assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
-#    inter_out = os.popen(cmd_interface).readlines()
-    inter_out = commands.getoutput(cmd_interface)
+    #    inter_out = os.popen(cmd_interface).readlines()
+    inter_out = subprocess.getoutput(cmd_interface)
     (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
     assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
 
@@ -130,11 +130,11 @@ def calc_DockQ(model,native,use_CA_only=False):
     atoms_def_in_both=[]
     #first read in sample
     for sample_chain in sample_model:
-#        print sample_chain
+        #        print sample_chain
         chain=sample_chain.id
-#        print chain
+        #        print chain
         for sample_res in sample_chain:
-           # print sample_res
+            # print sample_res
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
                 continue
             resname=sample_res.get_id()[1]
@@ -143,8 +143,8 @@ def calc_DockQ(model,native,use_CA_only=False):
                 atom_key=key + '.' + a
                 if a in sample_res:
                     if atom_key in atoms_def_sample:
-                        print atom_key + ' already added (MODEL)!!!'
-                    atoms_def_sample.append(atom_key)
+                        print(atom_key + ' already added (MODEL)!!!')
+                        atoms_def_sample.append(atom_key)
 
     #then read in native also present in sample
     for ref_chain in ref_model:
@@ -152,7 +152,7 @@ def calc_DockQ(model,native,use_CA_only=False):
         for ref_res in ref_chain:
             #print ref_res
             if ref_res.get_id()[0] != ' ': #Skip hetatm.
-#                print ref_res.get_id()
+                #                print ref_res.get_id()
                 continue
             resname=ref_res.get_id()[1]
             key=str(resname) + chain
@@ -160,14 +160,14 @@ def calc_DockQ(model,native,use_CA_only=False):
                 atom_key=key + '.' + a
                 if a in ref_res and atom_key in atoms_def_sample:
                     if atom_key in atoms_def_in_both:
-                        print atom_key + ' already added (Native)!!!' 
-                    atoms_def_in_both.append(atom_key)
+                        print(atom_key + ' already added (Native)!!!')
+                        atoms_def_in_both.append(atom_key)
 
 
 #    print atoms_def_in_both
     for sample_chain in sample_model:
         chain=sample_chain.id
-        if chain not in chain_res.keys():
+        if chain not in list(chain_res.keys()):
             chain_res[chain]=[]
         for sample_res in sample_chain:
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
@@ -180,7 +180,7 @@ def calc_DockQ(model,native,use_CA_only=False):
                     atom_key=key + '.' + a
                     if a in sample_res and atom_key in atoms_def_in_both:
                         sample_atoms.append(sample_res[a])
-                common_interface.append(key)
+                        common_interface.append(key)
 
     #print inter_pairs
 
@@ -194,7 +194,7 @@ def calc_DockQ(model,native,use_CA_only=False):
         # Iterate of all residues in each model in order to find proper atoms
         #  print dir(ref_chain)
         chain=ref_chain.id
-        if chain not in chain_ref.keys():
+        if chain not in list(chain_ref.keys()):
             chain_ref[chain]=[]
         for ref_res in ref_chain:
             if ref_res.get_id()[0] != ' ': #Skip hetatm.
@@ -212,11 +212,11 @@ def calc_DockQ(model,native,use_CA_only=False):
                     if a in ref_res and atom_key in atoms_def_in_both:
                         chain_ref[chain].append(ref_res[a])
                         common_residues.append(key)
-                      #chain_sample.append((ref_res['CA'])
+                        #chain_sample.append((ref_res['CA'])
             if key in common_interface:
-              # Check if residue number ( .get_id() ) is in the list
-              # Append CA atom to list
-                #print key  
+                # Check if residue number ( .get_id() ) is in the list
+                # Append CA atom to list
+                #print key
                 for a in atom_for_sup:
                     atom_key=key + '.' + a
                     #print atom_key
@@ -225,11 +225,11 @@ def calc_DockQ(model,native,use_CA_only=False):
 
 
 
-    #get the ones that are present in native        
+    #get the ones that are present in native
     chain_sample={}
     for sample_chain in sample_model:
         chain=sample_chain.id
-        if chain not in chain_sample.keys():
+        if chain not in list(chain_sample.keys()):
             chain_sample[chain]=[]
         for sample_res in sample_chain:
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
@@ -243,7 +243,7 @@ def calc_DockQ(model,native,use_CA_only=False):
                         chain_sample[chain].append(sample_res[a])
 
         #if key in common_residues:
-        #     print key  
+        #     print key
         #sample_atoms.append(sample_res['CA'])
         #common_interface.append(key)
 
@@ -259,7 +259,7 @@ def calc_DockQ(model,native,use_CA_only=False):
     # Print RMSD:
     irms=super_imposer.rms
 
-    (chain1,chain2)=chain_sample.keys()
+    (chain1,chain2)=list(chain_sample.keys())
 
     ligand_chain=chain1
     receptor_chain=chain2
@@ -346,14 +346,14 @@ def calc_DockQ(model,native,use_CA_only=False):
     dict['fnonnat']=fnonnat
     dict['nonnat_count']=nonnat_count
     dict['model_total']=model_total
-    
+
     dict['chain1']=chain1
     dict['chain2']=chain2
     dict['len1']=len1
     dict['len2']=len2
     dict['class1']=class1
     dict['class2']=class2
-    
+
     return dict
 
 def get_pdb_chains(pdb):
@@ -364,7 +364,7 @@ def get_pdb_chains(pdb):
         chain.append(c.id)
     return chain
 #ATOM   3312  CA
-#ATOM   3315  CB  ALA H 126     -21.802  31.674  73.597  1.00 58.05           C  
+#ATOM   3315  CB  ALA H 126     -21.802  31.674  73.597  1.00 58.05           C
 
 def make_two_chain_pdb(pdb,group1,group2): #renumber from 1
     pdb_parser = Bio.PDB.PDBParser(QUIET = True)
@@ -374,14 +374,14 @@ def make_two_chain_pdb(pdb,group1,group2): #renumber from 1
             c.id='A'
         if c.id in group2:
             c.id='B'
-    (code,outfile)=tempfile.mkstemp()
-    io=Bio.PDB.PDBIO()
-    io.set_structure(pdb_struct)
-    io.save(outfile)
-    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
-    cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
-    os.system(cmd)
-    os.remove(outfile)
+            (code,outfile)=tempfile.mkstemp()
+            io=Bio.PDB.PDBIO()
+            io.set_structure(pdb_struct)
+            io.save(outfile)
+            exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
+            cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
+            os.system(cmd)
+            os.remove(outfile)
     return outfile +'.renum'
 
 def change_chain(pdb_string,chain):
@@ -405,11 +405,11 @@ def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
             #        print atom + ':' + str(resnum) +':'
             if chain not in pdb_chains:
                 pdb_chains[chain]=[]
-            pdb_chains[chain].append(line)
- #       print line
- #       s[21]='B'
- #       print "".join(s)
-#        print chain
+                pdb_chains[chain].append(line)
+                #       print line
+                #       s[21]='B'
+                #       print "".join(s)
+                #        print chain
 
 
     f.close()
@@ -417,19 +417,19 @@ def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
     (code,outfile)=tempfile.mkstemp()
     f=open(outfile,'w')
     for c in group1:
-     #   print pdb_chains[c]
+        #   print pdb_chains[c]
         f.write(change_chain(pdb_chains[c],"A"))
-    f.write("TER\n");
+        f.write("TER\n");
     for c in group2:
         f.write(change_chain(pdb_chains[c],"B"))
-    f.close();
-    #print outfile
-    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+        f.close();
+        #print outfile
+    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
     cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
     os.system(cmd)
     os.remove(outfile)
     return outfile +'.renum'
-    
+
 def main():
 
     parser=ArgumentParser(description="DockQ - Quality measure for protein-protein docking models")
@@ -443,7 +443,7 @@ def main():
     parser.add_argument('-no_needle',default=False,action='store_true',help='do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical')
     parser.add_argument('-perm1',default=False,action='store_true',help='use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations')
     parser.add_argument('-perm2',default=False,action='store_true',help='use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations')
-#    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
+    #    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
     parser.add_argument('-model_chain1',metavar='model_chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
     parser.add_argument('-model_chain2',metavar='model_chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
     parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='pdb chain order to group together from native partner 1')
@@ -454,7 +454,7 @@ def main():
     #bio_ver=1.64
     bio_ver=1.61
     if(float(Bio.__version__) < bio_ver):
-        print "Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver)
+        print("Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver))
         sys.exit()
 
 #    if(len(sys.argv)!=3):
@@ -481,19 +481,19 @@ def main():
     if(not args.skip_check):
         model_chains=get_pdb_chains(model)
         native_chains=get_pdb_chains(native)
-    files_to_clean=[]
+        files_to_clean=[]
 
 #    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
        (args.model_chain1 == None and args.native_chain1 == None)):
-        print "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or model_chain1 if you want a different mapping than 1-1"
-        print "Model chains  : " + str(model_chains)
-        print "Native chains : " + str(native_chains)
+        print("Multi-chain model need sets of chains to group\nuse -native_chain1 and/or model_chain1 if you want a different mapping than 1-1")
+        print("Model chains  : " + str(model_chains))
+        print("Native chains : " + str(native_chains))
         sys.exit()
     if not args.skip_check and (len(model_chains) < 2 or len(native_chains)< 2):
-        print "Need at least two chains in the two inputs\n";
+        print("Need at least two chains in the two inputs\n");
         sys.exit()
-        
+
     if len(model_chains) > 2 or len(native_chains)> 2:
         group1=model_chains[0]
         group2=model_chains[1]
@@ -510,9 +510,9 @@ def main():
                 for c in model_chains:
                     if c not in group1:
                         group2.append(c)
-            nat_group1=group1
-            nat_group2=group2
-            
+                        nat_group1=group1
+                        nat_group2=group2
+
 
         if(args.native_chain1 != None):
             nat_group1=args.native_chain1
@@ -524,7 +524,7 @@ def main():
                 for c in native_chains:
                     if c not in nat_group1:
                         nat_group2.append(c)
-                        
+
         if(args.model_chain1 == None):
             group1=nat_group1
             group2=nat_group2
@@ -536,23 +536,23 @@ def main():
         #print nat_group1
         #print nat_group2
         if(args.verbose):
-            print 'Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A'
-            print 'Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B'
-        native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
-        files_to_clean.append(native)
-        pe=0
+            print('Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A')
+            print('Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B')
+            native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
+            files_to_clean.append(native)
+            pe=0
         if args.perm1 or args.perm2:
             best_DockQ=-1;
             best_g1=[]
             best_g2=[]
-            
+
             iter_perm1=itertools.combinations(group1,len(group1))
             iter_perm2=itertools.combinations(group2,len(group2))
             if args.perm1:
                 iter_perm1=itertools.permutations(group1)
             if args.perm2:
                 iter_perm2=itertools.permutations(group2)
-               
+
             combos1=[];
             combos2=[];
             for g1 in iter_perm1:#_temp:
@@ -563,18 +563,18 @@ def main():
             for g1 in combos1:
                 for g2 in combos2:
                     pe=pe+1
-                   # print str(g1)+' '+str(g2)
-#            print pe
-#            print group1
-#            print group2
+                    # print str(g1)+' '+str(g2)
+                    #            print pe
+                    #            print group1
+                    #            print group2
             pe_tot=pe
             pe=1
             #sys.exit()
             if args.verbose:
-                print 'Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')'
+                print('Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')')
             for g1 in combos1:
                 for g2 in combos2:
-                #g2=group2    
+                    #g2=group2
                     model_renum=make_two_chain_pdb_perm(model_in,g1,g2)
                     model_fixed=model_renum
                     if not args.no_needle:
@@ -584,91 +584,91 @@ def main():
                         os.system(fix_numbering_cmd)
                         os.remove(model_renum)
                         if not os.path.exists(model_fixed):
-                            print 'If you are sure the residues are identical you can use the options -no_needle'
+                            print('If you are sure the residues are identical you can use the options -no_needle')
                             sys.exit()
-                    test_dict=calc_DockQ(model_fixed,native,use_CA_only)
-                    os.remove(model_fixed)
+                            test_dict=calc_DockQ(model_fixed,native,use_CA_only)
+                            os.remove(model_fixed)
                     if not args.quiet:
-                        print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
+                        print(str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ']))
                     if(test_dict['DockQ'] > best_DockQ):
                         best_DockQ=test_dict['DockQ'];
                         dict=test_dict
                         best_g1=g1
                         best_g2=g2
                         best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, chain1:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' chain2:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
-                        
+
                         if args.verbose:
-                            print best_info
-                        if not args.quiet:    
-                            print "Current best " + str(best_DockQ)
-                    pe=pe+1
+                            print(best_info)
+                        if not args.quiet:
+                            print("Current best " + str(best_DockQ))
+                            pe=pe+1
             if not args.quiet:
-                print best_info        
-#            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
+                print(best_info)
+                #            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
         else:
             model_renum=make_two_chain_pdb_perm(model,group1,group2)
             model_fixed=model_renum
             if not args.no_needle:
                 fix_numbering_cmd=fix_numbering + ' ' + model_renum + ' ' + native + ' > /dev/null'
                 model_fixed=model_renum + ".fixed"
-#                print fix_numbering_cmd
+                #                print fix_numbering_cmd
                 os.system(fix_numbering_cmd)
                 os.remove(model_renum)
                 if not os.path.exists(model_fixed):
-                    print 'If you are sure the residues are identical you can use the options -no_needle'
+                    print('If you are sure the residues are identical you can use the options -no_needle')
                     sys.exit()
-            dict=calc_DockQ(model_fixed,native,use_CA_only)
+                    dict=calc_DockQ(model_fixed,native,use_CA_only)
 
             #os.system('cp ' + native + ' native_multichain.pdb')
             #os.system('cp ' + model_fixed + ' .')
             os.remove(model_fixed)
-#            files_to_clean.append(model)
-#            files_to_clean.append(model_fixed)
-   #    sys.exit()
-     
+            #            files_to_clean.append(model)
+            #            files_to_clean.append(model_fixed)
+            #    sys.exit()
+
  #   print native
  #   print model
     else:
         dict=calc_DockQ(model,native,use_CA_only)
-    
+
     irms=dict['irms']
     Lrms=dict['Lrms']
     fnat=dict['fnat']
     DockQ=dict['DockQ']
-    
-    
+
+
     if(args.short):
-        print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+        print(("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info)))
     else:
-        print '****************************************************************'
-        print '*                       DockQ                                  *'
-        print '*   Scoring function for protein-protein docking models        *'
-        print '*   Statistics on CAPRI data:                                  *'
-        print '*    0.00 <= DockQ <  0.23 - Incorrect                         *'
-        print '*    0.23 <= DockQ <  0.49 - Acceptable quality                *'
-        print '*    0.49 <= DockQ <  0.80 - Medium quality                    *'
-        print '*            DockQ >= 0.80 - High quality                      *'  
-        print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
-        print '*   measure for protein-protein docking models, submitted      *'
-        print '*                                                              *'
-        print '*   For comments, please email: bjornw@ifm.liu.se              *'
-        print '****************************************************************'
-        print("Model  : %s" % model_in)
-        print("Native : %s" % native_in)
+        print('****************************************************************')
+        print('*                       DockQ                                  *')
+        print('*   Scoring function for protein-protein docking models        *')
+        print('*   Statistics on CAPRI data:                                  *')
+        print('*    0.00 <= DockQ <  0.23 - Incorrect                         *')
+        print('*    0.23 <= DockQ <  0.49 - Acceptable quality                *')
+        print('*    0.49 <= DockQ <  0.80 - Medium quality                    *')
+        print('*            DockQ >= 0.80 - High quality                      *')
+        print('*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *')
+        print('*   measure for protein-protein docking models, submitted      *')
+        print('*                                                              *')
+        print('*   For comments, please email: bjornw@ifm.liu.se              *')
+        print('****************************************************************')
+        print(("Model  : %s" % model_in))
+        print(("Native : %s" % native_in))
         if len(best_info):
-            print best_info
-        print 'Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')'
-        print 'Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')'
-        print("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total']))
-        print("Fnonnat %.3f %d non-native of %d model contacts" % (dict['fnonnat'],dict['nonnat_count'],dict['model_total']))
-        print("iRMS %.3f" % irms)
-        print("LRMS %.3f" % Lrms)
-        print 'CAPRI ' + capri_class(fnat,irms,Lrms)
-        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
-        print("DockQ %.3f" % DockQ)
+            print(best_info)
+        print('Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')')
+        print('Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')')
+        print(("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total'])))
+        print(("Fnonnat %.3f %d non-native of %d model contacts" % (dict['fnonnat'],dict['nonnat_count'],dict['model_total'])))
+        print(("iRMS %.3f" % irms))
+        print(("LRMS %.3f" % Lrms))
+        print('CAPRI ' + capri_class(fnat,irms,Lrms))
+        print('DockQ_CAPRI ' + capri_class_DockQ(DockQ))
+        print(("DockQ %.3f" % DockQ))
 
     for f in files_to_clean:
         os.remove(f)
 
 if __name__ == '__main__':
-  main()    
+    main()
