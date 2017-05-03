@@ -1,6 +1,6 @@
 FNAT=molecule.o fnat.o
 
-CCFLAG=-static -static-libgcc 
+#CCFLAG=-static -static-libgcc 
 #CCFLAG=-w 
 LFLAG=-O3 -funroll-loops -Isrc/
 
