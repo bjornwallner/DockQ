@@ -25,8 +25,8 @@ int main(argc,argv)		/* Main routine */
   int           atoms=0;
   int           residues=0,residues2=0;
   //  int           contacts[MAXRES][MAXRES]={{}};
-  int **contacts,**contacts2;
-  double **dist,**dist2;
+  /*  int **contacts,**contacts2;
+      double **dist,**dist2;*/
   
   //  int           res_contacts[20][20]={{}};
   //  int           restype[20]={};
@@ -77,12 +77,20 @@ int main(argc,argv)		/* Main routine */
   if(error==0)
     {  
       residues=m[0].residues;
+      /*
       contacts = malloc(residues*sizeof(int *));
       dist = malloc(residues*sizeof(double *));
       for(i=0;i<residues;i++) {
 	contacts[i] = malloc(residues*sizeof(int));
 	dist[i] = malloc(residues*sizeof(double));
 	}
+      for(i=0;i<residues2;i++) {
+	for(i=0;i<residues2;i++) {
+	  contacts[i][j]=0;
+	  dist[i][j]=999999;
+	}
+      }
+      */
       current_res_i=0;
       for(i=0;i<m[0].atoms;i++)  
 	{
@@ -105,25 +113,26 @@ int main(argc,argv)		/* Main routine */
 			d=crd(m,i,j);
 			//			printf("%d %d %d %d %s %s %f\n",m[0].atm[j].resnum,m[0].atm[i].resnum,i,j,m[0].atm[j].chain,m[0].atm[i].chain,d);
 			if(verbose)
-			  printf("ALLNATIVE: %d%s %d%s %f %d %d %d\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d),current_res_i,current_res_j,contacts[current_res_i][current_res_j]);
+			  printf("ALLNATIVE: %d%s %d%s %f %d %d\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d),current_res_i,current_res_j); //,contacts[current_res_i][current_res_j]);
 			chainA=m[0].atm[i].chain[0];
 			chainB=m[0].atm[j].chain[0];
-			if(contacts[current_res_i][current_res_j]==0 && crd(m,i,j)<=cutoff)
+			if(/*contacts[current_res_i][current_res_j]==0 && */crd(m,i,j)<=cutoff)
 			  {
 			    nativeA[interface_contacts]=m[0].atm[i].resnum;
 			    nativeB[interface_contacts]=m[0].atm[j].resnum;
 			    interface_contacts++;
 
 			    d=crd(m,i,j);
-
 			    printf("NATIVE: %d%s %d%s %f\n",m[0].atm[i].resnum,m[0].atm[i].chain,m[0].atm[j].resnum,m[0].atm[j].chain,sqrt(d));
-			    contacts[current_res_i][current_res_j]=1;
-			    contacts[current_res_j][current_res_i]=1;
+
+			    /*contacts[current_res_i][current_res_j]=1;
+			      contacts[current_res_j][current_res_i]=1;*/
+			    
 			  //res_contacts[get_res(m[0].atm[i].residue)][get_res(m[0].atm[j].residue)]++;
 			  //tot_res_contacts++;
 			  }
-			dist[current_res_i][current_res_j]=d;
-			dist[current_res_j][current_res_i]=d;
+			/*dist[current_res_i][current_res_j]=d;
+			  dist[current_res_j][current_res_i]=d;*/
 		      }
 		      current_res_j++;
 		    }
@@ -140,10 +149,17 @@ int main(argc,argv)		/* Main routine */
     {
  
       residues2=model[0].residues;
+      /*
       contacts2 = malloc(residues2*sizeof(int *));
       for(i=0;i<residues2;i++) {
 	contacts2[i] = malloc(residues2*sizeof(int));
 	}
+      for(i=0;i<residues2;i++) {
+	for(i=0;i<residues2;i++) {
+	  contacts2[i][j]=0;
+	}
+      }
+      */  
       current_res_i=0;
       for(i=0;i<model[0].atoms;i++)   
 	{
@@ -161,6 +177,7 @@ int main(argc,argv)		/* Main routine */
 		      //printf("%d %d %d %d %f %f\n",model[0].atm[j].rescount,model[0].atm[i].rescount,i,j,crd(m,i,j),crd(m,j,i));
 		      //if(abs(model[0].atm[i].rescount-model[0].atm[j].rescount)>5 &&
 		      if(strcmp(model[0].atm[j].chain,model[0].atm[i].chain)!=0) {
+
 			//printf("HEJ %d %d %d %d %f %f\n",current_res_j,current_res_i,i,j,crd(m,i,j),crd(m,j,i));
 			//d=crd(m,i,j);
 			//printf("%d %d %d %d %s %s %f\n",model[0].atm[j].resnum,model[0].atm[i].resnum,i,j,model[0].atm[j].chain,model[0].atm[i].chain,d);
@@ -169,7 +186,7 @@ int main(argc,argv)		/* Main routine */
 		
 			chainA2=model[0].atm[i].chain[0];
 			chainB2=model[0].atm[j].chain[0];
-			if(contacts2[current_res_i][current_res_j]==0 && crd(model,i,j)<=cutoff)
+			if(/*contacts2[current_res_i][current_res_j]==0 &&*/ crd(model,i,j)<=cutoff)
 			  {
 			    //printf("%d %d %d %d %d %d %d\n", residues2,model[0].atm[i].resnum,model[0].atm[j].resnum,model[0].atm[i].rescount,model[0].atm[j].rescount,current_res_i,current_res_j);
 			    modelA[interface_contacts_model]=model[0].atm[i].resnum;
@@ -180,8 +197,8 @@ int main(argc,argv)		/* Main routine */
 			      d=crd(model,i,j);
 			      printf("MODEL: %d%s %d%s %f %d %d\n",model[0].atm[i].resnum,model[0].atm[i].chain,model[0].atm[j].resnum,model[0].atm[j].chain,sqrt(d),current_res_i,current_res_j);
 			    }
-			    contacts2[current_res_i][current_res_j]=1;
-			    contacts2[current_res_j][current_res_i]=1;
+			    /*contacts2[current_res_i][current_res_j]=1;
+			      contacts2[current_res_j][current_res_i]=1;*/
 			  //res_contacts[get_res(model[0].atm[i].residue)][get_res(model[0].atm[j].residue)]++;
 			  //tot_res_contacts++;
 			  }
