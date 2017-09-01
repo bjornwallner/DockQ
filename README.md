@@ -7,9 +7,10 @@ git clone https://github.com/bjornwallner/DockQ/
 cd DockQ
 make
 ```
-Install `Biopython` and `numpy` 
-- Biopython version >=1.64: http://biopython.org/wiki/Download#Installation_Instructions
+Install `numpy` (a 'Biopython dependency') and thereafter `Biopython` 
+
 - Numpy: http://www.scipy.org/install.html
+- Biopython version >=1.64: http://biopython.org/wiki/Download#Installation_Instructions
 
 
 Quick start for two interacting partners (two-chain-models) run with
