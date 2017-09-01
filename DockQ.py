@@ -486,7 +486,7 @@ def main():
 #    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
        (args.model_chain1 == None and args.native_chain1 == None)):
-        print "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or model_chain1 if you want a different mapping than 1-1"
+        print "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1"
         print "Model chains  : " + str(model_chains)
         print "Native chains : " + str(native_chains)
         sys.exit()
