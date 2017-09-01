@@ -1,5 +1,5 @@
 # DockQ
-Requires python packages: `Biopython` and `numpy` 
+Requires python packages: `numpy` and `Biopython`
 
 Installation
 ```
@@ -7,9 +7,7 @@ git clone https://github.com/bjornwallner/DockQ/
 cd DockQ
 make
 ```
-Install (i) `numpy` and (ii) `Biopython` (Note: Numpy is a 'Biopython dependency': - http://biopython.org/DIST/docs/install/Installation.html) 
-
-For Installation of the above python modules simply follow: 
+Install (i) `numpy` (a prerequisite to install 'Biopython') and (ii) `Biopython` 
 
 - Numpy: http://www.scipy.org/install.html
 - Biopython version >=1.64: http://biopython.org/wiki/Download#Installation_Instructions
