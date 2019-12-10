@@ -48,21 +48,39 @@ def parse_fnat(fnat_out):
             inter.append(res2 + chain2)
     return (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,inter)
 
-def capri_class(fnat,iRMS,LRMS):
+def capri_class(fnat,iRMS,LRMS,peptide=False):
 
-    if(fnat < 0.1 or (LRMS > 10.0 and iRMS > 4.0)):
-        return 'Incorrect'
-    elif((fnat >= 0.1 and fnat < 0.3) and (LRMS <= 10.0 or iRMS <= 4.0) or (fnat >= 0.3 and LRMS > 5.0 and iRMS > 2.0)):
-        return 'Acceptable'
-    elif((fnat >= 0.3 and fnat < 0.5) and (LRMS <= 5.0 or iRMS <= 2.0) or (fnat >= 0.5 and LRMS > 1.0 and iRMS > 1.0)):
-        return 'Medium'
-    elif(fnat >= 0.5 and (LRMS <= 1.0 or iRMS <= 1.0)):
-        return 'High'
+
+    if peptide:
+        if(fnat < 0.2 or (LRMS > 5.0 and iRMS > 2.0)):
+            return 'Incorrect'
+        elif((fnat >= 0.2 and fnat < 0.5) and (LRMS <= 5.0 or iRMS <= 2.0) or (fnat >= 0.5 and LRMS > 2.0 and iRMS > 1.0)):
+            return 'Acceptable'
+        elif((fnat >= 0.5 and fnat < 0.8) and (LRMS <= 2.0 or iRMS <= 1.0) or (fnat >= 0.8 and LRMS > 1.0 and iRMS > 0.5)):
+            return 'Medium'
+        elif(fnat >= 0.8 and (LRMS <= 1.0 or iRMS <= 0.5)):
+            return 'High'
+        else:
+            return 'Undef'
     else:
-        return 'Undef'
 
-def capri_class_DockQ(DockQ):
+        if(fnat < 0.1 or (LRMS > 10.0 and iRMS > 4.0)):
+            return 'Incorrect'
+        elif((fnat >= 0.1 and fnat < 0.3) and (LRMS <= 10.0 or iRMS <= 4.0) or (fnat >= 0.3 and LRMS > 5.0 and iRMS > 2.0)):
+            return 'Acceptable'
+        elif((fnat >= 0.3 and fnat < 0.5) and (LRMS <= 5.0 or iRMS <= 2.0) or (fnat >= 0.5 and LRMS > 1.0 and iRMS > 1.0)):
+            return 'Medium'
+        elif(fnat >= 0.5 and (LRMS <= 1.0 or iRMS <= 1.0)):
+            return 'High'
+        else:
+            return 'Undef'
 
+
+def capri_class_DockQ(DockQ,peptide=False):
+
+    if peptide:
+        return 'Undef for peptides'
+    
     (c1,c2,c3)=(0.23,0.49,0.80)
     if(DockQ < c1):
         return 'Incorrect'
@@ -76,7 +94,7 @@ def capri_class_DockQ(DockQ):
         return 'Undef'
 
 
-def calc_DockQ(model,native,use_CA_only=False):
+def calc_DockQ(model,native,use_CA_only=False,peptide=False):
     
     exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
     atom_for_sup=['CA','C','N','O']
@@ -84,9 +102,11 @@ def calc_DockQ(model,native,use_CA_only=False):
         atom_for_sup=['CA']
 
     cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
-    #cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 backbone'
     cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
 
+    if peptide:
+        cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 4'
+        cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 8 cb' #if the fourth argument is defined it will use CB
 
     #fnat_out = os.popen(cmd_fnat).readlines()
     fnat_out = commands.getoutput(cmd_fnat)
@@ -335,26 +355,26 @@ def calc_DockQ(model,native,use_CA_only=False):
     #print sqrt(sum(sum(diff*diff))/l)
     #print np.sqrt(np.sum(diff**2)/l)
     DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
-    dict={}
-    dict['DockQ']=DockQ
-    dict['irms']=irms
-    dict['Lrms']=Lrms
-    dict['fnat']=fnat
-    dict['nat_correct']=nat_correct
-    dict['nat_total']=nat_total
+    info={}
+    info['DockQ']=DockQ
+    info['irms']=irms
+    info['Lrms']=Lrms
+    info['fnat']=fnat
+    info['nat_correct']=nat_correct
+    info['nat_total']=nat_total
 
-    dict['fnonnat']=fnonnat
-    dict['nonnat_count']=nonnat_count
-    dict['model_total']=model_total
+    info['fnonnat']=fnonnat
+    info['nonnat_count']=nonnat_count
+    info['model_total']=model_total
     
-    dict['chain1']=chain1
-    dict['chain2']=chain2
-    dict['len1']=len1
-    dict['len2']=len2
-    dict['class1']=class1
-    dict['class2']=class2
+    info['chain1']=chain1
+    info['chain2']=chain2
+    info['len1']=len1
+    info['len2']=len2
+    info['class1']=class1
+    info['class2']=class2
     
-    return dict
+    return info
 
 def get_pdb_chains(pdb):
     pdb_parser = Bio.PDB.PDBParser(QUIET = True)
@@ -435,6 +455,7 @@ def main():
     parser=ArgumentParser(description="DockQ - Quality measure for protein-protein docking models")
     parser.add_argument('model',metavar='<model>',type=str,nargs=1,help='path to model file')
     parser.add_argument('native',metavar='<native>',type=str,nargs=1,help='path to native file')
+    parser.add_argument('-peptide',default=False,action='store_true',help='use version for peptide (DockQ cannot not be trusted for this setting)')
     parser.add_argument('-short',default=False,action='store_true',help='short output')
     parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
     parser.add_argument('-quiet',default=False,action='store_true',help='keep quiet!')
@@ -474,6 +495,7 @@ def main():
     native=args.native[0]
     native_in=native
     use_CA_only=args.useCA
+    peptide=args.peptide
 
     model_chains=[]
     native_chains=[]
@@ -592,7 +614,7 @@ def main():
                         print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
                     if(test_dict['DockQ'] > best_DockQ):
                         best_DockQ=test_dict['DockQ'];
-                        dict=test_dict
+                        info=test_dict
                         best_g1=g1
                         best_g2=g2
                         best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, chain1:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' chain2:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
@@ -617,7 +639,7 @@ def main():
                 if not os.path.exists(model_fixed):
                     print 'If you are sure the residues are identical you can use the options -no_needle'
                     sys.exit()
-            dict=calc_DockQ(model_fixed,native,use_CA_only)
+            info=calc_DockQ(model_fixed,native,use_CA_only)
 
             #os.system('cp ' + native + ' native_multichain.pdb')
             #os.system('cp ' + model_fixed + ' .')
@@ -629,42 +651,54 @@ def main():
  #   print native
  #   print model
     else:
-        dict=calc_DockQ(model,native,use_CA_only)
+        info=calc_DockQ(model,native,use_CA_only=use_CA_only,peptide=peptide) #False):
+#        info=calc_DockQ(model,native,use_CA_only=)
     
-    irms=dict['irms']
-    Lrms=dict['Lrms']
-    fnat=dict['fnat']
-    DockQ=dict['DockQ']
+    irms=info['irms']
+    Lrms=info['Lrms']
+    fnat=info['fnat']
+    DockQ=info['DockQ']
     
     
     if(args.short):
-        print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+        if peptide:
+            print("DockQ-peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+        else:
+            print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+
     else:
-        print '****************************************************************'
-        print '*                       DockQ                                  *'
-        print '*   Scoring function for protein-protein docking models        *'
-        print '*   Statistics on CAPRI data:                                  *'
-        print '*    0.00 <= DockQ <  0.23 - Incorrect                         *'
-        print '*    0.23 <= DockQ <  0.49 - Acceptable quality                *'
-        print '*    0.49 <= DockQ <  0.80 - Medium quality                    *'
-        print '*            DockQ >= 0.80 - High quality                      *'  
-        print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
-        print '*   measure for protein-protein docking models, submitted      *'
-        print '*                                                              *'
-        print '*   For comments, please email: bjornw@ifm.liu.se              *'
-        print '****************************************************************'
+        if peptide:
+            print '****************************************************************'
+            print '*                DockQ-peptide                                 *'
+            print '*  Do not trust any thing you read....                         *'
+            print '*   For comments, please email: bjorn.wallner@.liu.se          *'
+            print '****************************************************************'
+        else:
+            print '****************************************************************'
+            print '*                       DockQ                                  *'
+            print '*   Scoring function for protein-protein docking models        *'
+            print '*   Statistics on CAPRI data:                                  *'
+            print '*    0.00 <= DockQ <  0.23 - Incorrect                         *'
+            print '*    0.23 <= DockQ <  0.49 - Acceptable quality                *'
+            print '*    0.49 <= DockQ <  0.80 - Medium quality                    *'
+            print '*            DockQ >= 0.80 - High quality                      *'  
+            print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
+            print '*   measure for protein-protein docking models, submitted      *'
+            print '*                                                              *'
+            print '*   For comments, please email: bjorn.wallner@.liu.se          *'
+            print '****************************************************************'
         print("Model  : %s" % model_in)
         print("Native : %s" % native_in)
         if len(best_info):
             print best_info
-        print 'Number of equivalent residues in chain ' + dict['chain1'] + ' ' + str(dict['len1']) + ' (' + dict['class1'] + ')'
-        print 'Number of equivalent residues in chain ' + dict['chain2'] + ' ' + str(dict['len2']) + ' (' + dict['class2'] + ')'
-        print("Fnat %.3f %d correct of %d native contacts" % (dict['fnat'],dict['nat_correct'],dict['nat_total']))
-        print("Fnonnat %.3f %d non-native of %d model contacts" % (dict['fnonnat'],dict['nonnat_count'],dict['model_total']))
+        print 'Number of equivalent residues in chain ' + info['chain1'] + ' ' + str(info['len1']) + ' (' + info['class1'] + ')'
+        print 'Number of equivalent residues in chain ' + info['chain2'] + ' ' + str(info['len2']) + ' (' + info['class2'] + ')'
+        print("Fnat %.3f %d correct of %d native contacts" % (info['fnat'],info['nat_correct'],info['nat_total']))
+        print("Fnonnat %.3f %d non-native of %d model contacts" % (info['fnonnat'],info['nonnat_count'],info['model_total']))
         print("iRMS %.3f" % irms)
         print("LRMS %.3f" % Lrms)
-        print 'CAPRI ' + capri_class(fnat,irms,Lrms)
-        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ)
+        print 'CAPRI ' + capri_class(fnat,irms,Lrms,peptide=peptide)
+        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ,peptide=peptide)
         print("DockQ %.3f" % DockQ)
 
     for f in files_to_clean:

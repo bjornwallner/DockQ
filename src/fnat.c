@@ -7,7 +7,7 @@
 //
 // Any comments and suggestion may be sent to:
 // Author: Björn Wallner
-// E-mail: bjorn@sbc.su.se
+// E-mail: bjorn.wallner@liu.se
 //   
 //
 
@@ -61,7 +61,7 @@ int main(argc,argv)		/* Main routine */
       cutoff=strtod(argv[3],(char**)(argv[3]+strlen(argv[3])));
       cutoff=cutoff*cutoff;
       if(argc>4)
-	set='b';
+	set='c'; //Read in CB only
       if(argc>5)
 	verbose=1;
     }

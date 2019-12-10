@@ -111,7 +111,7 @@ int read_molecules(molecule *m,char atomflag)	/* Reads in molecules to be superi
 	      strncpy_NULL(temp_number,&buff[6],5);
 	      strncpy_NULL(name,&buff[13],3);
 	      if(atomflag == 'a' || 
-		 (atomflag == 'c' && strcmp("CA ",name) == 0) || 
+		 (atomflag == 'c' && strcmp("CB ",name) == 0) || 
 		 (atomflag == 'b' && (strcmp("CA ",name) == 0 || strcmp("C  ",name) == 0 || strcmp("O  ",name) == 0 || strcmp("N  ",name) ==0)))
 		{
 		  //printf("%s",buff);
