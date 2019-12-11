@@ -110,14 +110,15 @@ int read_molecules(molecule *m,char atomflag)	/* Reads in molecules to be superi
 	      //printf("Heja: %s %s",m[0].filename,&buff);
 	      strncpy_NULL(temp_number,&buff[6],5);
 	      strncpy_NULL(name,&buff[13],3);
+	      strncpy_NULL(residue,&buff[17],3);
 	      if(atomflag == 'a' || 
-		 (atomflag == 'c' && strcmp("CB ",name) == 0) || 
+		 (atomflag == 'c' && strcmp("CB ",name) == 0) ||
+		 (atomflag == 'c' && strcmp("GLY",residue) == 0 && strcmp("CA ",name) == 0) || 
 		 (atomflag == 'b' && (strcmp("CA ",name) == 0 || strcmp("C  ",name) == 0 || strcmp("O  ",name) == 0 || strcmp("N  ",name) ==0)))
 		{
 		  //printf("%s",buff);
 		  // printf("%s %c %c %c %s\n",name,buff[12],buff[13],buff[24],buff);
 		  strncpy_NULL(alt_loc,&buff[16],1);
-		  strncpy_NULL(residue,&buff[17],3);
 		  strncpy_NULL(chain,&buff[21],1);
 		  strncpy_NULL(temp_resnum,&buff[22],4);
 		  strncpy_NULL(resname,&buff[22],5);
