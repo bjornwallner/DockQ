@@ -48,10 +48,11 @@ def parse_fnat(fnat_out):
             inter.append(res2 + chain2)
     return (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,inter)
 
-def capri_class(fnat,iRMS,LRMS,peptide=False):
+def capri_class(fnat,iRMS,LRMS,capri_peptide=False):
 
 
-    if peptide:
+    if capri_peptide:
+               
         if(fnat < 0.2 or (LRMS > 5.0 and iRMS > 2.0)):
             return 'Incorrect'
         elif((fnat >= 0.2 and fnat < 0.5) and (LRMS <= 5.0 or iRMS <= 2.0) or (fnat >= 0.5 and LRMS > 2.0 and iRMS > 1.0)):
@@ -76,10 +77,10 @@ def capri_class(fnat,iRMS,LRMS,peptide=False):
             return 'Undef'
 
 
-def capri_class_DockQ(DockQ,peptide=False):
+def capri_class_DockQ(DockQ,capri_peptide=False):
 
-    if peptide:
-        return 'Undef for peptides'
+    if capri_peptide:
+        return 'Undef for capri_peptides'
     
     (c1,c2,c3)=(0.23,0.49,0.80)
     if(DockQ < c1):
@@ -94,19 +95,19 @@ def capri_class_DockQ(DockQ,peptide=False):
         return 'Undef'
 
 
-def calc_DockQ(model,native,use_CA_only=False,peptide=False):
+def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     
     exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
     atom_for_sup=['CA','C','N','O']
     if(use_CA_only):
         atom_for_sup=['CA']
 
-    cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5'
-    cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10'
+    cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5 -all'
+    cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 -all'
 
-    if peptide:
-        cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 4'
-        cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 8 cb' #if the fourth argument is defined it will use CB
+    if capri_peptide:
+        cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 4 -all'
+        cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 8 -cb' 
 
     #fnat_out = os.popen(cmd_fnat).readlines()
     fnat_out = commands.getoutput(cmd_fnat)
@@ -455,7 +456,7 @@ def main():
     parser=ArgumentParser(description="DockQ - Quality measure for protein-protein docking models")
     parser.add_argument('model',metavar='<model>',type=str,nargs=1,help='path to model file')
     parser.add_argument('native',metavar='<native>',type=str,nargs=1,help='path to native file')
-    parser.add_argument('-peptide',default=False,action='store_true',help='use version for peptide (DockQ cannot not be trusted for this setting)')
+    parser.add_argument('-capri_peptide',default=False,action='store_true',help='use version for capri_peptide (DockQ cannot not be trusted for this setting)')
     parser.add_argument('-short',default=False,action='store_true',help='short output')
     parser.add_argument('-verbose',default=False,action='store_true',help='talk a lot!')
     parser.add_argument('-quiet',default=False,action='store_true',help='keep quiet!')
@@ -495,7 +496,7 @@ def main():
     native=args.native[0]
     native_in=native
     use_CA_only=args.useCA
-    peptide=args.peptide
+    capri_peptide=args.capri_peptide
 
     model_chains=[]
     native_chains=[]
@@ -651,26 +652,32 @@ def main():
  #   print native
  #   print model
     else:
-        info=calc_DockQ(model,native,use_CA_only=use_CA_only,peptide=peptide) #False):
+        info=calc_DockQ(model,native,use_CA_only=use_CA_only,capri_peptide=capri_peptide) #False):
 #        info=calc_DockQ(model,native,use_CA_only=)
     
     irms=info['irms']
     Lrms=info['Lrms']
     fnat=info['fnat']
     DockQ=info['DockQ']
-    
+    fnonnat=info['fnonnat']
     
     if(args.short):
-        if peptide:
-            print("DockQ-peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+        if capri_peptide:
+            print("DockQ-capri_peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info))
         else:
-            print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,model_in,native_in,best_info))
+            print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info))
 
     else:
-        if peptide:
+        if capri_peptide:
             print '****************************************************************'
-            print '*                DockQ-peptide                                 *'
-            print '*  Do not trust any thing you read....                         *'
+            print '*                DockQ-CAPRI peptide                           *'
+            print '*   Do not trust any thing you read....                        *'
+            print '*   OBS THE DEFINITION OF Fnat and iRMS are different for      *'
+            print '*   peptides in CAPRI                                          *'
+            print '*                                                              *'
+            print '*   For the record:                                            *'
+            print '*   Definition of contact <4A all heavy atoms (Fnat)           *'
+            print '*   Definition of interface <8A CB (iRMS)                      *'
             print '*   For comments, please email: bjorn.wallner@.liu.se          *'
             print '****************************************************************'
         else:
@@ -685,7 +692,11 @@ def main():
             print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
             print '*   measure for protein-protein docking models, submitted      *'
             print '*                                                              *'
+            print '*   For the record:                                            *'
+            print '*   Definition of contact <5A (Fnat)                           *'
+            print '*   Definition of interface <10A all heavy atoms (iRMS)        *'
             print '*   For comments, please email: bjorn.wallner@.liu.se          *'
+            print '*                                                              *'
             print '****************************************************************'
         print("Model  : %s" % model_in)
         print("Native : %s" % native_in)
@@ -697,9 +708,16 @@ def main():
         print("Fnonnat %.3f %d non-native of %d model contacts" % (info['fnonnat'],info['nonnat_count'],info['model_total']))
         print("iRMS %.3f" % irms)
         print("LRMS %.3f" % Lrms)
-        print 'CAPRI ' + capri_class(fnat,irms,Lrms,peptide=peptide)
-        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ,peptide=peptide)
-        print("DockQ %.3f" % DockQ)
+       # print 'CAPRI ' + capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide)
+        peptide_suffix=''
+        if capri_peptide:
+            peptide_suffix='_peptide'
+        print('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide)))
+        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide)
+        peptide_disclaimer=''
+        if capri_peptide:
+            peptide_disclaimer='DockQ not reoptimized for CAPRI peptide evaluation'
+        print("DockQ {:.3f} {}".format(DockQ,peptide_disclaimer))
 
     for f in files_to_clean:
         os.remove(f)

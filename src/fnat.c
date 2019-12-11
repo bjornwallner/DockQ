@@ -13,9 +13,7 @@
 
 
 
-int main(argc,argv)		/* Main routine */
-     int argc;
-     char *argv[];
+int main(int argc,char *argv[])		/* Main routine */
 {
   molecule      m[1];
   molecule      model[1];
@@ -52,18 +50,31 @@ int main(argc,argv)		/* Main routine */
   int interface_contacts_model=0;
   int verbose=0;
   char set='a';
+  char set_switch[100];
+  char arg[100];
   //float        sum=0;
   /* Parse command line for PDB filename */
+  
   if(argc>=4)
     {
-      strcpy(m[0].filename,argv[2]);
       strcpy(model[0].filename,argv[1]);
-      cutoff=strtod(argv[3],(char**)(argv[3]+strlen(argv[3])));
+      strcpy(m[0].filename,argv[2]);
+      cutoff=strtod(argv[3],NULL); 
       cutoff=cutoff*cutoff;
-      if(argc>4)
-	set='c'; //Read in CB only
-      if(argc>5)
-	verbose=1;
+      for(i=4; i<argc; i++) {
+	if(strcmp(argv[i],"-cb") == 0) 
+	  set='c'; //Read in CB only
+	if(strcmp(argv[i],"-all") == 0) 
+	  set='a'; //Read all atoms except hydrogen (this is the current default)
+	if(strcmp(argv[i],"-verbose") == 0) 
+	  verbose=1;
+	
+      }
+      
+      printf("%c\n",set);
+  
+  //if(argc>5)
+      //	verbose=1;
     }
   else
     {
