@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import Bio.PDB
 import warnings
@@ -13,7 +13,7 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 from math import sqrt
 from argparse import ArgumentParser
 import itertools
-import commands
+import subprocess
 
 def parse_fnat(fnat_out):
     fnat=-1;
@@ -109,13 +109,16 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
         cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 4 -all'
         cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 8 -cb' 
 
-    #fnat_out = os.popen(cmd_fnat).readlines()
-    fnat_out = commands.getoutput(cmd_fnat)
-#    sys.exit()
+    fnat_out = os.popen(cmd_fnat).read()
+
+    #fnat_out = subprocess.getoutput(cmd_fnat)
+    #print(fnat_out)
+    #    sys.exit()
     (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
     assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
-#    inter_out = os.popen(cmd_interface).readlines()
-    inter_out = commands.getoutput(cmd_interface)
+    inter_out = os.popen(cmd_interface).read()
+#   inter_out = subprocess.getoutput(cmd_interface)
+    
     (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
     assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
 
@@ -164,7 +167,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                 atom_key=key + '.' + a
                 if a in sample_res:
                     if atom_key in atoms_def_sample:
-                        print atom_key + ' already added (MODEL)!!!'
+                        print(atom_key + ' already added (MODEL)!!!')
                     atoms_def_sample.append(atom_key)
 
     #then read in native also present in sample
@@ -181,14 +184,14 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                 atom_key=key + '.' + a
                 if a in ref_res and atom_key in atoms_def_sample:
                     if atom_key in atoms_def_in_both:
-                        print atom_key + ' already added (Native)!!!' 
+                        print(atom_key + ' already added (Native)!!!') 
                     atoms_def_in_both.append(atom_key)
 
 
 #    print atoms_def_in_both
     for sample_chain in sample_model:
         chain=sample_chain.id
-        if chain not in chain_res.keys():
+        if chain not in list(chain_res.keys()):
             chain_res[chain]=[]
         for sample_res in sample_chain:
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
@@ -215,7 +218,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
         # Iterate of all residues in each model in order to find proper atoms
         #  print dir(ref_chain)
         chain=ref_chain.id
-        if chain not in chain_ref.keys():
+        if chain not in list(chain_ref.keys()):
             chain_ref[chain]=[]
         for ref_res in ref_chain:
             if ref_res.get_id()[0] != ' ': #Skip hetatm.
@@ -250,7 +253,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     chain_sample={}
     for sample_chain in sample_model:
         chain=sample_chain.id
-        if chain not in chain_sample.keys():
+        if chain not in list(chain_sample.keys()):
             chain_sample[chain]=[]
         for sample_res in sample_chain:
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
@@ -280,7 +283,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     # Print RMSD:
     irms=super_imposer.rms
 
-    (chain1,chain2)=chain_sample.keys()
+    (chain1,chain2)=list(chain_sample.keys())
 
     ligand_chain=chain1
     receptor_chain=chain2
@@ -476,7 +479,7 @@ def main():
     #bio_ver=1.64
     bio_ver=1.61
     if(float(Bio.__version__) < bio_ver):
-        print "Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver)
+        print("Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver))
         sys.exit()
 
 #    if(len(sys.argv)!=3):
@@ -509,12 +512,12 @@ def main():
 #    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
        (args.model_chain1 == None and args.native_chain1 == None)):
-        print "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1"
-        print "Model chains  : " + str(model_chains)
-        print "Native chains : " + str(native_chains)
+        print("Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1")
+        print("Model chains  : " + str(model_chains))
+        print("Native chains : " + str(native_chains))
         sys.exit()
     if not args.skip_check and (len(model_chains) < 2 or len(native_chains)< 2):
-        print "Need at least two chains in the two inputs\n";
+        print("Need at least two chains in the two inputs\n");
         sys.exit()
         
     if len(model_chains) > 2 or len(native_chains)> 2:
@@ -559,8 +562,8 @@ def main():
         #print nat_group1
         #print nat_group2
         if(args.verbose):
-            print 'Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A'
-            print 'Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B'
+            print('Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A')
+            print('Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B')
         native=make_two_chain_pdb_perm(native,nat_group1,nat_group2)
         files_to_clean.append(native)
         pe=0
@@ -594,7 +597,7 @@ def main():
             pe=1
             #sys.exit()
             if args.verbose:
-                print 'Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')'
+                print('Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')')
             for g1 in combos1:
                 for g2 in combos2:
                 #g2=group2    
@@ -607,12 +610,12 @@ def main():
                         os.system(fix_numbering_cmd)
                         os.remove(model_renum)
                         if not os.path.exists(model_fixed):
-                            print 'If you are sure the residues are identical you can use the options -no_needle'
+                            print('If you are sure the residues are identical you can use the options -no_needle')
                             sys.exit()
                     test_dict=calc_DockQ(model_fixed,native,use_CA_only)
                     os.remove(model_fixed)
                     if not args.quiet:
-                        print str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ'])
+                        print(str(pe)+'/'+str(pe_tot) + ' ' + ''.join(g1) + ' -> ' + ''.join(g2) + ' ' + str(test_dict['DockQ']))
                     if(test_dict['DockQ'] > best_DockQ):
                         best_DockQ=test_dict['DockQ'];
                         info=test_dict
@@ -621,12 +624,12 @@ def main():
                         best_info='Best score ( ' + str(best_DockQ) +' ) found for model -> native, chain1:' + ''.join(best_g1) + ' -> ' + ''.join(nat_group1) + ' chain2:' + ''.join(best_g2) + ' -> ' + ''.join(nat_group2)
                         
                         if args.verbose:
-                            print best_info
+                            print(best_info)
                         if not args.quiet:    
-                            print "Current best " + str(best_DockQ)
+                            print("Current best " + str(best_DockQ))
                     pe=pe+1
             if not args.quiet:
-                print best_info        
+                print(best_info)        
 #            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
         else:
             model_renum=make_two_chain_pdb_perm(model,group1,group2)
@@ -638,7 +641,7 @@ def main():
                 os.system(fix_numbering_cmd)
                 os.remove(model_renum)
                 if not os.path.exists(model_fixed):
-                    print 'If you are sure the residues are identical you can use the options -no_needle'
+                    print('If you are sure the residues are identical you can use the options -no_needle')
                     sys.exit()
             info=calc_DockQ(model_fixed,native,use_CA_only)
 
@@ -663,61 +666,61 @@ def main():
     
     if(args.short):
         if capri_peptide:
-            print("DockQ-capri_peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info))
+            print(("DockQ-capri_peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info)))
         else:
-            print("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info))
+            print(("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info)))
 
     else:
         if capri_peptide:
-            print '****************************************************************'
-            print '*                DockQ-CAPRI peptide                           *'
-            print '*   Do not trust any thing you read....                        *'
-            print '*   OBS THE DEFINITION OF Fnat and iRMS are different for      *'
-            print '*   peptides in CAPRI                                          *'
-            print '*                                                              *'
-            print '*   For the record:                                            *'
-            print '*   Definition of contact <4A all heavy atoms (Fnat)           *'
-            print '*   Definition of interface <8A CB (iRMS)                      *'
-            print '*   For comments, please email: bjorn.wallner@.liu.se          *'
-            print '****************************************************************'
+            print('****************************************************************')
+            print('*                DockQ-CAPRI peptide                           *')
+            print('*   Do not trust any thing you read....                        *')
+            print('*   OBS THE DEFINITION OF Fnat and iRMS are different for      *')
+            print('*   peptides in CAPRI                                          *')
+            print('*                                                              *')
+            print('*   For the record:                                            *')
+            print('*   Definition of contact <4A all heavy atoms (Fnat)           *')
+            print('*   Definition of interface <8A CB (iRMS)                      *')
+            print('*   For comments, please email: bjorn.wallner@.liu.se          *')
+            print('****************************************************************')
         else:
-            print '****************************************************************'
-            print '*                       DockQ                                  *'
-            print '*   Scoring function for protein-protein docking models        *'
-            print '*   Statistics on CAPRI data:                                  *'
-            print '*    0.00 <= DockQ <  0.23 - Incorrect                         *'
-            print '*    0.23 <= DockQ <  0.49 - Acceptable quality                *'
-            print '*    0.49 <= DockQ <  0.80 - Medium quality                    *'
-            print '*            DockQ >= 0.80 - High quality                      *'  
-            print '*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *'
-            print '*   measure for protein-protein docking models, submitted      *'
-            print '*                                                              *'
-            print '*   For the record:                                            *'
-            print '*   Definition of contact <5A (Fnat)                           *'
-            print '*   Definition of interface <10A all heavy atoms (iRMS)        *'
-            print '*   For comments, please email: bjorn.wallner@.liu.se          *'
-            print '*                                                              *'
-            print '****************************************************************'
-        print("Model  : %s" % model_in)
-        print("Native : %s" % native_in)
+            print('****************************************************************')
+            print('*                       DockQ                                  *')
+            print('*   Scoring function for protein-protein docking models        *')
+            print('*   Statistics on CAPRI data:                                  *')
+            print('*    0.00 <= DockQ <  0.23 - Incorrect                         *')
+            print('*    0.23 <= DockQ <  0.49 - Acceptable quality                *')
+            print('*    0.49 <= DockQ <  0.80 - Medium quality                    *')
+            print('*            DockQ >= 0.80 - High quality                      *')  
+            print('*   Reference: Sankar Basu and Bjorn Wallner, DockQ: A quality *')
+            print('*   measure for protein-protein docking models, submitted      *')
+            print('*                                                              *')
+            print('*   For the record:                                            *')
+            print('*   Definition of contact <5A (Fnat)                           *')
+            print('*   Definition of interface <10A all heavy atoms (iRMS)        *')
+            print('*   For comments, please email: bjorn.wallner@.liu.se          *')
+            print('*                                                              *')
+            print('****************************************************************')
+        print(("Model  : %s" % model_in))
+        print(("Native : %s" % native_in))
         if len(best_info):
-            print best_info
-        print 'Number of equivalent residues in chain ' + info['chain1'] + ' ' + str(info['len1']) + ' (' + info['class1'] + ')'
-        print 'Number of equivalent residues in chain ' + info['chain2'] + ' ' + str(info['len2']) + ' (' + info['class2'] + ')'
-        print("Fnat %.3f %d correct of %d native contacts" % (info['fnat'],info['nat_correct'],info['nat_total']))
-        print("Fnonnat %.3f %d non-native of %d model contacts" % (info['fnonnat'],info['nonnat_count'],info['model_total']))
-        print("iRMS %.3f" % irms)
-        print("LRMS %.3f" % Lrms)
+            print(best_info)
+        print('Number of equivalent residues in chain ' + info['chain1'] + ' ' + str(info['len1']) + ' (' + info['class1'] + ')')
+        print('Number of equivalent residues in chain ' + info['chain2'] + ' ' + str(info['len2']) + ' (' + info['class2'] + ')')
+        print(("Fnat %.3f %d correct of %d native contacts" % (info['fnat'],info['nat_correct'],info['nat_total'])))
+        print(("Fnonnat %.3f %d non-native of %d model contacts" % (info['fnonnat'],info['nonnat_count'],info['model_total'])))
+        print(("iRMS %.3f" % irms))
+        print(("LRMS %.3f" % Lrms))
        # print 'CAPRI ' + capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide)
         peptide_suffix=''
         if capri_peptide:
             peptide_suffix='_peptide'
-        print('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide)))
-        print 'DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide)
+        print(('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide))))
+        print('DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide))
         peptide_disclaimer=''
         if capri_peptide:
             peptide_disclaimer='DockQ not reoptimized for CAPRI peptide evaluation'
-        print("DockQ {:.3f} {}".format(DockQ,peptide_disclaimer))
+        print(("DockQ {:.3f} {}".format(DockQ,peptide_disclaimer)))
 
     for f in files_to_clean:
         os.remove(f)
