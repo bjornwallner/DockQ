@@ -715,8 +715,8 @@ def main():
         peptide_suffix=''
         if capri_peptide:
             peptide_suffix='_peptide'
-        print(('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide))))
-        print('DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide))
+        #print(('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide))))
+        #print('DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide))
         peptide_disclaimer=''
         if capri_peptide:
             peptide_disclaimer='DockQ not reoptimized for CAPRI peptide evaluation'
