@@ -715,7 +715,7 @@ def main():
         peptide_suffix=''
         if capri_peptide:
             peptide_suffix='_peptide'
-        print('CAPRI use DockQ instead')
+        print('CAPRI use DockQ instead. Note: iRMS, LRMS, and Fnat are different compared to CAPRI')
         #print(('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide))))
         #print('DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide))
         peptide_disclaimer=''
