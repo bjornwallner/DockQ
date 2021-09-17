@@ -1,7 +1,8 @@
 #ifndef molecule_h
 #define molecule_h
-//#include "types/simple.h"
-//#include "nets.h"
+
+#include <stddef.h>
+
 #define TRUE		1		/* Boolean definitions */
 #define FALSE		0
 #define	MAXATMS		25000		/* Maximum allowable atoms */
@@ -78,7 +79,7 @@ void   strncpy_NULL(char *dest, char *src, size_t n);
 
 double distance(molecule *m,int atomno1, int atomno2);
 double crd(molecule *m,int atomno1, int atomno2);   /*closest residue distance */
-char   aa321(char *name);
+char   aa321(char *res);
 
 
 #endif
