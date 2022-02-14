@@ -97,10 +97,12 @@ def capri_class_DockQ(DockQ,capri_peptide=False):
 
 def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     
-    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+#    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
+    exec_path=os.path.dirname(os.path.abspath(__file__))
     atom_for_sup=['CA','C','N','O']
     if(use_CA_only):
         atom_for_sup=['CA']
+
 
     cmd_fnat=exec_path + '/fnat ' + model + ' ' + native + ' 5 -all'
     cmd_interface=exec_path + '/fnat ' + model + ' ' + native + ' 10 -all'
@@ -271,7 +273,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
         #sample_atoms.append(sample_res['CA'])
         #common_interface.append(key)
 
-
+        
     assert len(ref_atoms)!=0, "length of native is zero"
     assert len(sample_atoms)!=0, "length of model is zero"
     assert len(ref_atoms)==len(sample_atoms), "Different number of atoms in native and model %d %d\n" % (len(ref_atoms),len(sample_atoms))
