@@ -115,7 +115,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
 
     #fnat_out = subprocess.getoutput(cmd_fnat)
     #print(fnat_out)
-    #    sys.exit()
+    #sys.exit()
     (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
     assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
     inter_out = os.popen(cmd_interface).read()
@@ -338,15 +338,24 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
 
     coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
     coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
-
-    #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
-    #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
-
-    #print len(coord1)
-    #print len(coord2)
-
     sup=SVDSuperimposer()
     Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not superimpose
+
+
+    CA_atom_ref=[atom for chain in (receptor_chain,ligand_chain) for atom in chain_ref[chain] if atom.id=='CA']
+    CA_coord_ref=np.array([atom.coord for atom in CA_atom_ref])
+    CA_resnum_ref=[(atom.get_full_id()[3][1],atom.get_full_id()[2]) for atom in CA_atom_ref] #(resnum,chain)
+    
+    CA_atom_sample=[atom for chain in (receptor_chain,ligand_chain) for atom in chain_sample[chain] if atom.id=='CA']
+    CA_coord_sample=np.array([atom.coord for atom in CA_atom_sample])
+    CA_resnum_sample=[(atom.get_full_id()[3][1],atom.get_full_id()[2]) for atom in CA_atom_sample] #(resnum,chain)
+    
+    dist_squared=np.sum((CA_coord_ref-CA_coord_sample)**2,axis=1)
+    dist=np.sqrt(dist_squared)
+   
+    #for n,a,b,c,cc in zip(CA_resnum_sample,CA_coord_ref,CA_coord_sample,d2,d):
+    #    print(n,a,b,c,cc)
+
 
 
     #super_imposer.set_atoms(chain_ref[ligand_chain], chain_sample[ligand_chain])
@@ -362,6 +371,10 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     #print np.sqrt(np.sum(diff**2)/l)
     DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
     info={}
+    #info['resnum_chain']=CA_resnum_sample
+    info['Lrms_local']=dist.tolist()
+    #info['S_local5']=1/(1+dist_squared/(5*5))
+    #info['S_local']=1/(1+dist_squared/(8.5*8.5))
     info['DockQ']=DockQ
     info['irms']=irms
     info['Lrms']=Lrms
@@ -379,6 +392,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     info['len2']=len2
     info['class1']=class1
     info['class2']=class2
+    #print(info)
     
     return info
 
