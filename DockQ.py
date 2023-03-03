@@ -1,19 +1,49 @@
 #!/usr/bin/env python
 
-import Bio.PDB
-import warnings
-from Bio import BiopythonWarning
-warnings.simplefilter('ignore', BiopythonWarning)
 import sys
 import os
 import re
+import warnings
 import tempfile
-import numpy as np
-from Bio.SVDSuperimposer import SVDSuperimposer
-from math import sqrt
-from argparse import ArgumentParser
 import itertools
 import subprocess
+import numpy as np
+from math import sqrt
+from argparse import ArgumentParser
+import Bio.PDB
+from Bio import pairwise2
+from Bio import BiopythonWarning
+from Bio.SVDSuperimposer import SVDSuperimposer
+warnings.simplefilter('ignore', BiopythonWarning)
+
+def align_sequence_features(model_sequence, native_sequence, native_numbering):
+    """Realigns sequence-specific features between PDB structures and antigen sequences
+    For example, if from_sequence (the sequence for which features have
+    been calculated) is missing an amino acid but contains more amino acids
+    at the C terminal than the to_sequence, the features will be assigned
+    as in this schematic:
+    
+    native_numbering            23456789
+    native_sequence_aligned    -WEKLAPTG
+    model_sequence_aligned     DWEKLAPT-
+    model_numbering            12345678-1
+    Wherever it is not possible to assign features (missing AA in native_sequence)
+    a pseudovalue of -1 will be assigned instead
+    """
+    alignment = pairwise2.align.localms(
+        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
+    )[0]
+    model_sequence_aligned = np.array(list(alignment.seqA))
+    native_sequence_aligned = np.array(list(alignment.seqB))
+
+    model_indexes = np.where(model_sequence_aligned != "-")[0]
+    native_indexes = np.where(native_sequence_aligned != "-")[0]
+    alignment_length = np.sum((model_sequence_aligned != "-") & (native_sequence_aligned != "-"))
+
+    aligned_numbering = np.zeros(len(model_indexes)) - 1
+    aligned_numbering[native_indexes[:alignment_length]] = native_numbering[model_indexes[:alignment_length]]
+    aligned_numbering = aligned_numbering.tolist()
+    return aligned_numbering
 
 def parse_fnat(fnat_out):
     fnat=-1;
@@ -24,7 +54,6 @@ def parse_fnat(fnat_out):
     model_total=-1
     inter=[]
     for line in fnat_out.split("\n"):
-#        print line
         line=line.rstrip('\n')
         match=re.search(r'NATIVE: (\d+)(\w) (\d+)(\w)',line)
         if(re.search(r'^Fnat',line)):
@@ -38,12 +67,10 @@ def parse_fnat(fnat_out):
             nonnat_count=int(list[1])
             model_total=int(list[2])
         elif(match):
-            #print line
             res1=match.group(1)
             chain1=match.group(2)
             res2=match.group(3)
             chain2=match.group(4)
-           # print res1 + ' ' + chain1 + ' ' + res2 + ' ' + chain2
             inter.append(res1 + chain1)
             inter.append(res2 + chain2)
     return (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,inter)
@@ -97,7 +124,6 @@ def capri_class_DockQ(DockQ,capri_peptide=False):
 
 def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     
-#    exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
     exec_path=os.path.dirname(os.path.abspath(__file__))
     atom_for_sup=['CA','C','N','O']
     if(use_CA_only):
@@ -113,21 +139,12 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
 
     fnat_out = os.popen(cmd_fnat).read()
 
-    #fnat_out = subprocess.getoutput(cmd_fnat)
-    #print(fnat_out)
-    #    sys.exit()
     (fnat,nat_correct,nat_total,fnonnat,nonnat_count,model_total,interface5A)=parse_fnat(fnat_out)
     assert fnat!=-1, "Error running cmd: %s\n" % (cmd_fnat)
     inter_out = os.popen(cmd_interface).read()
-#   inter_out = subprocess.getoutput(cmd_interface)
     
     (fnat_bb,nat_correct_bb,nat_total_bb,fnonnat_bb,nonnat_count_bb,model_total_bb,interface)=parse_fnat(inter_out)
     assert fnat_bb!=-1, "Error running cmd: %s\n" % (cmd_interface)
-
-    #print fnat
-    #Use same interface as for fnat for iRMS
-    #interface=interface5A
-
 
     # Start the parser
     pdb_parser = Bio.PDB.PDBParser(QUIET = True)
@@ -156,11 +173,8 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     atoms_def_in_both=[]
     #first read in sample
     for sample_chain in sample_model:
-#        print sample_chain
         chain=sample_chain.id
-#        print chain
         for sample_res in sample_chain:
-           # print sample_res
             if sample_res.get_id()[0] != ' ': #Skip hetatm.
                 continue
             resname=sample_res.get_id()[1]
@@ -176,9 +190,7 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     for ref_chain in ref_model:
         chain=ref_chain.id
         for ref_res in ref_chain:
-            #print ref_res
             if ref_res.get_id()[0] != ' ': #Skip hetatm.
-#                print ref_res.get_id()
                 continue
             resname=ref_res.get_id()[1]
             key=str(resname) + chain
@@ -190,7 +202,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                     atoms_def_in_both.append(atom_key)
 
 
-#    print atoms_def_in_both
     for sample_chain in sample_model:
         chain=sample_chain.id
         if chain not in list(chain_res.keys()):
@@ -208,8 +219,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                         sample_atoms.append(sample_res[a])
                 common_interface.append(key)
 
-    #print inter_pairs
-
     chain_ref={}
     common_residues=[]
 
@@ -218,7 +227,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     # Iterate of all chains in the model in order to find all residues
     for ref_chain in ref_model:
         # Iterate of all residues in each model in order to find proper atoms
-        #  print dir(ref_chain)
         chain=ref_chain.id
         if chain not in list(chain_ref.keys()):
             chain_ref[chain]=[]
@@ -228,9 +236,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
             resname=ref_res.get_id()[1]
             key=str(resname) + chain
 
-            #print ref_res
-            #      print key
-            # print chain_res.values()
             if key in chain_res[chain]: # if key is present in sample
                 #print key
                 for a in atom_for_sup:
@@ -238,18 +243,15 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                     if a in ref_res and atom_key in atoms_def_in_both:
                         chain_ref[chain].append(ref_res[a])
                         common_residues.append(key)
-                      #chain_sample.append((ref_res['CA'])
             if key in common_interface:
               # Check if residue number ( .get_id() ) is in the list
               # Append CA atom to list
-                #print key  
                 for a in atom_for_sup:
                     atom_key=key + '.' + a
-                    #print atom_key
                     if a in ref_res and atom_key in atoms_def_in_both:
                         ref_atoms.append(ref_res[a])
 
-
+    print(np.asarray([r.get_coord() for r in ref_atoms]).shape)
 
     #get the ones that are present in native        
     chain_sample={}
@@ -267,12 +269,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
                     atom_key=key + '.' + a
                     if a in sample_res and atom_key in atoms_def_in_both:
                         chain_sample[chain].append(sample_res[a])
-
-        #if key in common_residues:
-        #     print key  
-        #sample_atoms.append(sample_res['CA'])
-        #common_interface.append(key)
-
         
     assert len(ref_atoms)!=0, "length of native is zero"
     assert len(sample_atoms)!=0, "length of model is zero"
@@ -282,7 +278,6 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     super_imposer.set_atoms(ref_atoms, sample_atoms)
     super_imposer.apply(sample_model.get_atoms())
 
-    # Print RMSD:
     irms=super_imposer.rms
 
     (chain1,chain2)=list(chain_sample.keys())
@@ -303,33 +298,12 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
         class1='receptor'
         class2='ligand'
 
-
-
-    #print len1
-    #print len2
-    #print chain_sample.keys()
-
     #Set to align on receptor
     assert len(chain_ref[receptor_chain])==len(chain_sample[receptor_chain]), "Different number of atoms in native and model receptor (chain %c) %d %d\n" % (receptor_chain,len(chain_ref[receptor_chain]),len(chain_sample[receptor_chain]))
 
     super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
     super_imposer.apply(sample_model.get_atoms())
     receptor_chain_rms=super_imposer.rms
-    #print receptor_chain_rms
-    #print dir(super_imposer)
-    #print chain1_rms
-
-    #Grep out the transformed ligand coords
-
-    #print ligand_chain
-
-    #print chain_ref[ligand_chain]
-    #print chain_sample[ligand_chain]
-    #l1=len(chain_ref[ligand_chain])
-    #l2=len(chain_sample[ligand_chain])
-
-
-
 
     assert len(chain_ref[ligand_chain])!=0 or len(chain_sample[ligand_chain])!=0, "Zero number of equivalent atoms in native and model ligand (chain %s) %d %d.\nCheck that the residue numbers in model and native is consistent\n" % (ligand_chain,len(chain_ref[ligand_chain]),len(chain_sample[ligand_chain]))
 
@@ -339,27 +313,9 @@ def calc_DockQ(model,native,use_CA_only=False,capri_peptide=False):
     coord1=np.array([atom.coord for atom in chain_ref[ligand_chain]])
     coord2=np.array([atom.coord for atom in chain_sample[ligand_chain]])
 
-    #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
-    #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
-
-    #print len(coord1)
-    #print len(coord2)
-
     sup=SVDSuperimposer()
     Lrms = sup._rms(coord1,coord2) #using the private _rms function which does not superimpose
 
-
-    #super_imposer.set_atoms(chain_ref[ligand_chain], chain_sample[ligand_chain])
-    #super_imposer.apply(sample_model.get_atoms())
-    #coord1=np.array([atom.coord for atom in chain_ref[receptor_chain]])
-    #coord2=np.array([atom.coord for atom in chain_sample[receptor_chain]])
-    #Rrms= sup._rms(coord1,coord2)
-    #should give same result as above line
-    #diff = coord1-coord2
-    #l = len(diff) #number of atoms
-    #from math import sqrt
-    #print sqrt(sum(sum(diff*diff))/l)
-    #print np.sqrt(np.sum(diff**2)/l)
     DockQ=(float(fnat) + 1/(1+(irms/1.5)*(irms/1.5)) + 1/(1+(Lrms/8.5)*(Lrms/8.5)))/3
     info={}
     info['DockQ']=DockQ
@@ -432,14 +388,8 @@ def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
             if chain not in pdb_chains:
                 pdb_chains[chain]=[]
             pdb_chains[chain].append(line)
- #       print line
- #       s[21]='B'
- #       print "".join(s)
-#        print chain
-
 
     f.close()
-    #sys.exit()
     (code,outfile)=tempfile.mkstemp()
     f=open(outfile,'w')
     for c in group1:
@@ -449,7 +399,6 @@ def make_two_chain_pdb_perm(pdb,group1,group2): #not yet ready
     for c in group2:
         f.write(change_chain(pdb_chains[c],"B"))
     f.close();
-    #print outfile
     exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))    
     cmd=exec_path + '/scripts/renumber_pdb.pl ' + outfile
     os.system(cmd)
@@ -470,48 +419,41 @@ def main():
     parser.add_argument('-no_needle',default=False,action='store_true',help='do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical')
     parser.add_argument('-perm1',default=False,action='store_true',help='use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations')
     parser.add_argument('-perm2',default=False,action='store_true',help='use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations')
-#    parser.add_argument('-comb',default=False,action='store_true',help='use all cyclicchain permutations to find maximum DockQ (number of comparisons is n!*m! = 24*24 = 576 for two tetramers interacting')
     parser.add_argument('-model_chain1',metavar='model_chain1', type=str,nargs='+', help='pdb chain order to group together partner 1')
     parser.add_argument('-model_chain2',metavar='model_chain2', type=str,nargs='+', help='pdb chain order to group together partner 2 (complement to partner 1 if undef)')
     parser.add_argument('-native_chain1',metavar='native_chain1', type=str,nargs='+', help='pdb chain order to group together from native partner 1')
     parser.add_argument('-native_chain2',metavar='native_chain2', type=str,nargs='+', help='pdb chain order to group together from native partner 2 (complement to partner 1 if undef)')
 
-
     args = parser.parse_args()
-    #bio_ver=1.64
+    
     bio_ver=1.61
     if(float(Bio.__version__) < bio_ver):
         print("Biopython version (%s) is too old need at least >=%.2f" % (Bio.__version__,bio_ver))
         sys.exit()
 
-#    if(len(sys.argv)!=3):
-#        print "Usage: ./Dock.py <model> <native>"
-#        sys.exit()
-
-#    print args
-#    print args.model[0]
-#    sys.exit()
-#    model=sys.argv[1]
-#    native=sys.argv[2]
-
     exec_path=os.path.dirname(os.path.abspath(sys.argv[0]))
     fix_numbering=exec_path + '/scripts/fix_numbering.pl'
     model=args.model[0]
-    model_in=model
     native=args.native[0]
-    native_in=native
     use_CA_only=args.useCA
     capri_peptide=args.capri_peptide
 
+
+    # Start the parser
+    pdb_parser = Bio.PDB.PDBParser(QUIET = True)
+
+    # Get the structures
+    native_structure = pdb_parser.get_structure("reference", native)[0]
+    model_structure = pdb_parser.get_structure("model", model)[0]
+    
     model_chains=[]
     native_chains=[]
     best_info=''
     if(not args.skip_check):
-        model_chains=get_pdb_chains(model)
-        native_chains=get_pdb_chains(native)
+        model_chains = [c.id for c in model_structure]
+        native_chains = [c.id for c in native_structure]
     files_to_clean=[]
 
-#    print native_chains
     if((len(model_chains) > 2 or len(native_chains) > 2) and
        (args.model_chain1 == None and args.native_chain1 == None)):
         print("Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1")
@@ -557,12 +499,6 @@ def main():
             group1=nat_group1
             group2=nat_group2
 
-        #print group1
-        #print group2
-
-        #print "native"
-        #print nat_group1
-        #print nat_group2
         if(args.verbose):
             print('Merging ' + ''.join(group1) + ' -> ' + ''.join(nat_group1) + ' to chain A')
             print('Merging ' + ''.join(group2) + ' -> ' + ''.join(nat_group2) + ' to chain B')
@@ -591,24 +527,18 @@ def main():
             for g1 in combos1:
                 for g2 in combos2:
                     pe=pe+1
-                   # print str(g1)+' '+str(g2)
-#            print pe
-#            print group1
-#            print group2
             pe_tot=pe
             pe=1
-            #sys.exit()
             if args.verbose:
                 print('Starting chain order permutation search (number of permutations: ' + str(pe_tot) + ')')
             for g1 in combos1:
                 for g2 in combos2:
-                #g2=group2    
                     model_renum=make_two_chain_pdb_perm(model_in,g1,g2)
                     model_fixed=model_renum
                     if not args.no_needle:
+
                         fix_numbering_cmd=fix_numbering + ' ' + model_renum + ' ' + native + ' > /dev/null'
                         model_fixed=model_renum + ".fixed"
-                        #                print fix_numbering_cmd
                         os.system(fix_numbering_cmd)
                         os.remove(model_renum)
                         if not os.path.exists(model_fixed):
@@ -632,14 +562,12 @@ def main():
                     pe=pe+1
             if not args.quiet:
                 print(best_info)        
-#            print 'Best score ( ' + str(best_DockQ) +' ) found for ' + str(best_g1) + ' ' + str(best_g2)
         else:
             model_renum=make_two_chain_pdb_perm(model,group1,group2)
             model_fixed=model_renum
             if not args.no_needle:
                 fix_numbering_cmd=fix_numbering + ' ' + model_renum + ' ' + native + ' > /dev/null'
                 model_fixed=model_renum + ".fixed"
-#                print fix_numbering_cmd
                 os.system(fix_numbering_cmd)
                 os.remove(model_renum)
                 if not os.path.exists(model_fixed):
@@ -647,18 +575,11 @@ def main():
                     sys.exit()
             info=calc_DockQ(model_fixed,native,use_CA_only)
 
-            #os.system('cp ' + native + ' native_multichain.pdb')
-            #os.system('cp ' + model_fixed + ' .')
+
             os.remove(model_fixed)
-#            files_to_clean.append(model)
-#            files_to_clean.append(model_fixed)
-   #    sys.exit()
-     
- #   print native
- #   print model
+
     else:
         info=calc_DockQ(model,native,use_CA_only=use_CA_only,capri_peptide=capri_peptide) #False):
-#        info=calc_DockQ(model,native,use_CA_only=)
     
     irms=info['irms']
     Lrms=info['Lrms']
@@ -668,9 +589,9 @@ def main():
     
     if(args.short):
         if capri_peptide:
-            print(("DockQ-capri_peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info)))
+            print(("DockQ-capri_peptide %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model,native_in,best_info)))
         else:
-            print(("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native_in,best_info)))
+            print(("DockQ %.3f Fnat %.3f iRMS %.3f LRMS %.3f Fnonnat %.3f %s %s %s" % (DockQ,fnat,irms,Lrms,fnonnat,model_in,native,best_info)))
 
     else:
         if capri_peptide:
@@ -703,8 +624,8 @@ def main():
             print('*   For comments, please email: bjorn.wallner@.liu.se          *')
             print('*                                                              *')
             print('****************************************************************')
-        print(("Model  : %s" % model_in))
-        print(("Native : %s" % native_in))
+        print(("Model  : %s" % model))
+        print(("Native : %s" % native))
         if len(best_info):
             print(best_info)
         print('Number of equivalent residues in chain ' + info['chain1'] + ' ' + str(info['len1']) + ' (' + info['class1'] + ')')
@@ -713,13 +634,10 @@ def main():
         print(("Fnonnat %.3f %d non-native of %d model contacts" % (info['fnonnat'],info['nonnat_count'],info['model_total'])))
         print(("iRMS %.3f" % irms))
         print(("LRMS %.3f" % Lrms))
-       # print 'CAPRI ' + capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide)
         peptide_suffix=''
         if capri_peptide:
             peptide_suffix='_peptide'
-        #print('CAPRI use DockQ instead.')
-        #print(('CAPRI{} {}'.format(peptide_suffix,capri_class(fnat,irms,Lrms,capri_peptide=capri_peptide))))
-        #print('DockQ_CAPRI ' + capri_class_DockQ(DockQ,capri_peptide=capri_peptide))
+
         peptide_disclaimer=''
         if capri_peptide:
             peptide_disclaimer='DockQ not reoptimized for CAPRI peptide evaluation'
@@ -730,3 +648,4 @@ def main():
 
 if __name__ == '__main__':
   main()    
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
