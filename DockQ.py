@@ -213,162 +213,21 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=threshold)
     fnat = nat_correct / nat_total
     fnonnat = nonnat_count / model_total
-    sample_interface, ref_interface = get_interface(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=interface_threshold, all_atom=all_atom)
-    #fnat_out = os.popen(cmd_fnat).read()
-
-    #(
-        #fnat,
-        #nat_correct,
-        #nat_total,
-        #fnonnat,
-        #nonnat_count,
-        #model_total,
-        #interface5A,
-    #) = parse_fnat(fnat_out)
-    #assert fnat != -1, "Error running cmd: %s\n" % (cmd_fnat)
-    #inter_out = os.popen(cmd_interface).read()
-
-    #(
-        #fnat_bb,
-        #nat_correct_bb,
-        #nat_total_bb,
-        #fnonnat_bb,
-        #nonnat_count_bb,
-        #model_total_bb,
-        #interface,
-    #) = parse_fnat(inter_out)
-    #assert fnat_bb != -1, "Error running cmd: %s\n" % (cmd_interface)
-
-    
-    # Start the parser
-    #pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-
-    # Get the structures
-    #ref_structure = pdb_parser.get_structure("reference", native)
-    #sample_structure = pdb_parser.get_structure("model", model)
-
-    # Use the first model in the pdb-files for alignment
-    # Change the number 0 if you want to align to another structure
-    #ref_model = ref_structure[0]
-    #sample_model = sample_structure[0]
+    sample_interface_atoms, ref_interface_atoms = get_interface_atoms(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=interface_threshold, atom_types=atom_for_sup)
 
     # Make a list of the atoms (in the structures) you wish to align.
     # In this case we use CA atoms whose index is in the specified range
-    ref_atoms = []
-    sample_atoms = []
+    #ref_atoms = []
+    #sample_atoms = []
 
     common_interface = []
 
     chain_res = {}
-    """
-    # find atoms common in both sample and native
-    atoms_def_sample = []
-    atoms_def_in_both = []
-    # first read in sample
-    for sample_chain in sample_model:
-        chain = sample_chain.id
-        for sample_res in sample_chain:
-            if sample_res.get_id()[0] != " ":  # Skip hetatm.
-                continue
-            resname = sample_res.get_id()[1]
-            key = str(resname) + chain
-            for a in atom_for_sup:
-                atom_key = key + "." + a
-                if a in sample_res:
-                    if atom_key in atoms_def_sample:
-                        print(atom_key + " already added (MODEL)!!!")
-                    atoms_def_sample.append(atom_key)
-
-    # then read in native also present in sample
-    for ref_chain in ref_model:
-        chain = ref_chain.id
-        for ref_res in ref_chain:
-            if ref_res.get_id()[0] != " ":  # Skip hetatm.
-                continue
-            resname = ref_res.get_id()[1]
-            key = str(resname) + chain
-            for a in atom_for_sup:
-                atom_key = key + "." + a
-                if a in ref_res and atom_key in atoms_def_sample:
-                    if atom_key in atoms_def_in_both:
-                        print(atom_key + " already added (Native)!!!")
-                    atoms_def_in_both.append(atom_key)
-
-    for sample_chain in sample_model:
-        chain = sample_chain.id
-        if chain not in list(chain_res.keys()):
-            chain_res[chain] = []
-        for sample_res in sample_chain:
-            if sample_res.get_id()[0] != " ":  # Skip hetatm.
-                continue
-            resname = sample_res.get_id()[1]
-            key = str(resname) + chain
-            chain_res[chain].append(key)
-            if key in interface:
-                for a in atom_for_sup:
-                    atom_key = key + "." + a
-                    if a in sample_res and atom_key in atoms_def_in_both:
-                        sample_atoms.append(sample_res[a])
-                common_interface.append(key)
-
-    chain_ref = {}
-    common_residues = []
-
-    # Iterate of all chains in the model in order to find all residues
-    for ref_chain in ref_model:
-        # Iterate of all residues in each model in order to find proper atoms
-        chain = ref_chain.id
-        if chain not in list(chain_ref.keys()):
-            chain_ref[chain] = []
-        for ref_res in ref_chain:
-            if ref_res.get_id()[0] != " ":  # Skip hetatm.
-                continue
-            resname = ref_res.get_id()[1]
-            key = str(resname) + chain
-
-            if key in chain_res[chain]:  # if key is present in sample
-                # print key
-                for a in atom_for_sup:
-                    atom_key = key + "." + a
-                    if a in ref_res and atom_key in atoms_def_in_both:
-                        chain_ref[chain].append(ref_res[a])
-                        common_residues.append(key)
-            if key in common_interface:
-                # Check if residue number ( .get_id() ) is in the list
-                # Append CA atom to list
-                for a in atom_for_sup:
-                    atom_key = key + "." + a
-                    if a in ref_res and atom_key in atoms_def_in_both:
-                        ref_atoms.append(ref_res[a])
-
-    # get the ones that are present in native
-    chain_sample = {}
-    for sample_chain in sample_model:
-        chain = sample_chain.id
-        if chain not in list(chain_sample.keys()):
-            chain_sample[chain] = []
-        for sample_res in sample_chain:
-            if sample_res.get_id()[0] != " ":  # Skip hetatm.
-                continue
-            resname = sample_res.get_id()[1]
-            key = str(resname) + chain
-            if key in common_residues:
-                for a in atom_for_sup:
-                    atom_key = key + "." + a
-                    if a in sample_res and atom_key in atoms_def_in_both:
-                        chain_sample[chain].append(sample_res[a])
-
-    assert len(ref_atoms) != 0, "length of native is zero"
-    assert len(sample_atoms) != 0, "length of model is zero"
-    assert len(ref_atoms) == len(sample_atoms), (
-        "Different number of atoms in native and model %d %d\n"
-        % (len(ref_atoms), len(sample_atoms))
-    )
-    """
-    ref_atoms = [atom for ref_res in ref_interface for atom in ref_res.get_atoms() if atom.id in atom_for_sup]
-    sample_atoms = [atom for sample_res in sample_interface for atom in sample_res.get_atoms() if atom.id in atom_for_sup]
+ 
+    #ref_atoms = [atom for ref_res in ref_interface for atom in ref_res.get_atoms() if atom.id in atom_for_sup]
+    #sample_atoms = [atom for sample_res in sample_interface for atom in sample_res.get_atoms() if atom.id in atom_for_sup]
     super_imposer = Bio.PDB.Superimposer()
-    super_imposer.set_atoms(ref_atoms, sample_atoms)
+    super_imposer.set_atoms(ref_interface_atoms, sample_interface_atoms)
     super_imposer.apply(sample_model.get_atoms())
 
     irms = super_imposer.rms
@@ -656,30 +515,52 @@ def get_fnat(model_structure, native_structure, group1, group2, nat_group1, nat_
     return (n_shared_contacts, n_non_native_contacts, n_native_contacts, n_model_contacts)
 
 
-def get_interface(model_structure, ref_structure, model_group1, model_group2, ref_group1, ref_group2, thr=0.5, all_atom=True):
+def get_interface_atoms(model_structure, ref_structure, model_group1, model_group2, ref_group1, ref_group2, thr=0.5, atom_types=["CA", "C", "N", "O"]):
     ref_interface = []
-    model_interface = []
-    atom_distances = get_distances_across_chains(ref_structure, ref_group1, ref_group2, all_atom)
-    if all_atom:
-        group_dic1 = get_group_dictionary(ref_structure, ref_group1)
-        group_dic2 = get_group_dictionary(ref_structure, ref_group2)
-        model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
-    else:
-        model_res_distances = atom_distances
+    mod_interface = []
+    atom_distances = get_distances_across_chains(ref_structure, ref_group1, ref_group2)
+    group_dic1 = get_group_dictionary(ref_structure, ref_group1)
+    group_dic2 = get_group_dictionary(ref_structure, ref_group2)
+    model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
 
-    positive_pairs = np.where(model_res_distances < thr)
+    interacting_pairs = np.where(model_res_distances < thr)
     ref_residues_group1 = [res for chain in ref_group1 for res in ref_structure[chain].get_residues()]
     ref_residues_group2 = [res for chain in ref_group2 for res in ref_structure[chain].get_residues()]
     
-    model_residues_group1 = [res for chain in model_group1 for res in model_structure[chain].get_residues()]
-    model_residues_group2 = [res for chain in model_group2 for res in model_structure[chain].get_residues()]
-    for pair in zip(positive_pairs[0], positive_pairs[1]):
-        ref_interface.append(ref_residues_group1[pair[0]])
-        ref_interface.append(ref_residues_group2[pair[1]])
+    mod_residues_group1 = [res for chain in model_group1 for res in model_structure[chain].get_residues()]
+    mod_residues_group2 = [res for chain in model_group2 for res in model_structure[chain].get_residues()]
+    
+    # get the native interfacial residues, along with the corresponding model residues, and select common backbone atoms
+    for i, j in zip(interacting_pairs[0], interacting_pairs[1]):
+        ref_res1_atoms = [atom for atom in ref_residues_group1[i].get_atoms()]
+        mod_res1_atoms = [atom for atom in mod_residues_group1[i].get_atoms()]
         
-        model_interface.append(model_residues_group1[pair[0]])
-        model_interface.append(model_residues_group2[pair[1]])
-    return model_interface, ref_interface
+        ref_res2_atoms = [atom for atom in ref_residues_group2[j].get_atoms()]
+        mod_res2_atoms = [atom for atom in mod_residues_group2[j].get_atoms()]
+        
+        atom_ids_in_ref_res1 = [atm.id for atm in ref_res1_atoms]
+        atom_ids_in_mod_res1 = [atm.id for atm in mod_res1_atoms]
+        
+        atom_ids_in_ref_res2 = [atm.id for atm in ref_res2_atoms]
+        atom_ids_in_mod_res2 = [atm.id for atm in mod_res2_atoms]
+        
+        # find which atoms are in both interfacial residues, and also in atom_types
+        atom_ids_in_ref_and_mod_res1 = set(atom_ids_in_ref_res1).intersection(atom_types).intersection(atom_ids_in_mod_res1)
+        indices_ref_res1 = [atom_ids_in_ref_res1.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res1]
+        indices_mod_res1 = [atom_ids_in_mod_res1.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res1]
+        
+        atom_ids_in_ref_and_mod_res2 = set(atom_ids_in_ref_res2).intersection(atom_types).intersection(atom_ids_in_mod_res2)
+        indices_ref_res2 = [atom_ids_in_ref_res2.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res2]
+        indices_mod_res2 = [atom_ids_in_mod_res2.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res2]
+        
+        for atom1, atom2 in zip(indices_ref_res1, indices_mod_res1):
+            ref_interface.append(ref_res1_atoms[atom1])
+            mod_interface.append(mod_res1_atoms[atom2])
+        for atom1, atom2 in zip(indices_ref_res2, indices_mod_res2):
+            ref_interface.append(ref_res2_atoms[atom1])
+            mod_interface.append(mod_res2_atoms[atom2])
+                
+    return mod_interface, ref_interface
 
 
 def main():
