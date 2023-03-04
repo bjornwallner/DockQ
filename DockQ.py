@@ -3,6 +3,7 @@
 import sys
 import os
 import re
+import copy
 import warnings
 import tempfile
 import itertools
@@ -200,66 +201,44 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     atom_for_sup = ["CA", "C", "N", "O"]
     if use_CA_only:
         atom_for_sup = ["CA"]
-
-    #cmd_fnat = exec_path + "/fnat " + model + " " + native + " 5 -all"
-    #cmd_interface = exec_path + "/fnat " + model + " " + native + " 10 -all"
-
+    
     threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     all_atom = not capri_peptide
-        #cmd_fnat = exec_path + "/fnat " + model + " " + native + " 4 -all"
-        #cmd_interface = exec_path + "/fnat " + model + " " + native + " 8 -cb"
     
     nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=threshold)
     fnat = nat_correct / nat_total
     fnonnat = nonnat_count / model_total
-    sample_interface_atoms, ref_interface_atoms = get_interface_atoms(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=interface_threshold, atom_types=atom_for_sup)
 
-    # Make a list of the atoms (in the structures) you wish to align.
-    # In this case we use CA atoms whose index is in the specified range
-    #ref_atoms = []
-    #sample_atoms = []
+    # get a copy of each structure containing shared backbone atoms
+    sample_model_backbone = copy.deepcopy(sample_model)
+    ref_model_backbone = copy.deepcopy(ref_model)
+    set_common_backbone_atoms(sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup)
 
-    common_interface = []
-
-    chain_res = {}
+    # Get interfacial atoms from reference, and corresponding atoms from sample
+    interacting_pairs = get_interacting_pairs(ref_model, nat_group1, nat_group2, thr=interface_threshold)
+    sample_interface_atoms, ref_interface_atoms = get_interface_atoms(interacting_pairs,
+                                                                      sample_model_backbone, 
+                                                                      ref_model_backbone, 
+                                                                      group1, 
+                                                                      group2, 
+                                                                      nat_group1, 
+                                                                      nat_group2)
  
-    #ref_atoms = [atom for ref_res in ref_interface for atom in ref_res.get_atoms() if atom.id in atom_for_sup]
-    #sample_atoms = [atom for sample_res in sample_interface for atom in sample_res.get_atoms() if atom.id in atom_for_sup]
     super_imposer = Bio.PDB.Superimposer()
     super_imposer.set_atoms(ref_interface_atoms, sample_interface_atoms)
     super_imposer.apply(sample_model.get_atoms())
 
     irms = super_imposer.rms
     print(irms)
-    (chain1, chain2) = list(chain_sample.keys())
+    
+    ref_group1_size = np.sum([len(ref_model[chain]) for chain in nat_group1])
+    ref_group2_size = np.sum([len(ref_model[chain]) for chain in nat_group2])
 
-    ligand_chain = chain1
-    receptor_chain = chain2
-    len1 = len(chain_res[chain1])
-    len2 = len(chain_res[chain2])
-
-    assert len1 != 0, "%s chain has zero length!\n" % chain1
-    assert len2 != 0, "%s chain has zero length!\n" % chain2
-
-    class1 = "ligand"
-    class2 = "receptor"
-    if len(chain_sample[chain1]) > len(chain_sample[chain2]):
-        receptor_chain = chain1
-        ligand_chain = chain2
-        class1 = "receptor"
-        class2 = "ligand"
-
+    class1 = "receptor" if ref_group1_size > ref_group2_size else "ligand"
+    class2 = "ligand" if class1 == "receptor" else "receptor"
+    
     # Set to align on receptor
-    assert len(chain_ref[receptor_chain]) == len(chain_sample[receptor_chain]), (
-        "Different number of atoms in native and model receptor (chain %c) %d %d\n"
-        % (
-            receptor_chain,
-            len(chain_ref[receptor_chain]),
-            len(chain_sample[receptor_chain]),
-        )
-    )
-
     super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
     super_imposer.apply(sample_model.get_atoms())
     receptor_chain_rms = super_imposer.rms
@@ -515,52 +494,61 @@ def get_fnat(model_structure, native_structure, group1, group2, nat_group1, nat_
     return (n_shared_contacts, n_non_native_contacts, n_native_contacts, n_model_contacts)
 
 
-def get_interface_atoms(model_structure, ref_structure, model_group1, model_group2, ref_group1, ref_group2, thr=0.5, atom_types=["CA", "C", "N", "O"]):
+def get_interacting_pairs(model, group1, group2, thr=0.5):
+    atom_distances = get_distances_across_chains(model, group1, group2)
+    group_dic1 = get_group_dictionary(model, group1)
+    group_dic2 = get_group_dictionary(model, group2)
+    model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
+    interacting_pairs = np.where(model_res_distances < thr)
+    
+    return interacting_pairs
+    
+def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_group1, model_group2, ref_group1, ref_group2):
     ref_interface = []
     mod_interface = []
-    atom_distances = get_distances_across_chains(ref_structure, ref_group1, ref_group2)
-    group_dic1 = get_group_dictionary(ref_structure, ref_group1)
-    group_dic2 = get_group_dictionary(ref_structure, ref_group2)
-    model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
 
-    interacting_pairs = np.where(model_res_distances < thr)
-    ref_residues_group1 = [res for chain in ref_group1 for res in ref_structure[chain].get_residues()]
-    ref_residues_group2 = [res for chain in ref_group2 for res in ref_structure[chain].get_residues()]
+    ref_residues_group1 = [res for chain in ref_group1 for res in ref_backbone[chain].get_residues()]
+    ref_residues_group2 = [res for chain in ref_group2 for res in ref_backbone[chain].get_residues()]
     
-    mod_residues_group1 = [res for chain in model_group1 for res in model_structure[chain].get_residues()]
-    mod_residues_group2 = [res for chain in model_group2 for res in model_structure[chain].get_residues()]
+    mod_residues_group1 = [res for chain in model_group1 for res in model_backbone[chain].get_residues()]
+    mod_residues_group2 = [res for chain in model_group2 for res in model_backbone[chain].get_residues()]
     
     # get the native interfacial residues, along with the corresponding model residues, and select common backbone atoms
     for i, j in zip(interacting_pairs[0], interacting_pairs[1]):
-        ref_res1_atoms = [atom for atom in ref_residues_group1[i].get_atoms()]
-        mod_res1_atoms = [atom for atom in mod_residues_group1[i].get_atoms()]
+        ref_res1_atoms = ref_residues_group1[i].get_atoms()
+        mod_res1_atoms = mod_residues_group1[i].get_atoms()
         
-        ref_res2_atoms = [atom for atom in ref_residues_group2[j].get_atoms()]
-        mod_res2_atoms = [atom for atom in mod_residues_group2[j].get_atoms()]
+        ref_res2_atoms = ref_residues_group1[j].get_atoms()
+        mod_res2_atoms = mod_residues_group1[j].get_atoms()
         
-        atom_ids_in_ref_res1 = [atm.id for atm in ref_res1_atoms]
-        atom_ids_in_mod_res1 = [atm.id for atm in mod_res1_atoms]
-        
-        atom_ids_in_ref_res2 = [atm.id for atm in ref_res2_atoms]
-        atom_ids_in_mod_res2 = [atm.id for atm in mod_res2_atoms]
-        
-        # find which atoms are in both interfacial residues, and also in atom_types
-        atom_ids_in_ref_and_mod_res1 = set(atom_ids_in_ref_res1).intersection(atom_types).intersection(atom_ids_in_mod_res1)
-        indices_ref_res1 = [atom_ids_in_ref_res1.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res1]
-        indices_mod_res1 = [atom_ids_in_mod_res1.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res1]
-        
-        atom_ids_in_ref_and_mod_res2 = set(atom_ids_in_ref_res2).intersection(atom_types).intersection(atom_ids_in_mod_res2)
-        indices_ref_res2 = [atom_ids_in_ref_res2.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res2]
-        indices_mod_res2 = [atom_ids_in_mod_res2.index(atm_id) for atm_id in atom_ids_in_ref_and_mod_res2]
-        
-        for atom1, atom2 in zip(indices_ref_res1, indices_mod_res1):
-            ref_interface.append(ref_res1_atoms[atom1])
-            mod_interface.append(mod_res1_atoms[atom2])
-        for atom1, atom2 in zip(indices_ref_res2, indices_mod_res2):
-            ref_interface.append(ref_res2_atoms[atom1])
-            mod_interface.append(mod_res2_atoms[atom2])
+        for atom1, atom2 in zip(ref_res1_atoms, mod_res1_atoms):
+            ref_interface.append(atom1)
+            mod_interface.append(atom2)
+            
+        for atom1, atom2 in zip(ref_res2_atoms, mod_res2_atoms):
+            ref_interface.append(atom1)
+            mod_interface.append(atom2)
                 
     return mod_interface, ref_interface
+
+
+def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]):
+    # model and reference should have the same number of amino acids and be aligned
+    for mod_res, ref_res in zip(model.get_residues(), reference.get_residues()):
+        mod_atoms = [atom for atom in mod_res.get_atoms()]
+        ref_atoms = [atom for atom in ref_res.get_atoms()]
+        
+        atom_ids_in_mod_res = [atm.id for atm in mod_atoms]
+        atom_ids_in_ref_res = [atm.id for atm in ref_atoms]
+        
+        atom_ids_in_ref_and_mod_res = set(atom_ids_in_mod_res).intersection(atom_types).intersection(atom_ids_in_ref_res)
+        
+        # whatever atom is not in the shared list, remove it from the both structures
+        for atom_id in set(atom_ids_in_mod_res).difference(atom_ids_in_ref_and_mod_res):
+            mod_res.detach_child(atom_id)
+        
+        for atom_id in set(atom_ids_in_ref_res).difference(atom_ids_in_ref_and_mod_res):
+            ref_res.detach_child(atom_id)
 
 
 def main():
@@ -654,11 +642,17 @@ def main():
             aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
             fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
 
+
+        
         #io = Bio.PDB.PDBIO()
         #io.set_structure(model_structure)
         #io.save("model_structure.pdb")
-        #io.set_structure(native_structure)
+        #io.set_structure(model_structure)
         #io.save("native_structure.pdb")
+        #io.set_structure(model_structure_backbone)
+        #io.save("model_structure_backbone.pdb")
+        #io.set_structure(model_structure_backbone)
+        #io.save("native_structure_backbone.pdb")
         
         #native = make_two_chain_pdb_perm(native, nat_group1, nat_group2)
         #files_to_clean.append(native)
