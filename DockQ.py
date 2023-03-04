@@ -104,37 +104,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def parse_fnat(fnat_out):
-    fnat = -1
-    nat_correct = -1
-    nat_total = -1
-    fnonnat = -1
-    nonnat_count = -1
-    model_total = -1
-    inter = []
-    for line in fnat_out.split("\n"):
-        line = line.rstrip("\n")
-        match = re.search(r"NATIVE: (\d+)(\w) (\d+)(\w)", line)
-        if re.search(r"^Fnat", line):
-            list = line.split(" ")
-            fnat = float(list[3])
-            nat_correct = int(list[1])
-            nat_total = int(list[2])
-        elif re.search(r"^Fnonnat", line):
-            list = line.split(" ")
-            fnonnat = float(list[3])
-            nonnat_count = int(list[1])
-            model_total = int(list[2])
-        elif match:
-            res1 = match.group(1)
-            chain1 = match.group(2)
-            res2 = match.group(3)
-            chain2 = match.group(4)
-            inter.append(res1 + chain1)
-            inter.append(res2 + chain2)
-    return (fnat, nat_correct, nat_total, fnonnat, nonnat_count, model_total, inter)
-
-
 def capri_class(fnat, iRMS, LRMS, capri_peptide=False):
     if capri_peptide:
 
@@ -196,7 +165,6 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
 
 
 def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, use_CA_only=False, capri_peptide=False):
-
     #exec_path = os.path.dirname(os.path.abspath(__file__))
     atom_for_sup = ["CA", "C", "N", "O"]
     if use_CA_only:
@@ -230,14 +198,14 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     super_imposer.apply(sample_model_backbone.get_atoms())
 
     irms = super_imposer.rms
-    #print(irms)
+    print(fnat, irms)
     
     ref_group1_size = np.sum([len(ref_model[chain]) for chain in nat_group1])
     ref_group2_size = np.sum([len(ref_model[chain]) for chain in nat_group2])
 
     receptor_chains = (nat_group1, group1) if ref_group1_size > ref_group2_size else (nat_group2, group2)
     ligand_chains = (nat_group1, group1) if ref_group1_size <= ref_group2_size else (nat_group2, group2)
-    
+    print(ligand_chains)
     class1, class2 = ("receptor", "ligand") if ref_group1_size > ref_group2_size else ("ligand", "receptor")
         
     receptor_atoms_native = [atom for chain in receptor_chains[0] for atom in ref_model_backbone[chain].get_atoms()]
@@ -280,79 +248,6 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     info["class2"] = class2
 
     return info
-
-
-def get_pdb_chains(pdb):
-    pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-    pdb_struct = pdb_parser.get_structure("reference", pdb)[0]
-    chain = []
-    for c in pdb_struct:
-        chain.append(c.id)
-    return chain
-
-
-# ATOM   3312  CA
-# ATOM   3315  CB  ALA H 126     -21.802  31.674  73.597  1.00 58.05           C
-
-
-def make_two_chain_pdb(pdb, group1, group2):  # renumber from 1
-    pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-    pdb_struct = pdb_parser.get_structure("reference", pdb)[0]
-    for c in pdb_struct:
-        if c.id in group1:
-            c.id = "A"
-        if c.id in group2:
-            c.id = "B"
-    (code, outfile) = tempfile.mkstemp()
-    io = Bio.PDB.PDBIO()
-    io.set_structure(pdb_struct)
-    io.save(outfile)
-    exec_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-    cmd = exec_path + "/scripts/renumber_pdb.pl " + outfile
-    os.system(cmd)
-    os.remove(outfile)
-    return outfile + ".renum"
-
-
-def change_chain(pdb_string, chain):
-    new_str = []
-    for line in pdb_string:
-        s = list(line)
-        s[21] = chain
-        new_str.append("".join(s))
-    return "\n".join(new_str)
-
-
-def make_two_chain_pdb_perm(pdb, group1, group2):  # not yet ready
-    pdb_chains = {}
-    f = open(pdb)
-    for line in f.readlines():
-        if line[0:4] == "ATOM":
-            #       s=list(line);
-            # print line
-            chain = line[21]
-            atom = line[13:16]
-            resnum = int(line[22:26])
-            #        print atom + ':' + str(resnum) +':'
-            if chain not in pdb_chains:
-                pdb_chains[chain] = []
-            pdb_chains[chain].append(line)
-
-    f.close()
-    (code, outfile) = tempfile.mkstemp()
-    f = open(outfile, "w")
-    for c in group1:
-        #   print pdb_chains[c]
-        f.write(change_chain(pdb_chains[c], "A"))
-    f.write("TER\n")
-    for c in group2:
-        f.write(change_chain(pdb_chains[c], "B"))
-    f.close()
-    exec_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-    cmd = exec_path + "/scripts/renumber_pdb.pl " + outfile
-    os.system(cmd)
-    os.remove(outfile)
-    return outfile + ".renum"
 
 
 def get_group_dictionary(model, group):
@@ -546,7 +441,6 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
 
 
 def main():
-
     args = parse_args()
 
     bio_ver = 1.61
@@ -636,20 +530,6 @@ def main():
             aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
             fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
 
-
-        
-        #io = Bio.PDB.PDBIO()
-        #io.set_structure(model_structure)
-        #io.save("model_structure.pdb")
-        #io.set_structure(model_structure)
-        #io.save("native_structure.pdb")
-        #io.set_structure(model_structure_backbone)
-        #io.save("model_structure_backbone.pdb")
-        #io.set_structure(model_structure_backbone)
-        #io.save("native_structure_backbone.pdb")
-        
-        #native = make_two_chain_pdb_perm(native, nat_group1, nat_group2)
-        #files_to_clean.append(native)
         pe = 0
         if args.perm1 or args.perm2:
             best_DockQ = -1
@@ -743,23 +623,8 @@ def main():
             if not args.quiet:
                 print(best_info)
         else:
-            model_renum = make_two_chain_pdb_perm(model, group1, group2)
-            model_fixed = model_renum
-            if not args.no_needle:
-                fix_numbering_cmd = (
-                    fix_numbering + " " + model_renum + " " + native + " > /dev/null"
-                )
-                model_fixed = model_renum + ".fixed"
-                os.system(fix_numbering_cmd)
-                os.remove(model_renum)
-                if not os.path.exists(model_fixed):
-                    print(
-                        "If you are sure the residues are identical you can use the options -no_needle"
-                    )
-                    sys.exit()
-            info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
 
-            os.remove(model_fixed)
+            info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
 
     else:
         info = calc_DockQ(
