@@ -227,40 +227,34 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
  
     super_imposer = Bio.PDB.Superimposer()
     super_imposer.set_atoms(ref_interface_atoms, sample_interface_atoms)
-    super_imposer.apply(sample_model.get_atoms())
+    super_imposer.apply(sample_model_backbone.get_atoms())
 
     irms = super_imposer.rms
-    print(irms)
+    #print(irms)
     
     ref_group1_size = np.sum([len(ref_model[chain]) for chain in nat_group1])
     ref_group2_size = np.sum([len(ref_model[chain]) for chain in nat_group2])
 
-    class1 = "receptor" if ref_group1_size > ref_group2_size else "ligand"
-    class2 = "ligand" if class1 == "receptor" else "receptor"
+    receptor_chains = (nat_group1, group1) if ref_group1_size > ref_group2_size else (nat_group2, group2)
+    ligand_chains = (nat_group1, group1) if ref_group1_size <= ref_group2_size else (nat_group2, group2)
     
+    class1, class2 = ("receptor", "ligand") if ref_group1_size > ref_group2_size else ("ligand", "receptor")
+        
+    receptor_atoms_native = [atom for chain in receptor_chains[0] for atom in ref_model_backbone[chain].get_atoms()]
+    receptor_atoms_sample = [atom for chain in receptor_chains[1] for atom in sample_model_backbone[chain].get_atoms()]
     # Set to align on receptor
-    super_imposer.set_atoms(chain_ref[receptor_chain], chain_sample[receptor_chain])
-    super_imposer.apply(sample_model.get_atoms())
+    super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
+    super_imposer.apply(sample_model_backbone.get_atoms())
     receptor_chain_rms = super_imposer.rms
 
-    assert len(chain_ref[ligand_chain]) != 0 or len(chain_sample[ligand_chain]) != 0, (
-        "Zero number of equivalent atoms in native and model ligand (chain %s) %d %d.\nCheck that the residue numbers in model and native is consistent\n"
-        % (ligand_chain, len(chain_ref[ligand_chain]), len(chain_sample[ligand_chain]))
-    )
-
-    assert len(chain_ref[ligand_chain]) == len(chain_sample[ligand_chain]), (
-        "Different number of atoms in native and model ligand (chain %c) %d %d\n"
-        % (ligand_chain, len(chain_ref[ligand_chain]), len(chain_sample[ligand_chain]))
-    )
-
-    coord1 = np.array([atom.coord for atom in chain_ref[ligand_chain]])
-    coord2 = np.array([atom.coord for atom in chain_sample[ligand_chain]])
+    coord1 = np.array([atom.coord for chain in ligand_chains[0] for atom in ref_model_backbone[chain].get_atoms()])
+    coord2 = np.array([atom.coord for chain in ligand_chains[1] for atom in sample_model_backbone[chain].get_atoms()])
 
     sup = SVDSuperimposer()
     Lrms = sup._rms(
         coord1, coord2
     )  # using the private _rms function which does not superimpose
-
+    #print(Lrms)
     DockQ = (
         float(fnat)
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
@@ -278,10 +272,10 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     info["nonnat_count"] = nonnat_count
     info["model_total"] = model_total
 
-    info["chain1"] = chain1
-    info["chain2"] = chain2
-    info["len1"] = len1
-    info["len2"] = len2
+    info["chain1"] = " ".join(group1)
+    info["chain2"] = " ".join(group2)
+    info["len1"] = ref_group1_size
+    info["len2"] = ref_group2_size
     info["class1"] = class1
     info["class2"] = class2
 
