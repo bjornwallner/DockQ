@@ -19,40 +19,88 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 warnings.simplefilter("ignore", BiopythonWarning)
 
 
-def align_sequence_features(model_sequence, native_sequence, native_numbering):
-    """Realigns sequence-specific features between PDB structures and antigen sequences
-    For example, if from_sequence (the sequence for which features have
-    been calculated) is missing an amino acid but contains more amino acids
-    at the C terminal than the to_sequence, the features will be assigned
-    as in this schematic:
-    
-    native_numbering            23456789
-    native_sequence_aligned    -WEKLAPTG
-    model_sequence_aligned     DWEKLAPT-
-    model_numbering            12345678-1
-    Wherever it is not possible to assign features (missing AA in native_sequence)
-    a pseudovalue of -1 will be assigned instead
-    """
-    alignment = pairwise2.align.localms(
-        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
-    )[0]
-    model_sequence_aligned = np.array(list(alignment.seqA))
-    native_sequence_aligned = np.array(list(alignment.seqB))
-
-    model_indexes = np.where(model_sequence_aligned != "-")[0]
-    native_indexes = np.where(native_sequence_aligned != "-")[0]
-    alignment_length = np.sum(
-        (model_sequence_aligned != "-") & (native_sequence_aligned != "-")
+def parse_args():
+    parser = ArgumentParser(
+        description="DockQ - Quality measure for protein-protein docking models"
+    )
+    parser.add_argument(
+        "model", metavar="<model>", type=str, help="path to model file"
+    )
+    parser.add_argument(
+        "native", metavar="<native>", type=str, help="path to native file"
+    )
+    parser.add_argument(
+        "-capri_peptide",
+        default=False,
+        action="store_true",
+        help="use version for capri_peptide (DockQ cannot not be trusted for this setting)",
+    )
+    parser.add_argument(
+        "-short", default=False, action="store_true", help="short output"
+    )
+    parser.add_argument(
+        "-verbose", default=False, action="store_true", help="talk a lot!"
+    )
+    parser.add_argument(
+        "-quiet", default=False, action="store_true", help="keep quiet!"
+    )
+    parser.add_argument(
+        "-useCA", default=False, action="store_true", help="use CA instead of backbone"
+    )
+    parser.add_argument(
+        "-skip_check",
+        default=False,
+        action="store_true",
+        help="skip initial check fo speed up on two chain examples",
+    )
+    parser.add_argument(
+        "-no_needle",
+        default=False,
+        action="store_true",
+        help="do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical",
+    )
+    parser.add_argument(
+        "-perm1",
+        default=False,
+        action="store_true",
+        help="use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations",
+    )
+    parser.add_argument(
+        "-perm2",
+        default=False,
+        action="store_true",
+        help="use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations",
+    )
+    parser.add_argument(
+        "-model_chain1",
+        metavar="model_chain1",
+        type=str,
+        nargs="+",
+        help="pdb chain order to group together partner 1",
+    )
+    parser.add_argument(
+        "-model_chain2",
+        metavar="model_chain2",
+        type=str,
+        nargs="+",
+        help="pdb chain order to group together partner 2 (complement to partner 1 if undef)",
+    )
+    parser.add_argument(
+        "-native_chain1",
+        metavar="native_chain1",
+        type=str,
+        nargs="+",
+        help="pdb chain order to group together from native partner 1",
+    )
+    parser.add_argument(
+        "-native_chain2",
+        metavar="native_chain2",
+        type=str,
+        nargs="+",
+        help="pdb chain order to group together from native partner 2 (complement to partner 1 if undef)",
     )
 
-    aligned_numbering = np.empty(len(model_indexes), dtype=object)
-    for i in range(len(model_indexes)):
-        aligned_numbering[i] = ("-", -1)
-    aligned_numbering[native_indexes[:alignment_length]] = native_numbering[
-        model_indexes[:alignment_length]
-    ]
-
-    return aligned_numbering
+    return parser.parse_args()
 
 
 def parse_fnat(fnat_out):
@@ -87,7 +135,6 @@ def parse_fnat(fnat_out):
 
 
 def capri_class(fnat, iRMS, LRMS, capri_peptide=False):
-
     if capri_peptide:
 
         if fnat < 0.2 or (LRMS > 5.0 and iRMS > 2.0):
@@ -131,7 +178,6 @@ def capri_class(fnat, iRMS, LRMS, capri_peptide=False):
 
 
 def capri_class_DockQ(DockQ, capri_peptide=False):
-
     if capri_peptide:
         return "Undef for capri_peptides"
 
@@ -148,56 +194,63 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
         return "Undef"
 
 
-def calc_DockQ(model, native, use_CA_only=False, capri_peptide=False):
+def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, use_CA_only=False, capri_peptide=False):
 
-    exec_path = os.path.dirname(os.path.abspath(__file__))
+    #exec_path = os.path.dirname(os.path.abspath(__file__))
     atom_for_sup = ["CA", "C", "N", "O"]
     if use_CA_only:
         atom_for_sup = ["CA"]
 
-    cmd_fnat = exec_path + "/fnat " + model + " " + native + " 5 -all"
-    cmd_interface = exec_path + "/fnat " + model + " " + native + " 10 -all"
+    #cmd_fnat = exec_path + "/fnat " + model + " " + native + " 5 -all"
+    #cmd_interface = exec_path + "/fnat " + model + " " + native + " 10 -all"
 
-    if capri_peptide:
-        cmd_fnat = exec_path + "/fnat " + model + " " + native + " 4 -all"
-        cmd_interface = exec_path + "/fnat " + model + " " + native + " 8 -cb"
+    threshold = 4.0 if capri_peptide else 5.0
+    interface_threshold = 8.0 if capri_peptide else 10.0
+    all_atom = not capri_peptide
+        #cmd_fnat = exec_path + "/fnat " + model + " " + native + " 4 -all"
+        #cmd_interface = exec_path + "/fnat " + model + " " + native + " 8 -cb"
+    
+    nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=threshold)
+    fnat = nat_correct / nat_total
+    fnonnat = nonnat_count / model_total
+    sample_interface, ref_interface = get_interface(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=interface_threshold, all_atom=all_atom)
+    #fnat_out = os.popen(cmd_fnat).read()
 
-    fnat_out = os.popen(cmd_fnat).read()
+    #(
+        #fnat,
+        #nat_correct,
+        #nat_total,
+        #fnonnat,
+        #nonnat_count,
+        #model_total,
+        #interface5A,
+    #) = parse_fnat(fnat_out)
+    #assert fnat != -1, "Error running cmd: %s\n" % (cmd_fnat)
+    #inter_out = os.popen(cmd_interface).read()
 
-    (
-        fnat,
-        nat_correct,
-        nat_total,
-        fnonnat,
-        nonnat_count,
-        model_total,
-        interface5A,
-    ) = parse_fnat(fnat_out)
-    assert fnat != -1, "Error running cmd: %s\n" % (cmd_fnat)
-    inter_out = os.popen(cmd_interface).read()
+    #(
+        #fnat_bb,
+        #nat_correct_bb,
+        #nat_total_bb,
+        #fnonnat_bb,
+        #nonnat_count_bb,
+        #model_total_bb,
+        #interface,
+    #) = parse_fnat(inter_out)
+    #assert fnat_bb != -1, "Error running cmd: %s\n" % (cmd_interface)
 
-    (
-        fnat_bb,
-        nat_correct_bb,
-        nat_total_bb,
-        fnonnat_bb,
-        nonnat_count_bb,
-        model_total_bb,
-        interface,
-    ) = parse_fnat(inter_out)
-    assert fnat_bb != -1, "Error running cmd: %s\n" % (cmd_interface)
-
+    
     # Start the parser
-    pdb_parser = Bio.PDB.PDBParser(QUIET=True)
+    #pdb_parser = Bio.PDB.PDBParser(QUIET=True)
 
     # Get the structures
-    ref_structure = pdb_parser.get_structure("reference", native)
-    sample_structure = pdb_parser.get_structure("model", model)
+    #ref_structure = pdb_parser.get_structure("reference", native)
+    #sample_structure = pdb_parser.get_structure("model", model)
 
     # Use the first model in the pdb-files for alignment
     # Change the number 0 if you want to align to another structure
-    ref_model = ref_structure[0]
-    sample_model = sample_structure[0]
+    #ref_model = ref_structure[0]
+    #sample_model = sample_structure[0]
 
     # Make a list of the atoms (in the structures) you wish to align.
     # In this case we use CA atoms whose index is in the specified range
@@ -207,7 +260,7 @@ def calc_DockQ(model, native, use_CA_only=False, capri_peptide=False):
     common_interface = []
 
     chain_res = {}
-
+    """
     # find atoms common in both sample and native
     atoms_def_sample = []
     atoms_def_in_both = []
@@ -288,8 +341,6 @@ def calc_DockQ(model, native, use_CA_only=False, capri_peptide=False):
                     if a in ref_res and atom_key in atoms_def_in_both:
                         ref_atoms.append(ref_res[a])
 
-    print(np.asarray([r.get_coord() for r in ref_atoms]).shape)
-
     # get the ones that are present in native
     chain_sample = {}
     for sample_chain in sample_model:
@@ -313,13 +364,15 @@ def calc_DockQ(model, native, use_CA_only=False, capri_peptide=False):
         "Different number of atoms in native and model %d %d\n"
         % (len(ref_atoms), len(sample_atoms))
     )
-
+    """
+    ref_atoms = [atom for ref_res in ref_interface for atom in ref_res.get_atoms() if atom.id in atom_for_sup]
+    sample_atoms = [atom for sample_res in sample_interface for atom in sample_res.get_atoms() if atom.id in atom_for_sup]
     super_imposer = Bio.PDB.Superimposer()
     super_imposer.set_atoms(ref_atoms, sample_atoms)
     super_imposer.apply(sample_model.get_atoms())
 
     irms = super_imposer.rms
-
+    print(irms)
     (chain1, chain2) = list(chain_sample.keys())
 
     ligand_chain = chain1
@@ -470,89 +523,168 @@ def make_two_chain_pdb_perm(pdb, group1, group2):  # not yet ready
     return outfile + ".renum"
 
 
+def get_group_dictionary(model, group):
+    n_atoms_per_residue = {}
+    for chain in group:
+        for residue in model[chain].get_residues():
+            n_atoms_per_residue[(chain, residue.id[1])] = len(
+                residue.get_unpacked_list()
+            )
+    return n_atoms_per_residue
+
+
+def align_model_to_native(model_structure, native_structure, model_chain, native_chain):
+    model_sequence = "".join(
+        seq1(residue.get_resname()) for residue in model_structure[model_chain].get_residues()
+    )
+    
+    native_sequence = "".join(
+        seq1(residue.get_resname()) for residue in native_structure[native_chain].get_residues()
+    )
+  
+    native_numbering = np.array(
+        [residue.id[1] for residue in native_structure[native_chain].get_residues()]
+    )
+    aligned_model_sequence = align_sequence_features(
+        model_sequence, native_sequence, native_numbering
+    )
+
+    return list(aligned_model_sequence)
+
+
+def remove_extra_chains(model, chains_to_keep):
+    for chain in model.get_chains():
+        if chain.id not in chains_to_keep:
+            model.detach_child(chain.id)
+    return model
+
+
+def fix_chain_residues(model, chain, aligned_chain_sequence):
+    residues_to_delete = []
+    
+    for residue, aligned_residue in zip(model[chain].get_residues(), aligned_chain_sequence):
+        if aligned_residue == -1: # gap residue: remove from structure
+            residues_to_delete.append(residue.get_full_id())
+        else:
+            residue.id = (" ", aligned_residue, " ")
+
+    for _, _, _, res in residues_to_delete:
+        model[chain].detach_child(res)
+
+
+def align_sequence_features(model_sequence, native_sequence, native_numbering):
+    """Realigns sequence-specific features between PDB structures and antigen sequences
+    For example, if from_sequence (the sequence for which features have
+    been calculated) is missing an amino acid but contains more amino acids
+    at the C terminal than the to_sequence, the features will be assigned
+    as in this schematic:
+    
+    native_numbering            23456789
+    native_sequence_aligned    -WEKLAPTG
+    model_sequence_aligned     DWEKLAPT-
+    model_numbering            12345678-1
+    Wherever it is not possible to assign features (missing AA in native_sequence)
+    a pseudovalue of -1 will be assigned instead
+    """
+    alignment = pairwise2.align.localms(
+        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
+    )[0]
+    model_sequence_aligned = np.array(list(alignment.seqA))
+    native_sequence_aligned = np.array(list(alignment.seqB))
+
+    model_indexes = np.where(model_sequence_aligned != "-")[0]
+    native_indexes = np.where(native_sequence_aligned != "-")[0]
+    alignment_length = np.sum(
+        (model_sequence_aligned != "-") & (native_sequence_aligned != "-")
+    )
+
+    aligned_numbering = np.zeros(len(model_indexes), dtype=int) - 1
+
+    aligned_numbering[native_indexes[:alignment_length]] = native_numbering[
+        model_indexes[:alignment_length]
+    ]
+
+    return aligned_numbering
+
+
+def get_distances_across_chains(model, group1, group2, all_atom=True):
+    
+    if all_atom:
+        model_A_atoms = np.asarray([atom.get_coord() for chain in group1 for res in model[chain].get_residues() for atom in res.get_atoms()])
+        model_B_atoms = np.asarray([atom.get_coord() for chain in group2 for res in model[chain].get_residues() for atom in res.get_atoms()])
+    else:
+        model_A_atoms = np.asarray([res["CB"].get_coord() if "CB" in res else res["CA"].get_coord() for chain in group1 for res in model[chain].get_residues()])
+        model_B_atoms = np.asarray([res["CB"].get_coord() if "CB" in res else res["CA"].get_coord() for chain in group2 for res in model[chain].get_residues()])
+
+    distances = np.sqrt(((model_A_atoms[:, None] - model_B_atoms[None, :]) ** 2).sum(-1))
+    return distances
+
+def group_atom_into_res_distances(atom_distances, group_dic1, group_dic2):
+    res_distances = np.zeros((len(group_dic1), len(group_dic2)))
+    
+    cum_i_atoms = 0
+    for i, key1 in enumerate(group_dic1.keys()):
+        i_atoms = group_dic1[key1]
+        cum_j_atoms = 0
+        for j, key2 in enumerate(group_dic2.keys()):
+            j_atoms = group_dic2[key2]
+            res_distances[i, j] = np.min(atom_distances[cum_i_atoms:cum_i_atoms+i_atoms, cum_j_atoms:cum_j_atoms+j_atoms])
+            cum_j_atoms += j_atoms    
+        cum_i_atoms += i_atoms
+    return res_distances
+
+
+def get_fnat(model_structure, native_structure, group1, group2, nat_group1, nat_group2, thr=5.0):
+    # get information about how many atoms correspond to each amino acid in each group of chains
+    model_group_dic1 = get_group_dictionary(model_structure, group1)
+    model_group_dic2 = get_group_dictionary(model_structure, group2)
+    native_group_dic1 = get_group_dictionary(native_structure, nat_group1)
+    native_group_dic2 = get_group_dictionary(native_structure, nat_group2)
+    
+    model_atom_distances = get_distances_across_chains(model_structure, group1, group2)
+    native_atom_distances = get_distances_across_chains(native_structure, nat_group1, nat_group2)
+
+    model_res_distances = group_atom_into_res_distances(model_atom_distances, model_group_dic1, model_group_dic2)
+    native_res_distances = group_atom_into_res_distances(native_atom_distances, native_group_dic1, native_group_dic2)
+
+    native_contacts = native_res_distances < thr
+    model_contacts = model_res_distances < thr
+    n_native_contacts = np.sum(native_contacts)
+    n_model_contacts = np.sum(model_contacts)
+    n_shared_contacts = np.sum(model_contacts * native_contacts)
+    n_non_native_contacts = np.sum(model_contacts * (1 - native_contacts))
+    return (n_shared_contacts, n_non_native_contacts, n_native_contacts, n_model_contacts)
+
+
+def get_interface(model_structure, ref_structure, model_group1, model_group2, ref_group1, ref_group2, thr=0.5, all_atom=True):
+    ref_interface = []
+    model_interface = []
+    atom_distances = get_distances_across_chains(ref_structure, ref_group1, ref_group2, all_atom)
+    if all_atom:
+        group_dic1 = get_group_dictionary(ref_structure, ref_group1)
+        group_dic2 = get_group_dictionary(ref_structure, ref_group2)
+        model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
+    else:
+        model_res_distances = atom_distances
+
+    positive_pairs = np.where(model_res_distances < thr)
+    ref_residues_group1 = [res for chain in ref_group1 for res in ref_structure[chain].get_residues()]
+    ref_residues_group2 = [res for chain in ref_group2 for res in ref_structure[chain].get_residues()]
+    
+    model_residues_group1 = [res for chain in model_group1 for res in model_structure[chain].get_residues()]
+    model_residues_group2 = [res for chain in model_group2 for res in model_structure[chain].get_residues()]
+    for pair in zip(positive_pairs[0], positive_pairs[1]):
+        ref_interface.append(ref_residues_group1[pair[0]])
+        ref_interface.append(ref_residues_group2[pair[1]])
+        
+        model_interface.append(model_residues_group1[pair[0]])
+        model_interface.append(model_residues_group2[pair[1]])
+    return model_interface, ref_interface
+
+
 def main():
 
-    parser = ArgumentParser(
-        description="DockQ - Quality measure for protein-protein docking models"
-    )
-    parser.add_argument(
-        "model", metavar="<model>", type=str, nargs=1, help="path to model file"
-    )
-    parser.add_argument(
-        "native", metavar="<native>", type=str, nargs=1, help="path to native file"
-    )
-    parser.add_argument(
-        "-capri_peptide",
-        default=False,
-        action="store_true",
-        help="use version for capri_peptide (DockQ cannot not be trusted for this setting)",
-    )
-    parser.add_argument(
-        "-short", default=False, action="store_true", help="short output"
-    )
-    parser.add_argument(
-        "-verbose", default=False, action="store_true", help="talk a lot!"
-    )
-    parser.add_argument(
-        "-quiet", default=False, action="store_true", help="keep quiet!"
-    )
-    parser.add_argument(
-        "-useCA", default=False, action="store_true", help="use CA instead of backbone"
-    )
-    parser.add_argument(
-        "-skip_check",
-        default=False,
-        action="store_true",
-        help="skip initial check fo speed up on two chain examples",
-    )
-    parser.add_argument(
-        "-no_needle",
-        default=False,
-        action="store_true",
-        help="do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical",
-    )
-    parser.add_argument(
-        "-perm1",
-        default=False,
-        action="store_true",
-        help="use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations",
-    )
-    parser.add_argument(
-        "-perm2",
-        default=False,
-        action="store_true",
-        help="use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations",
-    )
-    parser.add_argument(
-        "-model_chain1",
-        metavar="model_chain1",
-        type=str,
-        nargs="+",
-        help="pdb chain order to group together partner 1",
-    )
-    parser.add_argument(
-        "-model_chain2",
-        metavar="model_chain2",
-        type=str,
-        nargs="+",
-        help="pdb chain order to group together partner 2 (complement to partner 1 if undef)",
-    )
-    parser.add_argument(
-        "-native_chain1",
-        metavar="native_chain1",
-        type=str,
-        nargs="+",
-        help="pdb chain order to group together from native partner 1",
-    )
-    parser.add_argument(
-        "-native_chain2",
-        metavar="native_chain2",
-        type=str,
-        nargs="+",
-        help="pdb chain order to group together from native partner 2 (complement to partner 1 if undef)",
-    )
-
-    args = parser.parse_args()
+    args = parse_args()
 
     bio_ver = 1.61
     if float(Bio.__version__) < bio_ver:
@@ -564,8 +696,8 @@ def main():
 
     exec_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     fix_numbering = exec_path + "/scripts/fix_numbering.pl"
-    model = args.model[0]
-    native = args.native[0]
+    model = args.model
+    native = args.native
     use_CA_only = args.useCA
     capri_peptide = args.capri_peptide
 
@@ -632,88 +764,23 @@ def main():
             group1 = nat_group1
             group2 = nat_group2
 
-        nat_group1_info = {}
-        nat_group2_info = {}
-        native_sequence1 = ""
-        native_sequence2 = ""
-        for chain in nat_group1:
-            for residue in native_structure[chain].get_residues():
-                nat_group1_info[(chain, residue.id[1])] = len(
-                    residue.get_unpacked_list()
-                )
-                native_sequence1 = native_sequence1 + seq1(residue.get_resname())
 
-        for chain in nat_group2:
-            for residue in native_structure[chain].get_residues():
-                nat_group2_info[(chain, residue.id[1])] = len(
-                    residue.get_unpacked_list()
-                )
-                native_sequence2 = native_sequence2 + seq1(residue.get_resname())
+        model_structure = remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
+        native_structure = remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
+        
+        # realign each model chain against the corresponding native chain
+        for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
+            aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
+            fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
 
-        model_sequence1 = "".join(
-            seq1(residue.get_resname())
-            for chain in group1
-            for residue in model_structure[chain].get_residues()
-        )
-        model_sequence2 = "".join(
-            seq1(residue.get_resname())
-            for chain in group2
-            for residue in model_structure[chain].get_residues()
-        )
-
-        native_numbering1 = np.array(
-            list(nat_group1_info.keys()), dtype=np.dtype("U10, int")
-        )
-        native_numbering2 = np.array(
-            list(nat_group2_info.keys()), dtype=np.dtype("U10, int")
-        )
-
-        aligned_model_sequence1 = align_sequence_features(
-            model_sequence1, native_sequence1, native_numbering1
-        )
-        aligned_model_sequence2 = align_sequence_features(
-            model_sequence2, native_sequence2, native_numbering2
-        )
-
-        aligned_model_sequences = list(aligned_model_sequence1) + list(
-            aligned_model_sequence2
-        )
-        for chain in model_chains:
-            if chain not in group1 and chain not in group2:
-                model_structure.detach_child(chain)
-
-        residues_to_delete = []
-        for residue, aligned_element in zip(
-            model_structure.get_residues(), aligned_model_sequences
-        ):
-            if aligned_element[0] == "-":
-                residues_to_delete.append(residue.get_full_id())
-            else:
-                residue.id = (" ", aligned_element[1], " ")
-
-        for chain in model_structure:
-            for full_id in residues_to_delete:
-                if full_id[2] == chain:
-                    id = full_id[3]
-                    chain.detach_child(id)
-
-        if args.verbose:
-            print(
-                "Merging "
-                + "".join(group1)
-                + " -> "
-                + "".join(nat_group1)
-                + " to chain A"
-            )
-            print(
-                "Merging "
-                + "".join(group2)
-                + " -> "
-                + "".join(nat_group2)
-                + " to chain B"
-            )
-        native = make_two_chain_pdb_perm(native, nat_group1, nat_group2)
-        files_to_clean.append(native)
+        #io = Bio.PDB.PDBIO()
+        #io.set_structure(model_structure)
+        #io.save("model_structure.pdb")
+        #io.set_structure(native_structure)
+        #io.save("native_structure.pdb")
+        
+        #native = make_two_chain_pdb_perm(native, nat_group1, nat_group2)
+        #files_to_clean.append(native)
         pe = 0
         if args.perm1 or args.perm2:
             best_DockQ = -1
@@ -767,7 +834,7 @@ def main():
                                 "If you are sure the residues are identical you can use the options -no_needle"
                             )
                             sys.exit()
-                    test_dict = calc_DockQ(model_fixed, native, use_CA_only)
+                    test_dict = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
                     os.remove(model_fixed)
                     if not args.quiet:
                         print(
@@ -821,7 +888,7 @@ def main():
                         "If you are sure the residues are identical you can use the options -no_needle"
                     )
                     sys.exit()
-            info = calc_DockQ(model_fixed, native, use_CA_only)
+            info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
 
             os.remove(model_fixed)
 
