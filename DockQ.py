@@ -4,6 +4,7 @@ import sys
 import os
 import re
 import copy
+import pickle
 import warnings
 import tempfile
 import itertools
@@ -163,9 +164,8 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
     else:
         return "Undef"
 
-
+#@profile
 def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, use_CA_only=False, capri_peptide=False):
-    #exec_path = os.path.dirname(os.path.abspath(__file__))
     atom_for_sup = ["CA", "C", "N", "O"]
     if use_CA_only:
         atom_for_sup = ["CA"]
@@ -174,17 +174,20 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     interface_threshold = 8.0 if capri_peptide else 10.0
     all_atom = not capri_peptide
     
-    nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_model, ref_model, group1, group2, nat_group1, nat_group2, thr=threshold)
+    sample_res_distances = get_residue_distances(sample_model, group1, group2)
+    ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
+
+    nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_res_distances, ref_res_distances, thr=threshold)
     fnat = nat_correct / nat_total
     fnonnat = nonnat_count / model_total
 
     # get a copy of each structure containing shared backbone atoms
-    sample_model_backbone = copy.deepcopy(sample_model)
-    ref_model_backbone = copy.deepcopy(ref_model)
+    sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1)) #copy.deepcopy(sample_model)
+    ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1)) #copy.deepcopy(ref_model)
     set_common_backbone_atoms(sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup)
 
     # Get interfacial atoms from reference, and corresponding atoms from sample
-    interacting_pairs = get_interacting_pairs(ref_model, nat_group1, nat_group2, thr=interface_threshold)
+    interacting_pairs = get_interacting_pairs(ref_res_distances, thr=interface_threshold)
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(interacting_pairs,
                                                                       sample_model_backbone, 
                                                                       ref_model_backbone, 
@@ -361,18 +364,18 @@ def group_atom_into_res_distances(atom_distances, group_dic1, group_dic2):
     return res_distances
 
 
-def get_fnat(model_structure, native_structure, group1, group2, nat_group1, nat_group2, thr=5.0):
-    # get information about how many atoms correspond to each amino acid in each group of chains
-    model_group_dic1 = get_group_dictionary(model_structure, group1)
-    model_group_dic2 = get_group_dictionary(model_structure, group2)
-    native_group_dic1 = get_group_dictionary(native_structure, nat_group1)
-    native_group_dic2 = get_group_dictionary(native_structure, nat_group2)
+def get_residue_distances(structure, group1, group2):
+        # get information about how many atoms correspond to each amino acid in each group of chains
+    model_group_dic1 = get_group_dictionary(structure, group1)
+    model_group_dic2 = get_group_dictionary(structure, group2)
     
-    model_atom_distances = get_distances_across_chains(model_structure, group1, group2)
-    native_atom_distances = get_distances_across_chains(native_structure, nat_group1, nat_group2)
-
+    model_atom_distances = get_distances_across_chains(structure, group1, group2)
+    
     model_res_distances = group_atom_into_res_distances(model_atom_distances, model_group_dic1, model_group_dic2)
-    native_res_distances = group_atom_into_res_distances(native_atom_distances, native_group_dic1, native_group_dic2)
+    return model_res_distances
+
+
+def get_fnat(model_res_distances, native_res_distances, thr=5.0):
 
     native_contacts = native_res_distances < thr
     model_contacts = model_res_distances < thr
@@ -383,14 +386,12 @@ def get_fnat(model_structure, native_structure, group1, group2, nat_group1, nat_
     return (n_shared_contacts, n_non_native_contacts, n_native_contacts, n_model_contacts)
 
 
-def get_interacting_pairs(model, group1, group2, thr=0.5):
-    atom_distances = get_distances_across_chains(model, group1, group2)
-    group_dic1 = get_group_dictionary(model, group1)
-    group_dic2 = get_group_dictionary(model, group2)
-    model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
-    interacting_pairs = np.where(model_res_distances < thr)
-    
-    return interacting_pairs
+def get_interacting_pairs(distances, thr=0.5):
+    #atom_distances = get_distances_across_chains(model, group1, group2)
+    #group_dic1 = get_group_dictionary(model, group1)
+    #group_dic2 = get_group_dictionary(model, group2)
+    #model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
+    return np.where(distances < thr)
 
 
 def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_group1, model_group2, ref_group1, ref_group2):
@@ -440,7 +441,7 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
         for atom_id in set(atom_ids_in_ref_res).difference(atom_ids_in_ref_and_mod_res):
             ref_res.detach_child(atom_id)
 
-
+#@profile
 def main():
     args = parse_args()
 
