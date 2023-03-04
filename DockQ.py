@@ -198,14 +198,13 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     super_imposer.apply(sample_model_backbone.get_atoms())
 
     irms = super_imposer.rms
-    print(fnat, irms)
     
     ref_group1_size = np.sum([len(ref_model[chain]) for chain in nat_group1])
     ref_group2_size = np.sum([len(ref_model[chain]) for chain in nat_group2])
 
     receptor_chains = (nat_group1, group1) if ref_group1_size > ref_group2_size else (nat_group2, group2)
     ligand_chains = (nat_group1, group1) if ref_group1_size <= ref_group2_size else (nat_group2, group2)
-    print(ligand_chains)
+
     class1, class2 = ("receptor", "ligand") if ref_group1_size > ref_group2_size else ("ligand", "receptor")
         
     receptor_atoms_native = [atom for chain in receptor_chains[0] for atom in ref_model_backbone[chain].get_atoms()]
@@ -346,6 +345,7 @@ def get_distances_across_chains(model, group1, group2, all_atom=True):
     distances = np.sqrt(((model_A_atoms[:, None] - model_B_atoms[None, :]) ** 2).sum(-1))
     return distances
 
+
 def group_atom_into_res_distances(atom_distances, group_dic1, group_dic2):
     res_distances = np.zeros((len(group_dic1), len(group_dic2)))
     
@@ -355,7 +355,7 @@ def group_atom_into_res_distances(atom_distances, group_dic1, group_dic2):
         cum_j_atoms = 0
         for j, key2 in enumerate(group_dic2.keys()):
             j_atoms = group_dic2[key2]
-            res_distances[i, j] = np.min(atom_distances[cum_i_atoms:cum_i_atoms+i_atoms, cum_j_atoms:cum_j_atoms+j_atoms])
+            res_distances[i, j] = atom_distances[cum_i_atoms:cum_i_atoms+i_atoms, cum_j_atoms:cum_j_atoms+j_atoms].min()
             cum_j_atoms += j_atoms    
         cum_i_atoms += i_atoms
     return res_distances
@@ -391,7 +391,8 @@ def get_interacting_pairs(model, group1, group2, thr=0.5):
     interacting_pairs = np.where(model_res_distances < thr)
     
     return interacting_pairs
-    
+
+
 def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_group1, model_group2, ref_group1, ref_group2):
     ref_interface = []
     mod_interface = []
@@ -521,15 +522,6 @@ def main():
             group1 = nat_group1
             group2 = nat_group2
 
-
-        model_structure = remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
-        native_structure = remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
-        
-        # realign each model chain against the corresponding native chain
-        for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
-            aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
-            fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
-
         pe = 0
         if args.perm1 or args.perm2:
             best_DockQ = -1
@@ -624,12 +616,19 @@ def main():
                 print(best_info)
         else:
 
+            model_structure = remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
+            native_structure = remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
+        
+            # realign each model chain against the corresponding native chain
+            for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
+                aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
+                fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
             info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
 
     else:
         info = calc_DockQ(
             model, native, use_CA_only=use_CA_only, capri_peptide=capri_peptide
-        )  # False):
+        )
 
     irms = info["irms"]
     Lrms = info["Lrms"]
