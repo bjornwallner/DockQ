@@ -158,13 +158,13 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
 #@profile
 def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, use_CA_only=False, capri_peptide=False):
     atom_for_sup = ["CA", "C", "N", "O"] if not use_CA_only else ["CA"]
-    threshold = 4.0 if capri_peptide else 5.0
+    fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     
     sample_res_distances = get_residue_distances(sample_model, group1, group2)
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
     
-    nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_res_distances, ref_res_distances, thr=threshold)
+    nat_correct, nonnat_count, nat_total, model_total = get_fnat(sample_res_distances, ref_res_distances, thr=fnat_threshold)
     fnat = nat_correct / nat_total
     fnonnat = nonnat_count / model_total
 
@@ -327,7 +327,6 @@ def get_residue_distances(structure, group1, group2, all_atom=True):
 
 
 def get_fnat(model_res_distances, native_res_distances, thr=5.0):
-
     native_contacts = native_res_distances < thr
     model_contacts = model_res_distances < thr
     n_native_contacts = np.sum(native_contacts)
