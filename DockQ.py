@@ -475,9 +475,9 @@ def main():
     group1 = model_chains[0]
     group2 = model_chains[1]
     
+    nat_group1 = native_chains[0]
+    nat_group2 = native_chains[1]
     if len(model_chains) > 2 or len(native_chains) > 2:
-        nat_group1 = native_chains[0]
-        nat_group2 = native_chains[1]
         if args.model_chain1 != None:
             group1 = args.model_chain1
             nat_group1 = group1
@@ -612,9 +612,15 @@ def main():
             info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only=use_CA_only, capri_peptide=capri_peptide)
 
     else:
-        info = calc_DockQ(
-            model, native, use_CA_only=use_CA_only, capri_peptide=capri_peptide
-        )
+        model_structure = remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
+        native_structure = remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
+    
+        # realign each model chain against the corresponding native chain
+        for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
+            alignment = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
+            fix_chain_residues(model_structure, model_chain, alignment)
+            fix_chain_residues(native_structure, native_chain, alignment, invert=True)
+        info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only=use_CA_only, capri_peptide=capri_peptide)
 
     irms = info["irms"]
     Lrms = info["Lrms"]
