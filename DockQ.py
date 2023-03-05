@@ -157,10 +157,7 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
 
 #@profile
 def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, use_CA_only=False, capri_peptide=False):
-    atom_for_sup = ["CA", "C", "N", "O"]
-    if use_CA_only:
-        atom_for_sup = ["CA"]
-    
+    atom_for_sup = ["CA", "C", "N", "O"] if not use_CA_only else ["CA"]
     threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     all_atom = not capri_peptide
@@ -173,8 +170,8 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     fnonnat = nonnat_count / model_total
 
     # get a copy of each structure containing shared backbone atoms
-    sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1)) #copy.deepcopy(sample_model)
-    ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1)) #copy.deepcopy(ref_model)
+    sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1))
+    ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1))
     set_common_backbone_atoms(sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup)
 
     # Get interfacial atoms from reference, and corresponding atoms from sample
@@ -188,8 +185,6 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
                                                                       nat_group2)
  
     super_imposer = Bio.PDB.Superimposer()
-    print(len(sample_interface_atoms), len(ref_interface_atoms))
-
     super_imposer.set_atoms(sample_interface_atoms, ref_interface_atoms)
     #super_imposer.apply(sample_model_backbone.get_atoms())
 
