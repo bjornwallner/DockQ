@@ -188,7 +188,10 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
                                                                       nat_group2)
  
     super_imposer = Bio.PDB.Superimposer()
-    super_imposer.set_atoms(ref_interface_atoms, sample_interface_atoms)
+    print(len(sample_interface_atoms), len(ref_interface_atoms))
+    #print(np.array([atom.coord for atom in sample_interface_atoms]).shape)
+    super_imposer.set_atoms(sample_interface_atoms, ref_interface_atoms)
+    print(super_imposer.rms)
     super_imposer.apply(sample_model_backbone.get_atoms())
 
     irms = super_imposer.rms
@@ -374,7 +377,7 @@ def get_fnat(model_res_distances, native_res_distances, thr=5.0):
 
 
 def get_interacting_pairs(distances, thr=0.5):
-    return np.where(distances < thr)
+    return np.nonzero(distances < thr)
 
 
 def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_group1, model_group2, ref_group1, ref_group2):
@@ -392,8 +395,8 @@ def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_g
         ref_res1_atoms = ref_residues_group1[i].get_atoms()
         mod_res1_atoms = mod_residues_group1[i].get_atoms()
         
-        ref_res2_atoms = ref_residues_group1[j].get_atoms()
-        mod_res2_atoms = mod_residues_group1[j].get_atoms()
+        ref_res2_atoms = ref_residues_group2[j].get_atoms()
+        mod_res2_atoms = mod_residues_group2[j].get_atoms()
         
         for atom1, atom2 in zip(ref_res1_atoms, mod_res1_atoms):
             ref_interface.append(atom1)
