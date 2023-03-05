@@ -2,23 +2,14 @@
 
 import sys
 import os
-import re
-import copy
 import pickle
-import warnings
-import tempfile
 import itertools
-import subprocess
 import numpy as np
-from math import sqrt
 from argparse import ArgumentParser
 import Bio.PDB
 from Bio import pairwise2
-from Bio import BiopythonWarning
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-
-warnings.simplefilter("ignore", BiopythonWarning)
 
 
 def parse_args():
@@ -224,7 +215,7 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     Lrms = sup._rms(
         coord1, coord2
     )  # using the private _rms function which does not superimpose
-    #print(Lrms)
+
     DockQ = (
         float(fnat)
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
@@ -250,55 +241,6 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
     info["class2"] = class2
 
     return info
-
-
-def get_group_dictionary(model, group):
-    n_atoms_per_residue = {}
-    for chain in group:
-        for residue in model[chain].get_residues():
-            n_atoms_per_residue[(chain, residue.id[1])] = len(
-                residue.get_unpacked_list()
-            )
-    return n_atoms_per_residue
-
-
-def align_model_to_native(model_structure, native_structure, model_chain, native_chain):
-    model_sequence = "".join(
-        seq1(residue.get_resname()) for residue in model_structure[model_chain].get_residues()
-    )
-    
-    native_sequence = "".join(
-        seq1(residue.get_resname()) for residue in native_structure[native_chain].get_residues()
-    )
-  
-    native_numbering = np.array(
-        [residue.id[1] for residue in native_structure[native_chain].get_residues()]
-    )
-    aligned_model_sequence = align_sequence_features(
-        model_sequence, native_sequence, native_numbering
-    )
-
-    return list(aligned_model_sequence)
-
-
-def remove_extra_chains(model, chains_to_keep):
-    for chain in model.get_chains():
-        if chain.id not in chains_to_keep:
-            model.detach_child(chain.id)
-    return model
-
-
-def fix_chain_residues(model, chain, aligned_chain_sequence):
-    residues_to_delete = []
-    
-    for residue, aligned_residue in zip(model[chain].get_residues(), aligned_chain_sequence):
-        if aligned_residue == -1: # gap residue: remove from structure
-            residues_to_delete.append(residue.get_full_id())
-        else:
-            residue.id = (" ", aligned_residue, " ")
-
-    for _, _, _, res in residues_to_delete:
-        model[chain].detach_child(res)
 
 
 def align_sequence_features(model_sequence, native_sequence, native_numbering):
@@ -335,6 +277,44 @@ def align_sequence_features(model_sequence, native_sequence, native_numbering):
 
     return aligned_numbering
 
+def align_model_to_native(model_structure, native_structure, model_chain, native_chain):
+    model_sequence = "".join(
+        seq1(residue.get_resname()) for residue in model_structure[model_chain].get_residues()
+    )
+    
+    native_sequence = "".join(
+        seq1(residue.get_resname()) for residue in native_structure[native_chain].get_residues()
+    )
+
+    alignment = pairwise2.align.localms(
+        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
+    )[0]
+
+    return alignment
+
+
+def remove_extra_chains(model, chains_to_keep):
+    for chain in model.get_chains():
+        if chain.id not in chains_to_keep:
+            model.detach_child(chain.id)
+    return model
+
+
+def fix_chain_residues(model, chain, alignment, invert=False):
+    residues = model[chain].get_residues()
+    residues_to_delete = []
+    start = False
+    seqA = alignment.seqA if not invert else alignment.seqB
+    seqB = alignment.seqB if not invert else alignment.seqA
+    for (aligned_residue_A, aligned_residue_B) in zip(seqA, seqB):
+        if aligned_residue_A != "-":
+            residue = next(residues)
+        if aligned_residue_B == "-": # gap residue: remove from structure
+            residues_to_delete.append(residue.get_full_id())
+
+    for _, _, _, res in residues_to_delete:
+        model[chain].detach_child(res)
+
 
 def get_distances_across_chains(model, group1, group2, all_atom=True):
     
@@ -348,24 +328,31 @@ def get_distances_across_chains(model, group1, group2, all_atom=True):
     distances = np.sqrt(((model_A_atoms[:, None] - model_B_atoms[None, :]) ** 2).sum(-1))
     return distances
 
-
+#@profile
 def group_atom_into_res_distances(atom_distances, group_dic1, group_dic2):
     res_distances = np.zeros((len(group_dic1), len(group_dic2)))
     
     cum_i_atoms = 0
-    for i, key1 in enumerate(group_dic1.keys()):
-        i_atoms = group_dic1[key1]
+    for i, i_atoms in enumerate(group_dic1):
         cum_j_atoms = 0
-        for j, key2 in enumerate(group_dic2.keys()):
-            j_atoms = group_dic2[key2]
+        for j, j_atoms in enumerate(group_dic2):
             res_distances[i, j] = atom_distances[cum_i_atoms:cum_i_atoms+i_atoms, cum_j_atoms:cum_j_atoms+j_atoms].min()
             cum_j_atoms += j_atoms    
         cum_i_atoms += i_atoms
     return res_distances
 
 
+def get_group_dictionary(model, group):
+    n_atoms_per_residue = []
+    for chain in group:
+        for residue in model[chain].get_residues():
+            n_atoms_per_residue.append(len(residue.get_unpacked_list()))
+    return n_atoms_per_residue
+
+
+#@profile
 def get_residue_distances(structure, group1, group2):
-        # get information about how many atoms correspond to each amino acid in each group of chains
+    # get information about how many atoms correspond to each amino acid in each group of chains
     model_group_dic1 = get_group_dictionary(structure, group1)
     model_group_dic2 = get_group_dictionary(structure, group2)
     
@@ -387,10 +374,6 @@ def get_fnat(model_res_distances, native_res_distances, thr=5.0):
 
 
 def get_interacting_pairs(distances, thr=0.5):
-    #atom_distances = get_distances_across_chains(model, group1, group2)
-    #group_dic1 = get_group_dictionary(model, group1)
-    #group_dic2 = get_group_dictionary(model, group2)
-    #model_res_distances = group_atom_into_res_distances(atom_distances, group_dic1, group_dic2)
     return np.where(distances < thr)
 
 
@@ -488,10 +471,11 @@ def main():
     if not args.skip_check and (len(model_chains) < 2 or len(native_chains) < 2):
         print("Need at least two chains in the two inputs\n")
         sys.exit()
-
+    
+    group1 = model_chains[0]
+    group2 = model_chains[1]
+    
     if len(model_chains) > 2 or len(native_chains) > 2:
-        group1 = model_chains[0]
-        group2 = model_chains[1]
         nat_group1 = native_chains[0]
         nat_group2 = native_chains[1]
         if args.model_chain1 != None:
@@ -622,9 +606,10 @@ def main():
         
             # realign each model chain against the corresponding native chain
             for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
-                aligned_model_sequence = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
-                fix_chain_residues(model_structure, model_chain, aligned_model_sequence)
-            info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only)
+                alignment = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
+                fix_chain_residues(model_structure, model_chain, alignment)
+                fix_chain_residues(native_structure, native_chain, alignment, invert=True)
+            info = calc_DockQ(model_structure, native_structure,  group1, group2, nat_group1, nat_group2, use_CA_only=use_CA_only, capri_peptide=capri_peptide)
 
     else:
         info = calc_DockQ(
