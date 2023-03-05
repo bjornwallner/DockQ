@@ -185,6 +185,7 @@ def calc_DockQ(sample_model, ref_model, group1, group2, nat_group1, nat_group2, 
                                                                       nat_group2)
  
     super_imposer = Bio.PDB.Superimposer()
+    #print([atom.coord for atom in ref_interface_atoms])
     super_imposer.set_atoms(sample_interface_atoms, ref_interface_atoms)
     #super_imposer.apply(sample_model_backbone.get_atoms())
 
@@ -393,14 +394,18 @@ def get_interface_atoms(interacting_pairs, model_backbone, ref_backbone, model_g
         mod_res2_atoms = mod_residues_group2[j].get_atoms()
         
         for atom1, atom2 in zip(ref_res1_atoms, mod_res1_atoms):
-            ref_interface.append(atom1)
-            mod_interface.append(atom2)
+            if atom1 not in ref_interface:
+                ref_interface.append(atom1)
+            if atom2 not in mod_interface:
+                mod_interface.append(atom2)
             
         for atom1, atom2 in zip(ref_res2_atoms, mod_res2_atoms):
-            ref_interface.append(atom1)
-            mod_interface.append(atom2)
+            if atom1 not in ref_interface:
+                ref_interface.append(atom1)
+            if atom2 not in mod_interface:
+                mod_interface.append(atom2)
                 
-    return mod_interface, ref_interface
+    return list(mod_interface), list(ref_interface)
 
 
 def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]):
