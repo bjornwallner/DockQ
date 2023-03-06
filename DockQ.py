@@ -269,12 +269,12 @@ def align_model_to_native(model_structure, native_structure, model_chain, native
 
         for i in range(start, end+1):
             if i in model_numbering:
-                next_model_res = "A"
+                next_model_res = next(model_sequence)
             else:
                 next_model_res = "-"
 
             if i in native_numbering:
-                next_native_res = "A"
+                next_native_res = next(native_sequence)
             else:
                 next_native_res = "-"
                 
@@ -288,9 +288,7 @@ def align_model_to_native(model_structure, native_structure, model_chain, native
         )[0]
         alignment["seqA"] = aln.seqA
         alignment["seqB"] = aln.seqB
-        
-    print("".join(alignment["seqA"]))
-    print("".join(alignment["seqB"]))
+
     return alignment
 
 
