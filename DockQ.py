@@ -344,7 +344,9 @@ def list_atoms_per_residue(model, group):
     n_atoms_per_residue = []
     for chain in group:
         for residue in model[chain].get_residues():
-            n_atoms_per_residue.append(len(residue.get_unpacked_list()))
+            # important to remove duplicate atoms (e.g. alternates) at this stage
+            atom_ids = set([a.id for a in residue.get_unpacked_list()])
+            n_atoms_per_residue.append(len(atom_ids))
     return n_atoms_per_residue
 
 
