@@ -551,7 +551,7 @@ def main():
 
     best_info = ""
 
-    model_chains = [c.id for c in model_structure]    
+    model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
 
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
@@ -763,9 +763,7 @@ def print_results(info, short=False, capri_peptide=False):
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         print(
-            (
-                f"DockQ{capri_peptide_str} {info['DockQ']:.3f} Fnat {info['fnat']:.3f} iRMS {info['irms']:.3f} LRMS {info['Lrms']:.3f} Fnonnat {info['fnonnat']:.3f} {info['model']} {info['native']} {info['best']}"
-            )
+            f"DockQ{capri_peptide_str} {info['DockQ']:.3f} Fnat {info['fnat']:.3f} iRMS {info['irms']:.3f} LRMS {info['Lrms']:.3f} Fnonnat {info['fnonnat']:.3f} {info['model']} {info['native']} {info['best']}"
         )
 
     else:
@@ -810,14 +808,10 @@ def print_results(info, short=False, capri_peptide=False):
             f"Number of equivalent residues in chain {info['chain2']} {info['len2']} ({info['class2']})"
         )
         print(
-            (
-                f"Fnat {info['fnat']:.3f} {info['nat_correct']} correct of {info['nat_total']} native contacts"
-            )
+            f"Fnat {info['fnat']:.3f} {info['nat_correct']} correct of {info['nat_total']} native contacts"
         )
         print(
-            (
-                f"Fnonnat {info['fnonnat']:.3f} {info['nonnat_count']} non-native of {info['model_total']} model contacts"
-            )
+            f"Fnonnat {info['fnonnat']:.3f} {info['nonnat_count']} non-native of {info['model_total']} model contacts"
         )
         print(f"iRMS {info['irms']:.3f}")
         print(f"LRMS {info['Lrms']:.3f}")
