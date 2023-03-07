@@ -39,12 +39,6 @@ def parse_args():
         "-useCA", default=False, action="store_true", help="use CA instead of backbone"
     )
     parser.add_argument(
-        "-skip_check",
-        default=False,
-        action="store_true",
-        help="skip initial check fo speed up on two chain examples",
-    )
-    parser.add_argument(
         "-no_needle",
         default=False,
         action="store_true",
@@ -555,14 +549,10 @@ def main():
     native_structure = pdb_parser.get_structure("reference", args.native)[0]
     model_structure = pdb_parser.get_structure("model", args.model)[0]
 
-    model_chains = []
-    native_chains = []
     best_info = ""
-    if not args.skip_check:
-        native_chains = [c.id for c in native_structure]
-        model_chains = [c.id for c in model_structure]
 
-    files_to_clean = []
+    model_chains = [c.id for c in model_structure]    
+    native_chains = [c.id for c in native_structure]
 
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
         args.model_chain1 == None and args.native_chain1 == None
@@ -570,10 +560,10 @@ def main():
         print(
             "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1"
         )
-        print("Model chains  : " + str(model_chains))
-        print("Native chains : " + str(native_chains))
+        print(f"Model chains: {' '.join(model_chains)}")
+        print(f"Native chains: {' '.join(native_chains)}")
         sys.exit()
-    if not args.skip_check and (len(model_chains) < 2 or len(native_chains) < 2):
+    if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
 
