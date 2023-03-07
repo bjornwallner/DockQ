@@ -2,26 +2,23 @@
 Requires python packages: `numpy` and `Biopython`
 
 Installation
+
+Just clone the repository, the main script `DockQ.py` is in the cloned folder:
+
 ```
 git clone https://github.com/bjornwallner/DockQ/
-cd DockQ
-make
 ```
+
 Install (i) `numpy` (a prerequisite to install 'Biopython') and (ii) `Biopython` 
 
 - Numpy: http://www.scipy.org/install.html
-- Biopython version >=1.64: http://biopython.org/wiki/Download#Installation_Instructions
+- Biopython: http://biopython.org/wiki/Download#Installation_Instructions
 
-Quick start for two interacting partners (two-chain-models) run with
+This version of DockQ has been tested with numpy v1.21.6 and biopython v1.79.
+
+Quick start for two interacting partners (two-chain-models) run with:
 
 `./DockQ.py <model> <native>`
-
-To fix the residue numbering, in case there are inconsistencies, missing residues or small sequence differences between `model` and `native`
-
-`scripts/fix_numbering.pl model.pdb native.pdb`
-
-will output a file, `model.pdb.fixed`, with a residue numbering corresponding to the that in the `native.pdb` based on the sequences from the two pdb files.
-
 
 Example
 
