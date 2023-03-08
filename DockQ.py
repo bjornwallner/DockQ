@@ -39,6 +39,12 @@ def parse_args():
         "-useCA", default=False, action="store_true", help="use CA instead of backbone"
     )
     parser.add_argument(
+        "-mmcif_model", default=False, action="store_true", help="The model is in mmCIF format"
+    )
+    parser.add_argument(
+        "-mmcif_native", default=False, action="store_true", help="The native is in mmCIF format"
+    )
+    parser.add_argument(
         "-no_needle",
         default=False,
         action="store_true",
@@ -568,6 +574,20 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
     return info
 
 
+def load_PDB(path, n_model=0, is_mmcif=False):
+
+    if not is_mmcif:
+        pdb_parser = Bio.PDB.PDBParser(QUIET=True)
+    else:
+        pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
+
+    try:
+        structure = pdb_parser.get_structure("-", path)
+        model = structure[n_model]
+    except Exception as e:
+        print(e)
+    return model
+
 #@profile
 def main():
     args = parse_args()
@@ -578,12 +598,8 @@ def main():
             f"WARNING: Biopython version {Bio.__version__} is older than the recommended version {bio_ver}"
         )
 
-    # Start the parser
-    pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-
-    # Get the structures
-    native_structure = pdb_parser.get_structure("reference", args.native)[0]
-    model_structure = pdb_parser.get_structure("model", args.model)[0]
+    native_structure = load_PDB(args.native, is_mmcif=args.mmcif_native)
+    model_structure = load_PDB(args.model, is_mmcif=args.mmcif_model)
 
     best_info = ""
 
