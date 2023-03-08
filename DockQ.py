@@ -658,10 +658,7 @@ def main():
     if not args.perm1 and not args.perm2:
         info = run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
     else: # permute chains and run on a for loop
-        pe = 0
         best_DockQ = -1
-        best_g1 = []
-        best_g2 = []
 
         iter_perm1 = itertools.combinations(group1, len(group1))
         iter_perm2 = itertools.combinations(group2, len(group2))
@@ -670,17 +667,10 @@ def main():
         if args.perm2:
             iter_perm2 = itertools.permutations(group2)
 
-        combos1 = []
-        combos2 = []
-        for g1 in iter_perm1:  # _temp:
-            combos1.append(g1)
-        for g2 in iter_perm2:
-            combos2.append(g2)
+        combos1 = [g1 for g1 in iter_perm1]
+        combos2 = [g2 for g2 in iter_perm2]
 
-        for g1 in combos1:
-            for g2 in combos2:
-                pe = pe + 1
-        pe_tot = pe
+        pe_tot = len(combos1) * len(combos2)
         pe = 1
         if args.verbose:
             print(
@@ -706,9 +696,7 @@ def main():
                 if test_info["DockQ"] > best_DockQ:
                     best_DockQ = test_info["DockQ"]
                     info = test_info
-                    best_g1 = g1
-                    best_g2 = g2
-                    best_info = f"Best score ({best_DockQ}) found for model -> native, chain1: {''.join(best_g1)} -> {''.join(nat_group1)} chain2: {''.join(best_g2)} -> {''.join(nat_group2)}"
+                    best_info = f"Best score ({best_DockQ}) found for model -> native, chain1: {''.join(g1)} -> {''.join(nat_group1)} chain2: {''.join(g2)} -> {''.join(nat_group2)}"
 
                     if args.verbose:
                         print(best_info)
