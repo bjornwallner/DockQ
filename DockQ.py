@@ -3,6 +3,7 @@
 import sys
 import os
 import pickle
+import traceback
 import itertools
 import numpy as np
 from argparse import ArgumentParser
@@ -585,7 +586,11 @@ def load_PDB(path, n_model=0, is_mmcif=False):
         structure = pdb_parser.get_structure("-", path)
         model = structure[n_model]
     except Exception as e:
-        print(e)
+        print("ERROR: is the file in the correct format? (.pdb, .mmcif)")
+        if not is_mmcif:
+            print("       (use -mmcif_model or -mmcif_native if either is in mmCIF format)")
+        print(traceback.format_exc())
+        sys.exit(1)
     return model
 
 #@profile
