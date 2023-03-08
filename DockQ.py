@@ -148,7 +148,7 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
         return "Undef"
 
 
-# @profile
+#@profile
 def calc_DockQ(
     sample_model,
     ref_model,
@@ -532,7 +532,7 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
             ref_res.detach_child(atom_id)
 
 
-# @profile
+#@profile
 def main():
     args = parse_args()
 
@@ -575,17 +575,18 @@ def main():
     if len(model_chains) > 2 or len(native_chains) > 2:
         if args.model_chain1:
             group1 = args.model_chain1
-            nat_group1 = group1
             if args.model_chain2:
                 group2 = args.model_chain2
             else:
                 # will use the complement from group1
-                group2 = []
-                for c in model_chains:
-                    if c not in group1:
-                        group2.append(c)
-            nat_group1 = native_chains[: len(group1)]
-            nat_group2 = native_chains[len(group1) :]
+                group2 = [chain for chain in model_chains if chain not in group1]
+            # temporarily set native chains to follow same mapping as model chains
+            if model_chains == native_chains:
+                nat_group1 = group1
+                nat_group2 = group2
+            else:
+                nat_group1 = native_chains[: len(group1)]
+                nat_group2 = native_chains[len(group1) :]
 
         if args.native_chain1:
             nat_group1 = args.native_chain1
@@ -593,14 +594,15 @@ def main():
                 nat_group2 = args.native_chain2
             else:
                 # will use the complement from group1
-                nat_group2 = []
-                for c in native_chains:
-                    if c not in nat_group1:
-                        nat_group2.append(c)
-
-        if not args.model_chain1:
-            group1 = model_chains[: len(nat_group1)]
-            group2 = model_chains[len(nat_group1) :]
+                nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
+            # if only native chains have been set, then assume model chains follow the same mapping
+            if not args.model_chain1:
+                if model_chains == native_chains:
+                    group1 = nat_group1
+                    group2 = nat_group2
+                else: # worst case scenario, group chains by whatever order they come from
+                    group1 = model_chains[: len(nat_group1)]
+                    group2 = model_chains[len(nat_group1) :]
 
         pe = 0
         if args.perm1 or args.perm2:
