@@ -378,6 +378,7 @@ def get_distances_across_chains(model, group1, group2, all_atom=True):
                 for chain in group1
                 for res in model[chain].get_residues()
                 for atom in res.get_atoms()
+                if atom.element != "H"
             ]
         )
         model_B_atoms = np.asarray(
@@ -386,6 +387,7 @@ def get_distances_across_chains(model, group1, group2, all_atom=True):
                 for chain in group2
                 for res in model[chain].get_residues()
                 for atom in res.get_atoms()
+                if atom.element != "H"
             ]
         )
     else:
@@ -430,8 +432,8 @@ def list_atoms_per_residue(model, group):
     n_atoms_per_residue = []
     for chain in group:
         for residue in model[chain].get_residues():
-            # important to remove duplicate atoms (e.g. alternates) at this stage
-            atom_ids = set([a.id for a in residue.get_unpacked_list()])
+            # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
+            atom_ids = set([a.id for a in residue.get_unpacked_list() if a.element != "H"])
             n_atoms_per_residue.append(len(atom_ids))
     return n_atoms_per_residue
 
