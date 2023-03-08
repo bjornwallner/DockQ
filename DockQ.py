@@ -49,7 +49,7 @@ def parse_args():
         "-no_needle",
         default=False,
         action="store_true",
-        help="do not use global alignment to fix residue numbering between native and model during chain permutation (use only in case needle is not installed, and the residues between the chains are identical",
+        help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
     parser.add_argument(
         "-perm1",
@@ -588,7 +588,7 @@ def load_PDB(path, n_model=0, is_mmcif=False):
     except Exception as e:
         print("ERROR: is the file in the correct format? (.pdb, .mmcif)")
         if not is_mmcif:
-            print("       (use -mmcif_model or -mmcif_native if either is in mmCIF format)")
+            print("       (use -mmcif_model or -mmcif_native with mmCIF inputs)")
         print(traceback.format_exc())
         sys.exit(1)
     return model
