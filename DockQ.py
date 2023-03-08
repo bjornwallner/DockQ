@@ -532,6 +532,42 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
             ref_res.detach_child(atom_id)
 
 
+def run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, no_needle=False, use_CA_only=False, capri_peptide=False):
+    model_structure = remove_extra_chains(
+        model_structure, chains_to_keep=group1 + group2
+    )
+    native_structure = remove_extra_chains(
+        native_structure, chains_to_keep=nat_group1 + nat_group2
+    )
+
+    # realign each model chain against the corresponding native chain
+    for model_chain, native_chain in zip(
+        group1 + group2, nat_group1 + nat_group2
+    ):
+        alignment = align_model_to_native(
+            model_structure,
+            native_structure,
+            model_chain,
+            native_chain,
+            use_numbering=no_needle,
+        )
+        fix_chain_residues(model_structure, model_chain, alignment)
+        fix_chain_residues(
+            native_structure, native_chain, alignment, invert=True
+        )
+    info = calc_DockQ(
+        model_structure,
+        native_structure,
+        group1,
+        group2,
+        nat_group1,
+        nat_group2,
+        use_CA_only=use_CA_only,
+        capri_peptide=capri_peptide,
+    )
+    return info
+
+
 #@profile
 def main():
     args = parse_args()
@@ -555,7 +591,7 @@ def main():
     native_chains = [c.id for c in native_structure]
 
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
-        args.model_chain1 == None and args.native_chain1 == None
+        not args.model_chain1 and not args.native_chain1
     ):
         print(
             "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1"
@@ -567,193 +603,97 @@ def main():
         print("Need at least two chains in the two inputs\n")
         sys.exit()
 
-    group1 = model_chains[0]
-    group2 = model_chains[1]
+    # Some of these might be None
+    group1 = [model_chains[0]] if len(model_chains) == 2 else args.model_chain1
+    group2 = args.model_chain2
+    nat_group1 = args.native_chain1
+    nat_group2 = args.native_chain2
 
-    nat_group1 = native_chains[0]
-    nat_group2 = native_chains[1]
-    if len(model_chains) > 2 or len(native_chains) > 2:
-        if args.model_chain1:
-            group1 = args.model_chain1
-            if args.model_chain2:
-                group2 = args.model_chain2
-            else:
-                # will use the complement from group1
-                group2 = [chain for chain in model_chains if chain not in group1]
-            # temporarily set native chains to follow same mapping as model chains
-            if model_chains == native_chains:
-                nat_group1 = group1
-                nat_group2 = group2
-            else:
-                nat_group1 = native_chains[: len(group1)]
-                nat_group2 = native_chains[len(group1) :]
-
-        if args.native_chain1:
-            nat_group1 = args.native_chain1
-            if args.native_chain2:
-                nat_group2 = args.native_chain2
-            else:
-                # will use the complement from group1
-                nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
-            # if only native chains have been set, then assume model chains follow the same mapping
-            if not args.model_chain1:
-                if model_chains == native_chains:
-                    group1 = nat_group1
-                    group2 = nat_group2
-                else: # worst case scenario, group chains by whatever order they come from
-                    group1 = model_chains[: len(nat_group1)]
-                    group2 = model_chains[len(nat_group1) :]
-
-        pe = 0
-        if args.perm1 or args.perm2:
-            best_DockQ = -1
-            best_g1 = []
-            best_g2 = []
-
-            iter_perm1 = itertools.combinations(group1, len(group1))
-            iter_perm2 = itertools.combinations(group2, len(group2))
-            if args.perm1:
-                iter_perm1 = itertools.permutations(group1)
-            if args.perm2:
-                iter_perm2 = itertools.permutations(group2)
-
-            combos1 = []
-            combos2 = []
-            for g1 in iter_perm1:  # _temp:
-                combos1.append(g1)
-            for g2 in iter_perm2:
-                combos2.append(g2)
-
-            for g1 in combos1:
-                for g2 in combos2:
-                    pe = pe + 1
-            pe_tot = pe
-            pe = 1
-            if args.verbose:
-                print(
-                    f"Starting chain order permutation search (number of permutations: {pe_tot})"
-                )
-
-            for g1 in combos1:
-                for g2 in combos2:
-
-                    model_structure_this = pickle.loads(
-                        pickle.dumps(model_structure, -1)
-                    )
-                    model_structure_this = remove_extra_chains(
-                        model_structure_this, chains_to_keep=g1 + g2
-                    )
-
-                    # realign each model chain against the corresponding native chain
-                    for model_chain, native_chain in zip(
-                        g1 + g2, nat_group1 + nat_group2
-                    ):
-                        alignment = align_model_to_native(
-                            model_structure,
-                            native_structure,
-                            model_chain,
-                            native_chain,
-                            use_numbering=args.no_needle,
-                        )
-                        fix_chain_residues(model_structure_this, model_chain, alignment)
-                        fix_chain_residues(
-                            native_structure, native_chain, alignment, invert=True
-                        )
-
-                    test_dict = calc_DockQ(
-                        model_structure_this,
-                        native_structure,
-                        g1,
-                        g2,
-                        nat_group1,
-                        nat_group2,
-                        use_CA_only=args.useCA,
-                        capri_peptide=args.capri_peptide,
-                    )
-
-                    if not args.quiet:
-                        print(
-                            f"{pe}/{pe_tot} {''.join(g1)} -> {''.join(g2)} {test_dict['DockQ']}"
-                        )
-
-                    if test_dict["DockQ"] > best_DockQ:
-                        best_DockQ = test_dict["DockQ"]
-                        info = test_dict
-                        best_g1 = g1
-                        best_g2 = g2
-                        best_info = f"Best score ({best_DockQ}) found for model -> native, chain1: {''.join(best_g1)} -> {''.join(nat_group1)} chain2: {''.join(best_g2)} -> {''.join(nat_group2)}"
-
-                        if args.verbose:
-                            print(best_info)
-                        if not args.quiet:
-                            print(f"Current best: {best_DockQ}")
-                    pe = pe + 1
-            if not args.quiet:
-                print(best_info)
+    # at this stage either group1 or nat_group1 are not None
+    if not nat_group1: # then the user has set group1. Try to follow the same mapping
+        if model_chains == native_chains: # easier case: the chains have the same naming between native/model, so just copy them
+            nat_group1 = group1
+            # use complement to nat_group1 if group2 hasn't been decided yet
+            nat_group2 = group2
+        else: # otherwise, group the chains by however many where in either model group
+            nat_group1 = native_chains[: len(group1)]
+            nat_group2 = native_chains[len(group1) :]
+            
+    if not group1: # viceversa, the user has set nat_group1
+        if model_chains == native_chains:
+            group1 = nat_group1
+            group2 = nat_group2
         else:
+            group1 = model_chains[: len(nat_group1)]
+            group2 = model_chains[len(nat_group1) :]
+            
+    if not group2: # no group2 set yet, use the complement to group1
+        group2 = [chain for chain in model_chains if chain not in group1]
+    if not nat_group2:
+        nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
+        
+    if not args.perm1 and not args.perm2:
+        info = run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
+    else: # permute chains and run on a for loop
+        pe = 0
+        best_DockQ = -1
+        best_g1 = []
+        best_g2 = []
 
-            model_structure = remove_extra_chains(
-                model_structure, chains_to_keep=group1 + group2
-            )
-            native_structure = remove_extra_chains(
-                native_structure, chains_to_keep=nat_group1 + nat_group2
+        iter_perm1 = itertools.combinations(group1, len(group1))
+        iter_perm2 = itertools.combinations(group2, len(group2))
+        if args.perm1:
+            iter_perm1 = itertools.permutations(group1)
+        if args.perm2:
+            iter_perm2 = itertools.permutations(group2)
+
+        combos1 = []
+        combos2 = []
+        for g1 in iter_perm1:  # _temp:
+            combos1.append(g1)
+        for g2 in iter_perm2:
+            combos2.append(g2)
+
+        for g1 in combos1:
+            for g2 in combos2:
+                pe = pe + 1
+        pe_tot = pe
+        pe = 1
+        if args.verbose:
+            print(
+                f"Starting chain order permutation search (number of permutations: {pe_tot})"
             )
 
-            # realign each model chain against the corresponding native chain
-            for model_chain, native_chain in zip(
-                group1 + group2, nat_group1 + nat_group2
-            ):
-                alignment = align_model_to_native(
-                    model_structure,
-                    native_structure,
-                    model_chain,
-                    native_chain,
-                    use_numbering=args.no_needle,
+        for g1 in combos1:
+            for g2 in combos2:
+
+                model_structure_this = pickle.loads(
+                    pickle.dumps(model_structure, -1)
                 )
-                fix_chain_residues(model_structure, model_chain, alignment)
-                fix_chain_residues(
-                    native_structure, native_chain, alignment, invert=True
+                model_structure_this = remove_extra_chains(
+                    model_structure_this, chains_to_keep=g1 + g2
                 )
-            info = calc_DockQ(
-                model_structure,
-                native_structure,
-                group1,
-                group2,
-                nat_group1,
-                nat_group2,
-                use_CA_only=args.useCA,
-                capri_peptide=args.capri_peptide,
-            )
+                test_info = run_on_groups(model_structure_this, native_structure, g1, g2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
 
-    else:
-        model_structure = remove_extra_chains(
-            model_structure, chains_to_keep=group1 + group2
-        )
-        native_structure = remove_extra_chains(
-            native_structure, chains_to_keep=nat_group1 + nat_group2
-        )
+                if not args.quiet:
+                    print(
+                        f"{pe}/{pe_tot} {''.join(g1)} -> {''.join(g2)} {test_info['DockQ']}"
+                    )
 
-        # realign each model chain against the corresponding native chain
-        for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
-            alignment = align_model_to_native(
-                model_structure,
-                native_structure,
-                model_chain,
-                native_chain,
-                use_numbering=args.no_needle,
-            )
-            fix_chain_residues(model_structure, model_chain, alignment)
-            fix_chain_residues(native_structure, native_chain, alignment, invert=True)
-        info = calc_DockQ(
-            model_structure,
-            native_structure,
-            group1,
-            group2,
-            nat_group1,
-            nat_group2,
-            use_CA_only=args.useCA,
-            capri_peptide=args.capri_peptide,
-        )
+                if test_info["DockQ"] > best_DockQ:
+                    best_DockQ = test_info["DockQ"]
+                    info = test_info
+                    best_g1 = g1
+                    best_g2 = g2
+                    best_info = f"Best score ({best_DockQ}) found for model -> native, chain1: {''.join(best_g1)} -> {''.join(nat_group1)} chain2: {''.join(best_g2)} -> {''.join(nat_group2)}"
+
+                    if args.verbose:
+                        print(best_info)
+                    if not args.quiet:
+                        print(f"Current best: {best_DockQ}")
+                pe = pe + 1
+        if not args.quiet:
+            print(best_info)
 
     info["model"] = args.model
     info["native"] = args.native
