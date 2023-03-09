@@ -176,8 +176,9 @@ def calc_DockQ(
     nat_correct, nonnat_count, nat_total, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, thr=fnat_threshold
     )
-    fnat = nat_correct / nat_total
-    fnonnat = nonnat_count / model_total
+    # avoids divide by 0 errors
+    fnat = nat_total and nat_correct / nat_total or 0
+    fnonnat = model_total and nonnat_count / model_total or 0
 
     # get a copy of each structure, then only keep backbone atoms. This is faster than copy.deepcopy()
     sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1))
