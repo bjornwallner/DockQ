@@ -413,13 +413,13 @@ def get_distances_across_chains(model, group1, group2, all_atom=True):
 
 
 # @profile
-def atom_distances_to_residue_distances(atom_distances, group_dic1, group_dic2):
-    res_distances = np.zeros((len(group_dic1), len(group_dic2)))
+def atom_distances_to_residue_distances(atom_distances, atoms_per_res1, atoms_per_res2):
+    res_distances = np.zeros((len(atoms_per_res1), len(atoms_per_res2)))
 
     cum_i_atoms = 0
-    for i, i_atoms in enumerate(group_dic1):
+    for i, i_atoms in enumerate(atoms_per_res1):
         cum_j_atoms = 0
-        for j, j_atoms in enumerate(group_dic2):
+        for j, j_atoms in enumerate(atoms_per_res2):
             res_distances[i, j] = atom_distances[
                 cum_i_atoms : cum_i_atoms + i_atoms, cum_j_atoms : cum_j_atoms + j_atoms
             ].min()
