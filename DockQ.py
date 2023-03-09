@@ -667,8 +667,8 @@ def main():
         if args.perm2:
             iter_perm2 = itertools.permutations(group2)
 
-        combos1 = [g1 for g1 in iter_perm1]
-        combos2 = [g2 for g2 in iter_perm2]
+        combos1 = list(iter_perm1)
+        combos2 = list(iter_perm2)
 
         pe_tot = len(combos1) * len(combos2)
         pe = 1
