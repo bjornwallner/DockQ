@@ -765,9 +765,6 @@ def print_results(info, short=False, capri_peptide=False):
         )
         print(f"iRMS {info['irms']:.3f}")
         print(f"LRMS {info['Lrms']:.3f}")
-        peptide_suffix = ""
-        if capri_peptide:
-            peptide_suffix = "_peptide"
 
         peptide_disclaimer = (
             " DockQ not reoptimized for CAPRI peptide evaluation"
