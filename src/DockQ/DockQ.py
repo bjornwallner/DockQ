@@ -11,6 +11,7 @@ import Bio.PDB
 from Bio import pairwise2
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
+from .operations import residue_distances, get_fnat_stats
 
 
 def parse_args():
@@ -174,7 +175,7 @@ def calc_DockQ(
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
 
     nat_correct, nonnat_count, nat_total, model_total = get_fnat_stats(
-        sample_res_distances, ref_res_distances, thr=fnat_threshold
+        sample_res_distances, ref_res_distances, threshold=fnat_threshold
     )
     # avoids divide by 0 errors
     fnat = nat_total and nat_correct / nat_total or 0
@@ -436,7 +437,7 @@ def list_atoms_per_residue(model, group):
             # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
             atom_ids = set([a.id for a in residue.get_unpacked_list() if a.element != "H"])
             n_atoms_per_residue.append(len(atom_ids))
-    return n_atoms_per_residue
+    return np.cumsum(n_atoms_per_residue).astype(int)
 
 
 # @profile
@@ -445,20 +446,21 @@ def get_residue_distances(structure, group1, group2, all_atom=True):
     n_atoms_per_res_group1 = list_atoms_per_residue(structure, group1)
     n_atoms_per_res_group2 = list_atoms_per_residue(structure, group2)
 
-    model_atom_distances = get_distances_across_chains(
-        structure, group1, group2, all_atom=all_atom
-    )
+
 
     if all_atom:
-        model_res_distances = atom_distances_to_residue_distances(
-            model_atom_distances, n_atoms_per_res_group1, n_atoms_per_res_group2
+        atom_coordinates = np.array([atom.coord for atom in structure.get_atoms()])
+        model_res_distances = residue_distances(
+            atom_coordinates, n_atoms_per_res_group1, n_atoms_per_res_group2
         )
     else:  # distances were already between CBs only
-        model_res_distances = model_atom_distances
+        model_res_distances = get_distances_across_chains(
+            structure, group1, group2, all_atom=all_atom
+        )
     return model_res_distances
 
 
-def get_fnat_stats(model_res_distances, native_res_distances, thr=5.0):
+def get_fnat_stats2(model_res_distances, native_res_distances, thr=5.0):
     native_contacts = native_res_distances < thr
     model_contacts = model_res_distances < thr
     n_native_contacts = np.sum(native_contacts)
@@ -474,7 +476,7 @@ def get_fnat_stats(model_res_distances, native_res_distances, thr=5.0):
 
 
 def get_interacting_pairs(distances, thr=5.0):
-    return np.nonzero(distances < thr)
+    return np.nonzero(np.asarray(distances) < thr)
 
 
 # @profile
