@@ -683,9 +683,6 @@ def main():
                 model_structure_this = pickle.loads(
                     pickle.dumps(model_structure, -1)
                 )
-                model_structure_this = remove_extra_chains(
-                    model_structure_this, chains_to_keep=g1 + g2
-                )
                 test_info = run_on_groups(model_structure_this, native_structure, g1, g2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
 
                 if not args.quiet:
