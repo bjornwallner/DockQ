@@ -181,21 +181,24 @@ def calc_DockQ(
     fnat = nat_total and nat_correct / nat_total or 0
     fnonnat = model_total and nonnat_count / model_total or 0
 
-    # get a copy of each structure, then only keep backbone atoms. This is faster than copy.deepcopy()
-    sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1))
-    ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1))
-    set_common_backbone_atoms(
-        sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup
-    )
-
     if capri_peptide:
         ref_res_distances = get_residue_distances(
             ref_model, nat_group1, nat_group2, all_atom=False
         )
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
-        ref_res_distances, thr=interface_threshold
+        ref_res_distances, thr=interface_threshold**2
     )
+    
+    # get a copy of each structure, then only keep backbone atoms. This is faster than copy.deepcopy()
+    #sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1))
+    #ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1))
+    sample_model_backbone = sample_model
+    ref_model_backbone = ref_model
+    set_common_backbone_atoms(
+        sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup
+    )
+    
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
         interacting_pairs,
         sample_model_backbone,
