@@ -5,29 +5,29 @@ import cython
 from libc.math cimport sqrt
 
 
-def residue_distances(float [:,:] atom_coordinates, long [:] atoms_per_res1, long [:] atoms_per_res2, float threshold=5.0):
+def residue_distances(float [:,:] atom_coordinates1, float [:,:] atom_coordinates2, long [:] atoms_per_res1, long [:] atoms_per_res2):
     cdef:
-        int i, j, x, y
+        int i, j, x, y, cum_i_atoms, cum_j_atoms
         int n_res_i = len(atoms_per_res1)
         int n_res_j = len(atoms_per_res2)
-        float min_d = 100.0
-        float this_d
-        float [:,:] res_distances = np.zeros((n_res_i, n_res_j), dtype=np.float32)
+        float this_d, min_d
+        float [:,:] res_distances = np.zeros((n_res_i, n_res_j), dtype=np.float32) 
 
-
-    for i in range(n_res_i):
-        n_atoms_res_i = atoms_per_res1[i]
-        for j in range(n_res_j):
-            n_atoms_res_j = atoms_per_res2[j]
-            
-            for x in range(n_atoms_res_i):
-                for y in range(n_atoms_res_j):
-                    this_d = sqrt((atom_coordinates[x][0] - atom_coordinates[y][0])**2 + (atom_coordinates[x][1] - atom_coordinates[y][1])**2 + (atom_coordinates[x][2] - atom_coordinates[y][2])**2)
+    cum_i_atoms = 0
+    for i, i_atoms in enumerate(atoms_per_res1):
+        cum_j_atoms = 0
+        for j, j_atoms in enumerate(atoms_per_res2):
+            min_d = 100.0
+            for x in range(cum_i_atoms, cum_i_atoms + i_atoms):
+                for y in range(cum_j_atoms, cum_j_atoms + j_atoms):
+                    this_d = sqrt((atom_coordinates1[x][0] - atom_coordinates2[y][0])**2 + (atom_coordinates1[x][1] - atom_coordinates2[y][1])**2 + (atom_coordinates1[x][2] - atom_coordinates2[y][2])**2)
                     if this_d < min_d:
                         min_d = this_d
-                if min_d < threshold:
-                    break
-            res_distances[i, j] = min_d
+                        res_distances[i, j] = min_d
+            cum_j_atoms += j_atoms
+            #print(i, j, min_d)
+        cum_i_atoms += i_atoms
+        
     
     return res_distances
 
@@ -43,6 +43,7 @@ def get_fnat_stats(float [:,:] model_res_distances, float [:,:] native_res_dista
         int n_model_contacts = 0
         int n_shared_contacts = 0
         int n_non_native_contacts = 0
+        float threshold_squared = threshold**2
         #unsigned char [:,:] model_contacts = np.zeros((model_shape_0, model_shape_1), dtype=np.uint8)
         #unsigned char [:,:] native_contacts = np.zeros((native_shape_0, native_shape_1), dtype=np.uint8)
     

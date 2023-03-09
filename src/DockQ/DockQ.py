@@ -437,25 +437,40 @@ def list_atoms_per_residue(model, group):
             # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
             atom_ids = set([a.id for a in residue.get_unpacked_list() if a.element != "H"])
             n_atoms_per_residue.append(len(atom_ids))
-    return np.cumsum(n_atoms_per_residue).astype(int)
+    return np.array(n_atoms_per_residue).astype(int)
 
 
 # @profile
-def get_residue_distances(structure, group1, group2, all_atom=True):
+def get_residue_distances(model, group1, group2, all_atom=True):
     # get information about how many atoms correspond to each amino acid in each group of chains
-    n_atoms_per_res_group1 = list_atoms_per_residue(structure, group1)
-    n_atoms_per_res_group2 = list_atoms_per_residue(structure, group2)
-
-
+    n_atoms_per_res_group1 = list_atoms_per_residue(model, group1)
+    n_atoms_per_res_group2 = list_atoms_per_residue(model, group2)
 
     if all_atom:
-        atom_coordinates = np.array([atom.coord for atom in structure.get_atoms()])
+        model_A_atoms = np.asarray(
+            [
+                atom.get_coord()
+                for chain in group1
+                for res in model[chain].get_residues()
+                for atom in res.get_atoms()
+                if atom.element != "H"
+            ]
+        )
+        model_B_atoms = np.asarray(
+            [
+                atom.get_coord()
+                for chain in group2
+                for res in model[chain].get_residues()
+                for atom in res.get_atoms()
+                if atom.element != "H"
+            ]
+        )
         model_res_distances = residue_distances(
-            atom_coordinates, n_atoms_per_res_group1, n_atoms_per_res_group2
+            model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
         )
     else:  # distances were already between CBs only
         model_res_distances = get_distances_across_chains(
-            structure, group1, group2, all_atom=all_atom
+            model, group1, group2, all_atom=all_atom
         )
     return model_res_distances
 
