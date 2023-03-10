@@ -2,7 +2,6 @@
 import numpy as np
 cimport numpy as np
 import cython
-from libc.math cimport sqrt
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

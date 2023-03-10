@@ -1,4 +1,6 @@
 [build-system]
+name = "DockQ"
+version = 2.0
 requires = ["setuptools", "cython", "numpy"]
 build-backend = "setuptools.build_meta"
 
