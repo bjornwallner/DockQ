@@ -15,7 +15,6 @@ def residue_distances(float [:,:] atom_coordinates1, float [:,:] atom_coordinate
         float [:,:] res_distances = np.zeros((n_res_i, n_res_j), dtype=np.float32) 
 
     cum_i_atoms = 0
-    
     for i in range(n_res_i):
         i_atoms = atoms_per_res1[i]
         cum_i_atoms_end = cum_i_atoms + i_atoms
@@ -29,11 +28,10 @@ def residue_distances(float [:,:] atom_coordinates1, float [:,:] atom_coordinate
                     this_d = (atom_coordinates1[x][0] - atom_coordinates2[y][0])**2 + (atom_coordinates1[x][1] - atom_coordinates2[y][1])**2 + (atom_coordinates1[x][2] - atom_coordinates2[y][2])**2
                     if this_d < min_d:
                         min_d = this_d
-                        res_distances[i, j] = min_d
+            res_distances[i, j] = min_d
             cum_j_atoms = cum_j_atoms + j_atoms
         cum_i_atoms = cum_i_atoms + i_atoms
-        
-    
+
     return res_distances
 
 @cython.boundscheck(False)
@@ -48,7 +46,7 @@ def get_fnat_stats(float [:,:] model_res_distances, float [:,:] native_res_dista
         int n_shared_contacts = 0
         int n_non_native_contacts = 0
         float threshold_squared
-    
+
     threshold_squared = threshold * threshold
     for i in range(native_shape_0):
         for j in range(native_shape_1):
