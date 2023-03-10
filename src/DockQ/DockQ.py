@@ -156,7 +156,6 @@ def capri_class_DockQ(DockQ, capri_peptide=False):
         return "Undef"
 
 
-#@profile
 def calc_DockQ(
     sample_model,
     ref_model,
@@ -187,12 +186,11 @@ def calc_DockQ(
         )
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
-        ref_res_distances, thr=interface_threshold**2
+        # working with squared thresholds to avoid using sqrt in distance calculations
+        ref_res_distances, threshold=interface_threshold**2
     )
     
     # get a copy of each structure, then only keep backbone atoms. This is faster than copy.deepcopy()
-    #sample_model_backbone = pickle.loads(pickle.dumps(sample_model, -1))
-    #ref_model_backbone = pickle.loads(pickle.dumps(ref_model, -1))
     sample_model_backbone = sample_model
     ref_model_backbone = ref_model
     set_common_backbone_atoms(
@@ -445,11 +443,11 @@ def list_atoms_per_residue(model, group):
 
 # @profile
 def get_residue_distances(model, group1, group2, all_atom=True):
-    # get information about how many atoms correspond to each amino acid in each group of chains
-    n_atoms_per_res_group1 = list_atoms_per_residue(model, group1)
-    n_atoms_per_res_group2 = list_atoms_per_residue(model, group2)
 
     if all_atom:
+        # get information about how many atoms correspond to each amino acid in each group of chains
+        n_atoms_per_res_group1 = list_atoms_per_residue(model, group1)
+        n_atoms_per_res_group2 = list_atoms_per_residue(model, group2)
         model_A_atoms = np.asarray(
             [
                 atom.get_coord()
@@ -468,13 +466,29 @@ def get_residue_distances(model, group1, group2, all_atom=True):
                 if atom.element != "H"
             ]
         )
-        model_res_distances = residue_distances(
-            model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
-        )
+       
     else:  # distances were already between CBs only
-        model_res_distances = get_distances_across_chains(
-            model, group1, group2, all_atom=all_atom
+        model_A_atoms = np.asarray(
+            [
+                res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
+                for chain in group1
+                for res in model[chain].get_residues()
+            ]
         )
+        model_B_atoms = np.asarray(
+            [
+                res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
+                for chain in group2
+                for res in model[chain].get_residues()
+            ]
+        )
+
+        n_atoms_per_res_group1 = np.ones(model_A_atoms.shape[0]).astype(int)
+        n_atoms_per_res_group2 = np.ones(model_B_atoms.shape[0]).astype(int)
+
+    model_res_distances = residue_distances(
+            model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
+    )
     return model_res_distances
 
 
@@ -493,8 +507,8 @@ def get_fnat_stats2(model_res_distances, native_res_distances, thr=5.0):
     )
 
 
-def get_interacting_pairs(distances, thr=5.0):
-    return np.nonzero(np.asarray(distances) < thr)
+def get_interacting_pairs(distances, threshold):
+    return np.nonzero(np.asarray(distances) < threshold)
 
 
 # @profile
