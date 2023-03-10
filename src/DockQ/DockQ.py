@@ -96,69 +96,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def capri_class(fnat, iRMS, LRMS, capri_peptide=False):
-    if capri_peptide:
-
-        if fnat < 0.2 or (LRMS > 5.0 and iRMS > 2.0):
-            return "Incorrect"
-        elif (
-            (fnat >= 0.2 and fnat < 0.5)
-            and (LRMS <= 5.0 or iRMS <= 2.0)
-            or (fnat >= 0.5 and LRMS > 2.0 and iRMS > 1.0)
-        ):
-            return "Acceptable"
-        elif (
-            (fnat >= 0.5 and fnat < 0.8)
-            and (LRMS <= 2.0 or iRMS <= 1.0)
-            or (fnat >= 0.8 and LRMS > 1.0 and iRMS > 0.5)
-        ):
-            return "Medium"
-        elif fnat >= 0.8 and (LRMS <= 1.0 or iRMS <= 0.5):
-            return "High"
-        else:
-            return "Undef"
-    else:
-
-        if fnat < 0.1 or (LRMS > 10.0 and iRMS > 4.0):
-            return "Incorrect"
-        elif (
-            (fnat >= 0.1 and fnat < 0.3)
-            and (LRMS <= 10.0 or iRMS <= 4.0)
-            or (fnat >= 0.3 and LRMS > 5.0 and iRMS > 2.0)
-        ):
-            return "Acceptable"
-        elif (
-            (fnat >= 0.3 and fnat < 0.5)
-            and (LRMS <= 5.0 or iRMS <= 2.0)
-            or (fnat >= 0.5 and LRMS > 1.0 and iRMS > 1.0)
-        ):
-            return "Medium"
-        elif fnat >= 0.5 and (LRMS <= 1.0 or iRMS <= 1.0):
-            return "High"
-        else:
-            return "Undef"
-
-
-def capri_class_DockQ(DockQ, capri_peptide=False):
-    if capri_peptide:
-        return "Undef for capri_peptides"
-
-    (c1, c2, c3) = (0.23, 0.49, 0.80)
-    if DockQ < c1:
-        return "Incorrect"
-    elif DockQ >= c1 and DockQ < c2:
-        return "Acceptable"
-    elif DockQ >= c2 and DockQ < c3:
-        return "Medium"
-    elif DockQ >= c3:
-        return "High"
-    else:
-        return "Undef"
-
-
 def calc_DockQ(
     sample_model,
     ref_model,
+    ref_model_original,
     group1,
     group2,
     nat_group1,
@@ -170,10 +111,14 @@ def calc_DockQ(
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
 
+    # total number of native contacts is calculated on untouched native structure
+    ref_res_distances = get_residue_distances(ref_model_original, nat_group1, nat_group2)
+    nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[0].shape[0]
+
     sample_res_distances = get_residue_distances(sample_model, group1, group2)
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
 
-    nat_correct, nonnat_count, nat_total, model_total = get_fnat_stats(
+    nat_correct, nonnat_count, _, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, threshold=fnat_threshold
     )
     # avoids divide by 0 errors
@@ -213,21 +158,21 @@ def calc_DockQ(
     irms = super_imposer.rms
 
     # assign which group of chains constitutes the receptor, then the other is the ligand
-    ref_group1_size = np.sum([len(ref_model[chain]) for chain in nat_group1])
-    ref_group2_size = np.sum([len(ref_model[chain]) for chain in nat_group2])
+    ref_group1_size = np.sum([len(ref_model_original[chain]) for chain in nat_group1])
+    ref_group2_size = np.sum([len(ref_model_original[chain]) for chain in nat_group2])
     receptor_chains = (
         (nat_group1, group1)
-        if ref_group1_size > ref_group2_size
+        if ref_group1_size >= ref_group2_size
         else (nat_group2, group2)
     )
     ligand_chains = (
         (nat_group1, group1)
-        if ref_group1_size <= ref_group2_size
+        if ref_group1_size < ref_group2_size
         else (nat_group2, group2)
     )
     class1, class2 = (
         ("receptor", "ligand")
-        if ref_group1_size > ref_group2_size
+        if ref_group1_size >= ref_group2_size
         else ("ligand", "receptor")
     )
     receptor_atoms_native = [
@@ -511,6 +456,10 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
         native_structure, chains_to_keep=nat_group1 + nat_group2
     )
 
+    native_structure_original = pickle.loads(
+                    pickle.dumps(native_structure, -1)
+                )
+
     # realign each model chain against the corresponding native chain
     for model_chain, native_chain in zip(
         group1 + group2, nat_group1 + nat_group2
@@ -529,6 +478,7 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
     info = calc_DockQ(
         model_structure,
         native_structure,
+        native_structure_original,
         group1,
         group2,
         nat_group1,
