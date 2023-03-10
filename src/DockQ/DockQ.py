@@ -373,64 +373,6 @@ def fix_chain_residues(model, chain, alignment, invert=False):
         model[chain].detach_child(res)
 
 
-def get_distances_across_chains(model, group1, group2, all_atom=True):
-    if all_atom:
-        model_A_atoms = np.asarray(
-            [
-                atom.get_coord()
-                for chain in group1
-                for res in model[chain].get_residues()
-                for atom in res.get_atoms()
-                if atom.element != "H"
-            ]
-        )
-        model_B_atoms = np.asarray(
-            [
-                atom.get_coord()
-                for chain in group2
-                for res in model[chain].get_residues()
-                for atom in res.get_atoms()
-                if atom.element != "H"
-            ]
-        )
-    else:
-        model_A_atoms = np.asarray(
-            [
-                res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
-                for chain in group1
-                for res in model[chain].get_residues()
-            ]
-        )
-        model_B_atoms = np.asarray(
-            [
-                res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
-                for chain in group2
-                for res in model[chain].get_residues()
-            ]
-        )
-
-    distances = np.sqrt(
-        ((model_A_atoms[:, None] - model_B_atoms[None, :]) ** 2).sum(-1)
-    )
-    return distances
-
-
-# @profile
-def atom_distances_to_residue_distances(atom_distances, atoms_per_res1, atoms_per_res2):
-    res_distances = np.zeros((len(atoms_per_res1), len(atoms_per_res2)))
-
-    cum_i_atoms = 0
-    for i, i_atoms in enumerate(atoms_per_res1):
-        cum_j_atoms = 0
-        for j, j_atoms in enumerate(atoms_per_res2):
-            res_distances[i, j] = atom_distances[
-                cum_i_atoms : cum_i_atoms + i_atoms, cum_j_atoms : cum_j_atoms + j_atoms
-            ].min()
-            cum_j_atoms += j_atoms
-        cum_i_atoms += i_atoms
-    return res_distances
-
-
 def list_atoms_per_residue(model, group):
     n_atoms_per_residue = []
     for chain in group:
@@ -490,21 +432,6 @@ def get_residue_distances(model, group1, group2, all_atom=True):
             model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
     )
     return model_res_distances
-
-
-def get_fnat_stats2(model_res_distances, native_res_distances, thr=5.0):
-    native_contacts = native_res_distances < thr
-    model_contacts = model_res_distances < thr
-    n_native_contacts = np.sum(native_contacts)
-    n_model_contacts = np.sum(model_contacts)
-    n_shared_contacts = np.sum(model_contacts * native_contacts)
-    n_non_native_contacts = np.sum(model_contacts * (1 - native_contacts))
-    return (
-        n_shared_contacts,
-        n_non_native_contacts,
-        n_native_contacts,
-        n_model_contacts,
-    )
 
 
 def get_interacting_pairs(distances, threshold):
