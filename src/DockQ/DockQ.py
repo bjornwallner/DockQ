@@ -134,7 +134,7 @@ def calc_DockQ(
         # working with squared thresholds to avoid using sqrt in distance calculations
         ref_res_distances, threshold=interface_threshold**2
     )
-    
+
     # get a copy of each structure, then only keep backbone atoms
     sample_model_backbone = sample_model
     ref_model_backbone = ref_model
@@ -189,7 +189,6 @@ def calc_DockQ(
     # Set to align on receptor
     super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
     super_imposer.apply(sample_model_backbone.get_atoms())
-    receptor_chain_rms = super_imposer.rms
 
     coord1 = np.array(
         [
@@ -246,13 +245,10 @@ def align_model_to_native(
     if use_numbering:
         model_numbering = []
         native_numbering = []
-        model_sequence = ""
-        native_sequence = ""
 
         for residue in model_structure[model_chain].get_residues():
             resn = int(residue.id[1])
             model_numbering.append(resn)
-        model_sequence += chr(resn)
 
         for residue in native_structure[native_chain].get_residues():
             resn = int(residue.id[1])
@@ -293,7 +289,7 @@ def remove_extra_chains(model, chains_to_keep):
 def fix_chain_residues(model, chain, alignment, invert=False):
     residues = model[chain].get_residues()
     residues_to_delete = []
-    start = False
+
     seqA = alignment["seqA"] if not invert else alignment["seqB"]
     seqB = alignment["seqB"] if not invert else alignment["seqA"]
     for (aligned_residue_A, aligned_residue_B) in zip(seqA, seqB):
@@ -340,7 +336,7 @@ def get_residue_distances(model, group1, group2, all_atom=True):
                 if atom.element != "H"
             ]
         )
-       
+
     else:  # distances were already between CBs only
         model_A_atoms = np.asarray(
             [
@@ -483,7 +479,7 @@ def run_on_all_native_interfaces(model_structure, native_structure, chain_map={"
     for chain_pair in itertools.combinations(native_chains, 2):
         n_contacts = np.sum(np.asarray(get_residue_distances(native_structure, [chain_pair[0]], [chain_pair[1]])) < 25.0)
         interface_dic[chain_pair] = n_contacts
-        
+
     for chain_pair, interface_size in interface_dic.items():
         if interface_size > 0 and chain_pair[0] in chain_map and chain_pair[1] in chain_map:
             model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
@@ -497,7 +493,7 @@ def run_on_all_native_interfaces(model_structure, native_structure, chain_map={"
 def run_DockQ(path_to_model, path_to_native, group1=["A"], group2=["B"], nat_group1=["A"], nat_group2=["B"], model_is_mmcif=False, native_is_mmcif=False, no_needle=False, use_CA_only=False, capri_peptide=False):
     model = load_PDB(path_to_model, is_mmcif=model_is_mmcif)
     native = load_PDB(path_to_native, is_mmcif=native_is_mmcif)
-    
+
     return run_on_groups(model, native, group1, group2, nat_group1, nat_group2, no_needle, use_CA_only, capri_peptide)
 
 
