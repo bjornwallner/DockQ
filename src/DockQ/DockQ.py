@@ -135,7 +135,7 @@ def calc_DockQ(
         ref_res_distances, threshold=interface_threshold**2
     )
     
-    # get a copy of each structure, then only keep backbone atoms. This is faster than copy.deepcopy()
+    # get a copy of each structure, then only keep backbone atoms
     sample_model_backbone = sample_model
     ref_model_backbone = ref_model
     set_common_backbone_atoms(
@@ -296,10 +296,11 @@ def align_model_to_native(
 
 
 def remove_extra_chains(model, chains_to_keep):
-    for chain in model.get_chains():
-        if chain.id not in chains_to_keep:
-            model.detach_child(chain.id)
-    return model
+    chains = [chain.id for chain in model.get_chains()]
+
+    chains_to_remove = set(chains).difference(set(chains_to_keep))
+    for chain in chains_to_remove:
+        model.detach_child(chain)
 
 
 def fix_chain_residues(model, chain, alignment, invert=False):
@@ -439,7 +440,6 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
             .intersection(atom_types)
             .intersection(atom_ids_in_ref_res)
         )
-
         # whatever atom is not in the shared list, remove it from the both structures
         for atom_id in set(atom_ids_in_mod_res).difference(atom_ids_in_ref_and_mod_res):
             mod_res.detach_child(atom_id)
@@ -449,10 +449,10 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
 
 
 def run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, no_needle=False, use_CA_only=False, capri_peptide=False):
-    model_structure = remove_extra_chains(
+    remove_extra_chains(
         model_structure, chains_to_keep=group1 + group2
     )
-    native_structure = remove_extra_chains(
+    remove_extra_chains(
         native_structure, chains_to_keep=nat_group1 + nat_group2
     )
 
@@ -475,6 +475,7 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
         fix_chain_residues(
             native_structure, native_chain, alignment, invert=True
         )
+
     info = calc_DockQ(
         model_structure,
         native_structure,
