@@ -141,7 +141,7 @@ def calc_DockQ(
     set_common_backbone_atoms(
         sample_model_backbone, ref_model_backbone, atom_types=atom_for_sup
     )
-    
+
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
         interacting_pairs,
         sample_model_backbone,
@@ -474,7 +474,6 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
         fix_chain_residues(
             native_structure, native_chain, alignment, invert=True
         )
-
     info = calc_DockQ(
         model_structure,
         native_structure,
@@ -550,7 +549,7 @@ def main():
 
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
-
+    print(model_chains, native_chains)
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
         not args.model_chain1 and not args.native_chain1
     ):
@@ -578,7 +577,7 @@ def main():
             nat_group2 = group2
         else: # otherwise, group the chains by however many where in either model group
             nat_group1 = native_chains[: len(group1)]
-            nat_group2 = native_chains[len(group1) :]
+            nat_group2 = native_chains[len(group1) : len(group1) + len(group2)] if group2 else None
             
     if not group1: # viceversa, the user has set nat_group1
         if model_chains == native_chains:
@@ -586,7 +585,7 @@ def main():
             group2 = nat_group2
         else:
             group1 = model_chains[: len(nat_group1)]
-            group2 = model_chains[len(nat_group1) :]
+            group2 = model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)] if nat_group2 else None
             
     if not group2: # no group2 set yet, use the complement to group1
         group2 = [chain for chain in model_chains if chain not in group1]
