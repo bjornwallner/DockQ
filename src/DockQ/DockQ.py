@@ -241,56 +241,43 @@ def calc_DockQ(
 def align_model_to_native(
     model_structure, native_structure, model_chain, native_chain, use_numbering=False
 ):
-    model_sequence = "".join(
-        seq1(residue.get_resname())
-        for residue in model_structure[model_chain].get_residues()
-    )
 
-    native_sequence = "".join(
-        seq1(residue.get_resname())
-        for residue in native_structure[native_chain].get_residues()
-    )
     alignment = {}
     if use_numbering:
         model_numbering = []
         native_numbering = []
+        model_sequence = ""
+        native_sequence = ""
 
         for residue in model_structure[model_chain].get_residues():
             resn = int(residue.id[1])
             model_numbering.append(resn)
+        model_sequence += chr(resn)
 
         for residue in native_structure[native_chain].get_residues():
             resn = int(residue.id[1])
             native_numbering.append(resn)
+        # if the samllest resn is negative, it will be used to shift all numbers so they start from 0
+        min_resn = max(0, -min(model_numbering + native_numbering))
 
-        start = min(native_numbering + model_numbering)
-        end = max(native_numbering + model_numbering)
-        alignment["seqA"] = []
-        alignment["seqB"] = []
-        model_sequence = iter(model_sequence)
-        native_sequence = iter(native_sequence)
-
-        for i in range(start, end + 1):
-            if i in model_numbering:
-                next_model_res = next(model_sequence)
-            else:
-                next_model_res = "-"
-
-            if i in native_numbering:
-                next_native_res = next(native_sequence)
-            else:
-                next_native_res = "-"
-
-            if next_model_res != "-" or next_native_res != "-":
-                alignment["seqA"].append(next_model_res)
-                alignment["seqB"].append(next_native_res)
+        model_sequence = "".join([chr(resn + min_resn) for resn in model_numbering])
+        native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
 
     else:
-        aln = pairwise2.align.localms(
-            model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
-        )[0]
-        alignment["seqA"] = aln.seqA
-        alignment["seqB"] = aln.seqB
+        model_sequence = "".join(
+            seq1(residue.get_resname())
+            for residue in model_structure[model_chain].get_residues()
+        )
+
+        native_sequence = "".join(
+            seq1(residue.get_resname())
+            for residue in native_structure[native_chain].get_residues()
+        )
+    aln = pairwise2.align.localms(
+        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
+    )[0]
+    alignment["seqA"] = aln.seqA
+    alignment["seqB"] = aln.seqB
 
     return alignment
 
@@ -549,7 +536,7 @@ def main():
 
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
-    print(model_chains, native_chains)
+
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
         not args.model_chain1 and not args.native_chain1
     ):
