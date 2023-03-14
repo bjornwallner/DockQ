@@ -331,7 +331,6 @@ def list_atoms_per_residue(model, group):
 
 # @profile
 def get_residue_distances(model, group1, group2, all_atom=True):
-
     if all_atom:
         # get information about how many atoms correspond to each amino acid in each group of chains
         n_atoms_per_res_group1 = list_atoms_per_residue(model, group1)
@@ -488,6 +487,32 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
         capri_peptide=capri_peptide,
     )
     return info
+
+
+def run_on_all_native_interfaces(model_structure, native_structure, chain_map={"A":"A", "B":"B"}, no_needle=False, use_CA_only=False, capri_peptide=False):
+    """ Given a native-model chain map, finds all non-null native interfaces and runs DockQ for each native-model pair of interfaces """
+    interface_dic = {}
+    results_dic = {}
+    native_chains = [c.id for c in native_structure]
+    for chain_pair in itertools.combinations(native_chains, 2):
+        n_contacts = np.sum(np.asarray(get_residue_distances(native_structure, [chain_pair[0]], [chain_pair[1]])) < 25.0)
+        interface_dic[chain_pair] = n_contacts
+        
+    for chain_pair, interface_size in interface_dic.items():
+        if interface_size > 0 and chain_pair[0] in chain_map and chain_pair[1] in chain_map:
+            model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
+            native_structure_this = pickle.loads(pickle.dumps(native_structure, -1))
+            info = run_on_groups(model_structure_this, native_structure_this, [chain_pair[0]], [chain_pair[1]], [chain_map[chain_pair[0]]], [chain_map[chain_pair[1]]])
+            results_dic[chain_pair] = info
+
+    return results_dic
+
+
+def run_DockQ(path_to_model, path_to_native, group1=["A"], group2=["B"], nat_group1=["A"], nat_group2=["B"], model_is_mmcif=False, native_is_mmcif=False, no_needle=False, use_CA_only=False, capri_peptide=False):
+    model = load_PDB(path_to_model, is_mmcif=model_is_mmcif)
+    native = load_PDB(path_to_native, is_mmcif=native_is_mmcif)
+    
+    return run_on_groups(model, native, group1, group2, nat_group1, nat_group2, no_needle, use_CA_only, capri_peptide)
 
 
 def load_PDB(path, n_model=0, is_mmcif=False):
