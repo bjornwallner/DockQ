@@ -473,14 +473,11 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
 
 def run_on_all_native_interfaces(model_structure, native_structure, chain_map={"A":"A", "B":"B"}, no_needle=False, use_CA_only=False, capri_peptide=False):
     """ Given a native-model chain map, finds all non-null native interfaces and runs DockQ for each native-model pair of interfaces """
-    interface_dic = {}
     results_dic = {}
     native_chains = [c.id for c in native_structure]
     for chain_pair in itertools.combinations(native_chains, 2):
-        n_contacts = np.sum(np.asarray(get_residue_distances(native_structure, [chain_pair[0]], [chain_pair[1]])) < 25.0)
-        interface_dic[chain_pair] = n_contacts
+        interface_size = np.sum(np.asarray(get_residue_distances(native_structure, [chain_pair[0]], [chain_pair[1]])) < 25.0)
 
-    for chain_pair, interface_size in interface_dic.items():
         if interface_size > 0 and chain_pair[0] in chain_map and chain_pair[1] in chain_map:
             model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
             native_structure_this = pickle.loads(pickle.dumps(native_structure, -1))
