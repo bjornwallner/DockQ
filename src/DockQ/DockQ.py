@@ -254,7 +254,7 @@ def align_model_to_native(
             resn = int(residue.id[1])
             native_numbering.append(resn)
         # if the samllest resn is negative, it will be used to shift all numbers so they start from 0
-        min_resn = max(0, -min(model_numbering + native_numbering))
+        min_resn = max(45, -min(model_numbering + native_numbering))
 
         model_sequence = "".join([chr(resn + min_resn) for resn in model_numbering])
         native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
@@ -274,7 +274,6 @@ def align_model_to_native(
     )[0]
     alignment["seqA"] = aln.seqA
     alignment["seqB"] = aln.seqB
-
     return alignment
 
 
