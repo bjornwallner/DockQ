@@ -118,6 +118,8 @@ def calc_DockQ(
     sample_res_distances = get_residue_distances(sample_model, group1, group2)
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
 
+    assert sample_res_distances.shape == ref_res_distances.shape, "Interfaces have different shapes"
+
     nat_correct, nonnat_count, _, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, threshold=fnat_threshold
     )
@@ -254,6 +256,7 @@ def align_model_to_native(
             resn = int(residue.id[1])
             native_numbering.append(resn)
         # if the samllest resn is negative, it will be used to shift all numbers so they start from 0
+        # the minimum offset is 45 to avoid including the "-" character that is reserved for gaps
         min_resn = max(45, -min(model_numbering + native_numbering))
 
         model_sequence = "".join([chr(resn + min_resn) for resn in model_numbering])
