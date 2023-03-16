@@ -11,7 +11,12 @@ import Bio.PDB
 from Bio import pairwise2
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from .operations import residue_distances, get_fnat_stats
+# fallback in case the cython version doesn't work, though it will be slower
+try:
+    from .operations import residue_distances, get_fnat_stats
+except:
+    print("WARNING: It looks like cython is not working, falling back on native python. This will make DockQ slower")
+    from operations_nocy import residue_distances, get_fnat_stats
 
 
 def parse_args():
@@ -328,7 +333,6 @@ def list_atoms_per_residue(model, group):
     return np.array(n_atoms_per_residue).astype(int)
 
 
-# @profile
 def get_residue_distances(model, group1, group2, all_atom=True):
     if all_atom:
         # get information about how many atoms correspond to each amino acid in each group of chains
