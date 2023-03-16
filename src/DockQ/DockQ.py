@@ -11,11 +11,14 @@ import Bio.PDB
 from Bio import pairwise2
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
+
 # fallback in case the cython version doesn't work, though it will be slower
 try:
     from .operations import residue_distances, get_fnat_stats
 except:
-    print("WARNING: It looks like cython is not working, falling back on native python. This will make DockQ slower")
+    print(
+        "WARNING: It looks like cython is not working, falling back on native python. This will make DockQ slower"
+    )
     from operations_nocy import residue_distances, get_fnat_stats
 
 
@@ -46,10 +49,16 @@ def parse_args():
         "-useCA", default=False, action="store_true", help="use CA instead of backbone"
     )
     parser.add_argument(
-        "-mmcif_model", default=False, action="store_true", help="The model is in mmCIF format"
+        "-mmcif_model",
+        default=False,
+        action="store_true",
+        help="The model is in mmCIF format",
     )
     parser.add_argument(
-        "-mmcif_native", default=False, action="store_true", help="The native is in mmCIF format"
+        "-mmcif_native",
+        default=False,
+        action="store_true",
+        help="The native is in mmCIF format",
     )
     parser.add_argument(
         "-no_needle",
@@ -117,13 +126,19 @@ def calc_DockQ(
     interface_threshold = 8.0 if capri_peptide else 10.0
 
     # total number of native contacts is calculated on untouched native structure
-    ref_res_distances = get_residue_distances(ref_model_original, nat_group1, nat_group2)
-    nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[0].shape[0]
+    ref_res_distances = get_residue_distances(
+        ref_model_original, nat_group1, nat_group2
+    )
+    nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[
+        0
+    ].shape[0]
 
     sample_res_distances = get_residue_distances(sample_model, group1, group2)
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
 
-    assert sample_res_distances.shape == ref_res_distances.shape, "Interfaces have different shapes"
+    assert (
+        sample_res_distances.shape == ref_res_distances.shape
+    ), "Interfaces have different shapes"
 
     nat_correct, nonnat_count, _, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, threshold=fnat_threshold
@@ -139,7 +154,8 @@ def calc_DockQ(
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
         # working with squared thresholds to avoid using sqrt in distance calculations
-        ref_res_distances, threshold=interface_threshold**2
+        ref_res_distances,
+        threshold=interface_threshold**2,
     )
 
     # get a copy of each structure, then only keep backbone atoms
@@ -296,7 +312,7 @@ def remove_extra_chains(model, chains_to_keep):
 def remove_hetatms(model):
     chains = [chain.id for chain in model.get_chains()]
     residues_to_delete = []
-    
+
     for chain in chains:
         residues = model[chain].get_residues()
 
@@ -328,7 +344,9 @@ def list_atoms_per_residue(model, group):
     for chain in group:
         for residue in model[chain].get_residues():
             # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
-            atom_ids = set([a.id for a in residue.get_unpacked_list() if a.element != "H"])
+            atom_ids = set(
+                [a.id for a in residue.get_unpacked_list() if a.element != "H"]
+            )
             n_atoms_per_residue.append(len(atom_ids))
     return np.array(n_atoms_per_residue).astype(int)
 
@@ -377,7 +395,7 @@ def get_residue_distances(model, group1, group2, all_atom=True):
         n_atoms_per_res_group2 = np.ones(model_B_atoms.shape[0]).astype(int)
 
     model_res_distances = residue_distances(
-            model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
+        model_A_atoms, model_B_atoms, n_atoms_per_res_group1, n_atoms_per_res_group2
     )
     return model_res_distances
 
@@ -450,22 +468,24 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
             ref_res.detach_child(atom_id)
 
 
-def run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, no_needle=False, use_CA_only=False, capri_peptide=False):
-    remove_extra_chains(
-        model_structure, chains_to_keep=group1 + group2
-    )
-    remove_extra_chains(
-        native_structure, chains_to_keep=nat_group1 + nat_group2
-    )
+def run_on_groups(
+    model_structure,
+    native_structure,
+    group1,
+    group2,
+    nat_group1,
+    nat_group2,
+    no_needle=False,
+    use_CA_only=False,
+    capri_peptide=False,
+):
+    remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
+    remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
 
-    native_structure_original = pickle.loads(
-                    pickle.dumps(native_structure, -1)
-                )
+    native_structure_original = pickle.loads(pickle.dumps(native_structure, -1))
 
     # realign each model chain against the corresponding native chain
-    for model_chain, native_chain in zip(
-        group1 + group2, nat_group1 + nat_group2
-    ):
+    for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
         alignment = align_model_to_native(
             model_structure,
             native_structure,
@@ -474,9 +494,7 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
             use_numbering=no_needle,
         )
         fix_chain_residues(model_structure, model_chain, alignment)
-        fix_chain_residues(
-            native_structure, native_chain, alignment, invert=True
-        )
+        fix_chain_residues(native_structure, native_chain, alignment, invert=True)
     info = calc_DockQ(
         model_structure,
         native_structure,
@@ -491,27 +509,74 @@ def run_on_groups(model_structure, native_structure, group1, group2, nat_group1,
     return info
 
 
-def run_on_all_native_interfaces(model_structure, native_structure, chain_map={"A":"A", "B":"B"}, no_needle=False, use_CA_only=False, capri_peptide=False):
-    """ Given a native-model chain map, finds all non-null native interfaces and runs DockQ for each native-model pair of interfaces """
+def run_on_all_native_interfaces(
+    model_structure,
+    native_structure,
+    chain_map={"A": "A", "B": "B"},
+    no_needle=False,
+    use_CA_only=False,
+    capri_peptide=False,
+):
+    """Given a native-model chain map, finds all non-null native interfaces and runs DockQ for each native-model pair of interfaces"""
     results_dic = {}
     native_chains = [c.id for c in native_structure]
     for chain_pair in itertools.combinations(native_chains, 2):
-        interface_size = np.sum(np.asarray(get_residue_distances(native_structure, [chain_pair[0]], [chain_pair[1]])) < 25.0)
+        interface_size = np.sum(
+            np.asarray(
+                get_residue_distances(
+                    native_structure, [chain_pair[0]], [chain_pair[1]]
+                )
+            )
+            < 25.0
+        )
 
-        if interface_size > 0 and chain_pair[0] in chain_map and chain_pair[1] in chain_map:
+        if (
+            interface_size > 0
+            and chain_pair[0] in chain_map
+            and chain_pair[1] in chain_map
+        ):
             model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
             native_structure_this = pickle.loads(pickle.dumps(native_structure, -1))
-            info = run_on_groups(model_structure_this, native_structure_this, [chain_pair[0]], [chain_pair[1]], [chain_map[chain_pair[0]]], [chain_map[chain_pair[1]]])
+            info = run_on_groups(
+                model_structure_this,
+                native_structure_this,
+                [chain_pair[0]],
+                [chain_pair[1]],
+                [chain_map[chain_pair[0]]],
+                [chain_map[chain_pair[1]]],
+            )
             results_dic[chain_pair] = info
 
     return results_dic
 
 
-def run_DockQ(path_to_model, path_to_native, group1=["A"], group2=["B"], nat_group1=["A"], nat_group2=["B"], model_is_mmcif=False, native_is_mmcif=False, no_needle=False, use_CA_only=False, capri_peptide=False):
+def run_DockQ(
+    path_to_model,
+    path_to_native,
+    group1=["A"],
+    group2=["B"],
+    nat_group1=["A"],
+    nat_group2=["B"],
+    model_is_mmcif=False,
+    native_is_mmcif=False,
+    no_needle=False,
+    use_CA_only=False,
+    capri_peptide=False,
+):
     model = load_PDB(path_to_model, is_mmcif=model_is_mmcif)
     native = load_PDB(path_to_native, is_mmcif=native_is_mmcif)
 
-    return run_on_groups(model, native, group1, group2, nat_group1, nat_group2, no_needle, use_CA_only, capri_peptide)
+    return run_on_groups(
+        model,
+        native,
+        group1,
+        group2,
+        nat_group1,
+        nat_group2,
+        no_needle,
+        use_CA_only,
+        capri_peptide,
+    )
 
 
 def load_PDB(path, n_model=0, is_mmcif=False):
@@ -532,7 +597,8 @@ def load_PDB(path, n_model=0, is_mmcif=False):
         sys.exit(1)
     return model
 
-#@profile
+
+# @profile
 def main():
     args = parse_args()
 
@@ -572,31 +638,51 @@ def main():
     nat_group2 = args.native_chain2
 
     # at this stage either group1 or nat_group1 are not None
-    if not nat_group1: # then the user has set group1. Try to follow the same mapping
-        if model_chains == native_chains: # easier case: the chains have the same naming between native/model, so just copy them
+    if not nat_group1:  # then the user has set group1. Try to follow the same mapping
+        if (
+            model_chains == native_chains
+        ):  # easier case: the chains have the same naming between native/model, so just copy them
             nat_group1 = group1
             # use complement to nat_group1 if group2 hasn't been decided yet
             nat_group2 = group2
-        else: # otherwise, group the chains by however many where in either model group
+        else:  # otherwise, group the chains by however many where in either model group
             nat_group1 = native_chains[: len(group1)]
-            nat_group2 = native_chains[len(group1) : len(group1) + len(group2)] if group2 else None
-            
-    if not group1: # viceversa, the user has set nat_group1
+            nat_group2 = (
+                native_chains[len(group1) : len(group1) + len(group2)]
+                if group2
+                else None
+            )
+
+    if not group1:  # viceversa, the user has set nat_group1
         if model_chains == native_chains:
             group1 = nat_group1
             group2 = nat_group2
         else:
             group1 = model_chains[: len(nat_group1)]
-            group2 = model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)] if nat_group2 else None
-            
-    if not group2: # no group2 set yet, use the complement to group1
+            group2 = (
+                model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)]
+                if nat_group2
+                else None
+            )
+
+    if not group2:  # no group2 set yet, use the complement to group1
         group2 = [chain for chain in model_chains if chain not in group1]
     if not nat_group2:
         nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
-        
+
     if not args.perm1 and not args.perm2:
-        info = run_on_groups(model_structure, native_structure, group1, group2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
-    else: # permute chains and run on a for loop
+        info = run_on_groups(
+            model_structure,
+            native_structure,
+            group1,
+            group2,
+            nat_group1,
+            nat_group2,
+            args.no_needle,
+            args.useCA,
+            args.capri_peptide,
+        )
+    else:  # permute chains and run on a for loop
         best_DockQ = -1
 
         iter_perm1 = itertools.combinations(group1, len(group1))
@@ -619,10 +705,18 @@ def main():
         for g1 in combos1:
             for g2 in combos2:
 
-                model_structure_this = pickle.loads(
-                    pickle.dumps(model_structure, -1)
+                model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
+                test_info = run_on_groups(
+                    model_structure_this,
+                    native_structure,
+                    g1,
+                    g2,
+                    nat_group1,
+                    nat_group2,
+                    args.no_needle,
+                    args.useCA,
+                    args.capri_peptide,
                 )
-                test_info = run_on_groups(model_structure_this, native_structure, g1, g2, nat_group1, nat_group2, args.no_needle, args.useCA, args.capri_peptide)
 
                 if not args.quiet:
                     print(
