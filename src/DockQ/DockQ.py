@@ -8,7 +8,8 @@ import itertools
 import numpy as np
 from argparse import ArgumentParser
 import Bio.PDB
-from Bio import pairwise2
+#from Bio import pairwise2
+from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
 
@@ -263,7 +264,12 @@ def calc_DockQ(
 def align_model_to_native(
     model_structure, native_structure, model_chain, native_chain, use_numbering=False
 ):
-
+    """
+    Function to align two PDB structures. This can be done by sequence (default) or by
+    numbering. If the numbering is used, then each residue number from the pdb structure
+    is converted to a unique character. Then the two vectors of character are aligned
+    as if they were two sequences
+    """
     alignment = {}
     if use_numbering:
         model_numbering = []
@@ -293,11 +299,17 @@ def align_model_to_native(
             seq1(residue.get_resname())
             for residue in native_structure[native_chain].get_residues()
         )
-    aln = pairwise2.align.localms(
-        model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
-    )[0]
-    alignment["seqA"] = aln.seqA
-    alignment["seqB"] = aln.seqB
+    #aln = pairwise2.align.localms(
+    #    model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
+    #)[0]
+    aligner = Align.PairwiseAligner()
+    aligner.match = 5
+    aligner.mismatch = 0
+    aligner.open_gap_score = -10
+    aligner.extend_gap_score = -0.5
+    aln = Align.PairwiseAligner().align(model_sequence, native_sequence)[0]
+    alignment["seqA"] = aln.format().split("\n")[0] #aln.seqA
+    alignment["seqB"] = aln.format().split("\n")[2] #aln.seqB
     return alignment
 
 
