@@ -288,6 +288,20 @@ def remove_extra_chains(model, chains_to_keep):
         model.detach_child(chain)
 
 
+def remove_hetatms(model):
+    chains = [chain.id for chain in model.get_chains()]
+    residues_to_delete = []
+    
+    for chain in chains:
+        residues = model[chain].get_residues()
+
+        for res in residues:
+            if res.id[0] != " ":
+                residues_to_delete.append(res.get_full_id())
+    for _, _, chain, res in residues_to_delete:
+        model[chain].detach_child(res)
+
+
 def fix_chain_residues(model, chain, alignment, invert=False):
     residues = model[chain].get_residues()
     residues_to_delete = []
@@ -526,6 +540,8 @@ def main():
 
     native_structure = load_PDB(args.native, is_mmcif=args.mmcif_native)
     model_structure = load_PDB(args.model, is_mmcif=args.mmcif_model)
+    remove_hetatms(native_structure)
+    remove_hetatms(model_structure)
 
     best_info = ""
 
