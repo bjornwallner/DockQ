@@ -164,17 +164,17 @@ def calc_DockQ(
     ref_group2_size = np.sum([len(ref_model_original[chain]) for chain in nat_group2])
     receptor_chains = (
         (nat_group1, group1)
-        if ref_group1_size >= ref_group2_size
+        if ref_group1_size > ref_group2_size
         else (nat_group2, group2)
     )
     ligand_chains = (
         (nat_group1, group1)
-        if ref_group1_size < ref_group2_size
+        if ref_group1_size <= ref_group2_size
         else (nat_group2, group2)
     )
     class1, class2 = (
         ("receptor", "ligand")
-        if ref_group1_size >= ref_group2_size
+        if ref_group1_size > ref_group2_size
         else ("ligand", "receptor")
     )
     receptor_atoms_native = [
