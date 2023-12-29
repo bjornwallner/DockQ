@@ -307,9 +307,9 @@ def align_model_to_native(
     aligner.mismatch = 0
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
-    aln = Align.PairwiseAligner().align(model_sequence, native_sequence)[0]
-    alignment["seqA"] = aln.format().split("\n")[0] #aln.seqA
-    alignment["seqB"] = aln.format().split("\n")[2] #aln.seqB
+    aln = aligner.align(model_sequence, native_sequence)[0]
+    alignment['seqA'] = aln[0, :]
+    alignment['seqB'] = aln[1, :]
     return alignment
 
 
@@ -343,7 +343,10 @@ def fix_chain_residues(model, chain, alignment, invert=False):
     seqB = alignment["seqB"] if not invert else alignment["seqA"]
     for (aligned_residue_A, aligned_residue_B) in zip(seqA, seqB):
         if aligned_residue_A != "-":
-            residue = next(residues)
+            try:
+                residue = next(residues)
+            except StopIteration:
+                break
         if aligned_residue_B == "-":  # gap residue: remove from structure
             residues_to_delete.append(residue.get_full_id())
 
