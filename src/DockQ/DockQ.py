@@ -299,17 +299,15 @@ def align_model_to_native(
             seq1(residue.get_resname())
             for residue in native_structure[native_chain].get_residues()
         )
-    #aln = pairwise2.align.localms(
-    #    model_sequence, native_sequence, match=5, mismatch=0, open=-10, extend=-1
-    #)[0]
+
     aligner = Align.PairwiseAligner()
     aligner.match = 5
     aligner.mismatch = 0
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
-    aln = Align.PairwiseAligner().align(model_sequence, native_sequence)[0]
-    alignment["seqA"] = aln.format().split("\n")[0] #aln.seqA
-    alignment["seqB"] = aln.format().split("\n")[2] #aln.seqB
+    aln = aligner.align(model_sequence, native_sequence)[0]
+    alignment["seqA"] = aln.format().split("\n")[0]
+    alignment["seqB"] = aln.format().split("\n")[2]
     return alignment
 
 
@@ -610,6 +608,16 @@ def load_PDB(path, n_model=0, is_mmcif=False):
     return model
 
 
+def group_model_chains(model_structure, native_structure, model_chains, native_chains):
+    alignment_targets = itertools.product(model_chains, native_chains)
+    native_chain_clusters = {chain:[] for chain in native_chains}
+
+    for model_chain, native_chain in alignment_targets:
+        model_aln = align_model_to_native(model_structure, native_structure, model_chain, native_chain)["seqA"]
+        if "-" not in model_aln: # 100% sequence identity, 100% coverage of native sequence in model sequence
+            native_chain_clusters[native_chain].append(model_chain)
+    return native_chain_clusters
+
 # @profile
 def main():
     args = parse_args()
@@ -648,7 +656,7 @@ def main():
     group2 = args.model_chain2
     nat_group1 = args.native_chain1
     nat_group2 = args.native_chain2
-
+    
     # at this stage either group1 or nat_group1 are not None
     if not nat_group1:  # then the user has set group1. Try to follow the same mapping
         if (
@@ -664,6 +672,7 @@ def main():
                 if group2
                 else None
             )
+            print(group1, group2, nat_group1, nat_group2)
 
     if not group1:  # viceversa, the user has set nat_group1
         if model_chains == native_chains:
@@ -697,16 +706,13 @@ def main():
     else:  # permute chains and run on a for loop
         best_DockQ = -1
 
-        iter_perm1 = itertools.combinations(group1, len(group1))
-        iter_perm2 = itertools.combinations(group2, len(group2))
-        if args.perm1:
-            iter_perm1 = itertools.permutations(group1)
-        if args.perm2:
-            iter_perm2 = itertools.permutations(group2)
+        native_chain_clusters = group_model_chains(model_structure, native_structure, model_chains, native_chains)
+        print(native_chain_clusters)
 
-        combos1 = list(iter_perm1)
-        combos2 = list(iter_perm2)
+        combos1 = list(itertools.permutations(group1)) if args.perm1 else group1
+        combos2 = list(itertools.permutations(group2)) if args.perm2 else group2
 
+        print(combos1, combos2)
         pe_tot = len(combos1) * len(combos2)
         pe = 1
         if args.verbose:
