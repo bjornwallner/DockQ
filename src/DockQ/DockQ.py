@@ -5,10 +5,11 @@ import os
 import pickle
 import traceback
 import itertools
-import numpy as np
+from functools import lru_cache 
 from argparse import ArgumentParser
+
 import Bio.PDB
-#from Bio import pairwise2
+import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
@@ -133,13 +134,19 @@ def calc_DockQ(
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[
         0
     ].shape[0]
+    
+    if nat_total == 0:
+        # if the native has no interface between the two chain groups
+        # nothing to do here
+        print(nat_group1, nat_group2)
+        return None
 
     sample_res_distances = get_residue_distances(sample_model, group1, group2)
     ref_res_distances = get_residue_distances(ref_model, nat_group1, nat_group2)
 
     assert (
         sample_res_distances.shape == ref_res_distances.shape
-    ), "Interfaces have different shapes"
+    ), f"Native and model have incompatible sizes ({sample_res_distances.shape} != {ref_res_distances.shape})"
 
     nat_correct, nonnat_count, _, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, threshold=fnat_threshold
@@ -270,7 +277,7 @@ def align_model_to_native(
     is converted to a unique character. Then the two vectors of character are aligned
     as if they were two sequences
     """
-    alignment = {}
+    
     if use_numbering:
         model_numbering = []
         native_numbering = []
@@ -306,8 +313,15 @@ def align_model_to_native(
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
     aln = aligner.align(model_sequence, native_sequence)[0]
-    alignment["seqA"] = aln.format().split("\n")[0]
-    alignment["seqB"] = aln.format().split("\n")[2]
+    return aln
+
+
+def format_alignment(aln):
+    alignment = {}
+    formatted_aln = aln.format().split("\n")
+    alignment["seqA"] = formatted_aln[0]
+    alignment["matches"] = formatted_aln[1]
+    alignment["seqB"] = formatted_aln[2]
     return alignment
 
 
@@ -361,6 +375,7 @@ def list_atoms_per_residue(model, group):
     return np.array(n_atoms_per_residue).astype(int)
 
 
+#@lru_cache
 def get_residue_distances(model, group1, group2, all_atom=True):
     if all_atom:
         # get information about how many atoms correspond to each amino acid in each group of chains
@@ -478,6 +493,7 @@ def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]
             ref_res.detach_child(atom_id)
 
 
+#@lru_cache
 def run_on_groups(
     model_structure,
     native_structure,
@@ -490,19 +506,19 @@ def run_on_groups(
     capri_peptide=False,
 ):
     remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
-    remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
-
     native_structure_original = pickle.loads(pickle.dumps(native_structure, -1))
+    remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
 
     # realign each model chain against the corresponding native chain
     for model_chain, native_chain in zip(group1 + group2, nat_group1 + nat_group2):
-        alignment = align_model_to_native(
+        aln = align_model_to_native(
             model_structure,
             native_structure,
             model_chain,
             native_chain,
             use_numbering=no_needle,
         )
+        alignment = format_alignment(aln)
         fix_chain_residues(model_structure, model_chain, alignment)
         fix_chain_residues(native_structure, native_chain, alignment, invert=True)
     info = calc_DockQ(
@@ -534,7 +550,7 @@ def run_on_all_native_interfaces(
         interface_size = np.sum(
             np.asarray(
                 get_residue_distances(
-                    native_structure, [chain_pair[0]], [chain_pair[1]]
+                    native_structure, (chain_pair[0]), (chain_pair[1])
                 )
             )
             < 25.0
@@ -550,10 +566,10 @@ def run_on_all_native_interfaces(
             info = run_on_groups(
                 model_structure_this,
                 native_structure_this,
-                [chain_pair[0]],
-                [chain_pair[1]],
-                [chain_map[chain_pair[0]]],
-                [chain_map[chain_pair[1]]],
+                (chain_map[chain_pair[0]]),
+                (chain_map[chain_pair[1]]),
+                (chain_pair[0]),
+                (chain_pair[1]),
             )
             results_dic[chain_pair] = info
 
@@ -613,8 +629,10 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     native_chain_clusters = {chain:[] for chain in native_chains}
 
     for model_chain, native_chain in alignment_targets:
-        model_aln = align_model_to_native(model_structure, native_structure, model_chain, native_chain)["seqA"]
-        if "-" not in model_aln: # 100% sequence identity, 100% coverage of native sequence in model sequence
+        aln = align_model_to_native(model_structure, native_structure, model_chain, native_chain)
+        alignment = format_alignment(aln)
+        if "." not in alignment["matches"] and ("-" not in alignment["seqA"] or "-" not in alignment["seqB"]):
+            # 100% sequence identity, 100% coverage of native sequence in model sequence
             native_chain_clusters[native_chain].append(model_chain)
     return native_chain_clusters
 
@@ -634,7 +652,7 @@ def main():
     remove_hetatms(model_structure)
 
     best_info = ""
-
+    info = {}
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
 
@@ -672,7 +690,6 @@ def main():
                 if group2
                 else None
             )
-            print(group1, group2, nat_group1, nat_group2)
 
     if not group1:  # viceversa, the user has set nat_group1
         if model_chains == native_chains:
@@ -704,59 +721,39 @@ def main():
             args.capri_peptide,
         )
     else:  # permute chains and run on a for loop
-        best_DockQ = -1
+        best_dockq = -1
+        best_mapping = None
 
         native_chain_clusters = group_model_chains(model_structure, native_structure, model_chains, native_chains)
-        print(native_chain_clusters)
+        all_mappings = itertools.product(*native_chain_clusters.values())
+        
+        # remove mappings where the same model chain is present more than once
+        all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
+        combo_dockq = -1
+        for mapping in all_mappings:
+            chain_map = {native_chain:mapping[i] for i, native_chain in enumerate(native_chains)}
 
-        combos1 = list(itertools.permutations(group1)) if args.perm1 else group1
-        combos2 = list(itertools.permutations(group2)) if args.perm2 else group2
-
-        print(combos1, combos2)
-        pe_tot = len(combos1) * len(combos2)
-        pe = 1
-        if args.verbose:
-            print(
-                f"Starting chain order permutation search (number of permutations: {pe_tot})"
+            result_this_mapping = run_on_all_native_interfaces(
+                model_structure,
+                native_structure,
+                chain_map=chain_map,
+                no_needle=args.no_needle,
+                use_CA_only=args.useCA,
+                capri_peptide=args.capri_peptide,
             )
+            #print(chain_map)
+            #print(result_this_mapping.values())
+            total_dockq = sum([result["DockQ"] for result in result_this_mapping.values()])
+            print(result_this_mapping, total_dockq)
+            if total_dockq > best_dockq:
+                best_dockq = total_dockq
+                best_result = result_this_mapping
 
-        for g1 in combos1:
-            for g2 in combos2:
+        info["model"] = args.model
+        info["native"] = args.native
+        info["best_dockq"] = best_dockq
+        info["best_result"] = best_result
 
-                model_structure_this = pickle.loads(pickle.dumps(model_structure, -1))
-                test_info = run_on_groups(
-                    model_structure_this,
-                    native_structure,
-                    g1,
-                    g2,
-                    nat_group1,
-                    nat_group2,
-                    args.no_needle,
-                    args.useCA,
-                    args.capri_peptide,
-                )
-
-                if not args.quiet:
-                    print(
-                        f"{pe}/{pe_tot} {''.join(g1)} -> {''.join(g2)} {test_info['DockQ']}"
-                    )
-
-                if test_info["DockQ"] > best_DockQ:
-                    best_DockQ = test_info["DockQ"]
-                    info = test_info
-                    best_info = f"Best score ({best_DockQ}) found for model -> native, chain1: {''.join(g1)} -> {''.join(nat_group1)} chain2: {''.join(g2)} -> {''.join(nat_group2)}"
-
-                    if args.verbose:
-                        print(best_info)
-                    if not args.quiet:
-                        print(f"Current best: {best_DockQ}")
-                pe = pe + 1
-        if not args.quiet:
-            print(best_info)
-
-    info["model"] = args.model
-    info["native"] = args.native
-    info["best"] = best_info
     print_results(info, args.short, args.capri_peptide)
 
 
@@ -800,29 +797,31 @@ def print_results(info, short=False, capri_peptide=False):
             print("****************************************************************")
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
-        if "best" in info:
-            print(info["best"])
-        print(
-            f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
-        )
-        print(
-            f"Number of equivalent residues in chain {info['chain2']} {info['len2']} ({info['class2']})"
-        )
-        print(
-            f"Fnat {info['fnat']:.3f} {info['nat_correct']} correct of {info['nat_total']} native contacts"
-        )
-        print(
-            f"Fnonnat {info['fnonnat']:.3f} {info['nonnat_count']} non-native of {info['model_total']} model contacts"
-        )
-        print(f"iRMS {info['irms']:.3f}")
-        print(f"LRMS {info['Lrms']:.3f}")
+        if "best_dockq" in info:
+            print(info["best_result"])
+            print(info["best_dockq"])
+        else:
+            print(
+                f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
+            )
+            print(
+                f"Number of equivalent residues in chain {info['chain2']} {info['len2']} ({info['class2']})"
+            )
+            print(
+                f"Fnat {info['fnat']:.3f} {info['nat_correct']} correct of {info['nat_total']} native contacts"
+            )
+            print(
+                f"Fnonnat {info['fnonnat']:.3f} {info['nonnat_count']} non-native of {info['model_total']} model contacts"
+            )
+            print(f"iRMS {info['irms']:.3f}")
+            print(f"LRMS {info['Lrms']:.3f}")
 
-        peptide_disclaimer = (
-            " DockQ not reoptimized for CAPRI peptide evaluation"
-            if capri_peptide
-            else ""
-        )
-        print(f"DockQ {info['DockQ']:.3f}{peptide_disclaimer}")
+            peptide_disclaimer = (
+                " DockQ not reoptimized for CAPRI peptide evaluation"
+                if capri_peptide
+                else ""
+            )
+            print(f"DockQ {info['DockQ']:.3f}{peptide_disclaimer}")
 
 
 if __name__ == "__main__":
