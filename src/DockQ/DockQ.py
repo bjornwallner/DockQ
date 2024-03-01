@@ -69,16 +69,10 @@ def parse_args():
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
     parser.add_argument(
-        "-perm1",
-        default=False,
+        "-auto_map",
+        default=True,
         action="store_true",
-        help="use all chain1 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm2 there will be n!*m! combinations",
-    )
-    parser.add_argument(
-        "-perm2",
-        default=False,
-        action="store_true",
-        help="use all chain2 permutations to find maximum DockQ (number of comparisons is n! = 24, if combined with -perm1 there will be n!*m! combinations",
+        help="automatically calculate chain mapping between model and native to maximize total DockQ (sum DockQ for all native interfaces)",
     )
     parser.add_argument(
         "-model_chain1",
@@ -535,6 +529,7 @@ def run_on_groups(
     return info
 
 
+#@profile
 def run_on_all_native_interfaces(
     model_structure,
     native_structure,
@@ -547,14 +542,14 @@ def run_on_all_native_interfaces(
     results_dic = {}
     native_chains = [c.id for c in native_structure]
     for chain_pair in itertools.combinations(native_chains, 2):
-        interface_size = np.sum(
-            np.asarray(
-                get_residue_distances(
-                    native_structure, (chain_pair[0]), (chain_pair[1])
-                )
-            )
-            < 25.0
+                
+        # total number of native contacts is calculated on untouched native structure
+        ref_res_distances = get_residue_distances(
+            native_structure, (chain_pair[0]), (chain_pair[1])
         )
+        interface_size = np.nonzero(np.asarray(ref_res_distances) < 25.0)[
+            0
+        ].shape[0]
 
         if (
             interface_size > 0
@@ -636,7 +631,7 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
             native_chain_clusters[native_chain].append(model_chain)
     return native_chain_clusters
 
-# @profile
+#@profile
 def main():
     args = parse_args()
 
@@ -656,6 +651,7 @@ def main():
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
 
+    """
     if (len(model_chains) > 2 or len(native_chains) > 2) and (
         not args.model_chain1 and not args.native_chain1
     ):
@@ -665,50 +661,51 @@ def main():
         print(f"Model chains: {' '.join(model_chains)}")
         print(f"Native chains: {' '.join(native_chains)}")
         sys.exit()
+    """
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
 
-    # Some of these might be None
-    group1 = [model_chains[0]] if len(model_chains) == 2 else args.model_chain1
-    group2 = args.model_chain2
-    nat_group1 = args.native_chain1
-    nat_group2 = args.native_chain2
-    
-    # at this stage either group1 or nat_group1 are not None
-    if not nat_group1:  # then the user has set group1. Try to follow the same mapping
-        if (
-            model_chains == native_chains
-        ):  # easier case: the chains have the same naming between native/model, so just copy them
-            nat_group1 = group1
-            # use complement to nat_group1 if group2 hasn't been decided yet
-            nat_group2 = group2
-        else:  # otherwise, group the chains by however many where in either model group
-            nat_group1 = native_chains[: len(group1)]
-            nat_group2 = (
-                native_chains[len(group1) : len(group1) + len(group2)]
-                if group2
-                else None
-            )
+    if not args.auto_map:
+        # Some of these might be None
+        group1 = [model_chains[0]] if len(model_chains) == 2 else args.model_chain1
+        group2 = args.model_chain2
+        nat_group1 = args.native_chain1
+        nat_group2 = args.native_chain2
+        
+        # at this stage either group1 or nat_group1 are not None
+        if not nat_group1:  # then the user has set group1. Try to follow the same mapping
+            if (
+                model_chains == native_chains
+            ):  # easier case: the chains have the same naming between native/model, so just copy them
+                nat_group1 = group1
+                # use complement to nat_group1 if group2 hasn't been decided yet
+                nat_group2 = group2
+            else:  # otherwise, group the chains by however many where in either model group
+                nat_group1 = native_chains[: len(group1)]
+                nat_group2 = (
+                    native_chains[len(group1) : len(group1) + len(group2)]
+                    if group2
+                    else None
+                )
 
-    if not group1:  # viceversa, the user has set nat_group1
-        if model_chains == native_chains:
-            group1 = nat_group1
-            group2 = nat_group2
-        else:
-            group1 = model_chains[: len(nat_group1)]
-            group2 = (
-                model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)]
-                if nat_group2
-                else None
-            )
+        if not group1:  # viceversa, the user has set nat_group1
+            if model_chains == native_chains:
+                group1 = nat_group1
+                group2 = nat_group2
+            else:
+                group1 = model_chains[: len(nat_group1)]
+                group2 = (
+                    model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)]
+                    if nat_group2
+                    else None
+                )
 
-    if not group2:  # no group2 set yet, use the complement to group1
-        group2 = [chain for chain in model_chains if chain not in group1]
-    if not nat_group2:
-        nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
+        if not group2:  # no group2 set yet, use the complement to group1
+            group2 = [chain for chain in model_chains if chain not in group1]
+        if not nat_group2:
+            nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
 
-    if not args.perm1 and not args.perm2:
         info = run_on_groups(
             model_structure,
             native_structure,
@@ -722,17 +719,18 @@ def main():
         )
     else:  # permute chains and run on a for loop
         best_dockq = -1
-        best_mapping = None
+        best_result = None
 
         native_chain_clusters = group_model_chains(model_structure, native_structure, model_chains, native_chains)
         all_mappings = itertools.product(*native_chain_clusters.values())
-        
+        #print(native_chain_clusters, list(all_mappings))
         # remove mappings where the same model chain is present more than once
-        all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
+        #all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
         combo_dockq = -1
+        
         for mapping in all_mappings:
             chain_map = {native_chain:mapping[i] for i, native_chain in enumerate(native_chains)}
-
+            print(chain_map)
             result_this_mapping = run_on_all_native_interfaces(
                 model_structure,
                 native_structure,
@@ -741,10 +739,8 @@ def main():
                 use_CA_only=args.useCA,
                 capri_peptide=args.capri_peptide,
             )
-            #print(chain_map)
-            #print(result_this_mapping.values())
+
             total_dockq = sum([result["DockQ"] for result in result_this_mapping.values()])
-            print(result_this_mapping, total_dockq)
             if total_dockq > best_dockq:
                 best_dockq = total_dockq
                 best_result = result_this_mapping
