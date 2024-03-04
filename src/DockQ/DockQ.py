@@ -651,17 +651,6 @@ def main():
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
 
-    """
-    if (len(model_chains) > 2 or len(native_chains) > 2) and (
-        not args.model_chain1 and not args.native_chain1
-    ):
-        print(
-            "Multi-chain model need sets of chains to group\nuse -native_chain1 and/or -model_chain1 if you want a different mapping than 1-1"
-        )
-        print(f"Model chains: {' '.join(model_chains)}")
-        print(f"Native chains: {' '.join(native_chains)}")
-        sys.exit()
-    """
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
@@ -723,9 +712,8 @@ def main():
 
         native_chain_clusters = group_model_chains(model_structure, native_structure, model_chains, native_chains)
         all_mappings = itertools.product(*native_chain_clusters.values())
-        #print(native_chain_clusters, list(all_mappings))
         # remove mappings where the same model chain is present more than once
-        #all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
+        all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
         combo_dockq = -1
         
         for mapping in all_mappings:
