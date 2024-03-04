@@ -266,7 +266,7 @@ def calc_DockQ(
 def calc_DockQ(
     sample_chains,
     ref_chains,
-    ref_chains_original,
+    alignments=[],
     use_CA_only=False,
     capri_peptide=False,
 ):
@@ -276,7 +276,7 @@ def calc_DockQ(
 
     # total number of native contacts is calculated on untouched native structure
     ref_res_distances = get_residue_distances(
-        ref_chains_original[0], ref_chains_original[1]
+        ref_chains[0], ref_chains[1]
     )
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[
         0
@@ -288,13 +288,14 @@ def calc_DockQ(
         print(nat_group1, nat_group2)
         return None
 
-    sample_res_distances = get_residue_distances(sample_chains[0], sample_chains[1])
-    ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1])
+    sample_res_distances = get_residue_distances(sample_chains[0], sample_chains[1], alignments=alignments)
+    ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1], alignments=alignments)
 
     assert (
         sample_res_distances.shape == ref_res_distances.shape
     ), f"Native and model have incompatible sizes ({sample_res_distances.shape} != {ref_res_distances.shape})"
 
+    print(f"Native and model have compatible sizes ({sample_res_distances.shape} == {ref_res_distances.shape})")
     nat_correct, nonnat_count, _, model_total = get_fnat_stats(
         sample_res_distances, ref_res_distances, threshold=fnat_threshold
     )
@@ -361,6 +362,7 @@ def calc_DockQ(
         for atom in receptor_chains[1].get_atoms()
     ]
 
+    print(len(receptor_atoms_native), len(receptor_atoms_sample))
     # Set to align on receptor
     super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
     super_imposer.apply([atom for backbone in sample_chains_backbone for atom in backbone.get_atoms()])
@@ -581,6 +583,7 @@ def fix_chain_residues(chain, alignment, invert=False):
 
     for _, _, _, res in residues_to_delete:
         chain.detach_child(res)
+    return chain
 
 
 def list_atoms_per_residue(model, group):
@@ -595,7 +598,7 @@ def list_atoms_per_residue(model, group):
     return np.array(n_atoms_per_residue).astype(int)
 
 
-@lru_cache
+#@lru_cache
 def get_residue_distances(model, group1, group2, all_atom=True):
     if all_atom:
         # get information about how many atoms correspond to each amino acid in each group of chains
@@ -645,40 +648,61 @@ def get_residue_distances(model, group1, group2, all_atom=True):
     return model_res_distances
 
 
-@lru_cache
-def get_residue_distances(chain1, chain2, all_atom=True):
+#@lru_cache
+def get_residue_distances(chain1, chain2, alignments=[], all_atom=True):
     if all_atom:
         # get information about how many atoms correspond to each amino acid in each group of chains
-        n_atoms_per_res_chain1 = list_atoms_per_residue(chain1)
-        n_atoms_per_res_chain2 = list_atoms_per_residue(chain2)
-        model_A_atoms = np.asarray(
-            [
-                atom.get_coord()
-                for res in chain1.get_residues()
-                for atom in res.get_atoms()
-                if atom.element != "H"
-            ]
-        )
-        model_B_atoms = np.asarray(
-            [
-                atom.get_coord()
-                for res in chain2.get_residues()
-                for atom in res.get_atoms()
-                if atom.element != "H"
-            ]
-        )
+        n_atoms_per_res_chain1 = list_atoms_per_residue(chain1, alignment=alignments[0] if alignments else "")
+        n_atoms_per_res_chain2 = list_atoms_per_residue(chain2, alignment=alignments[1] if alignments else "")
+        
+        if not alignments:
+            model_A_atoms = np.asarray(
+                [
+                    atom.get_coord()
+                    for i, res in enumerate(chain1.get_residues())
+                    for atom in res.get_atoms()
+                    if atom.element != "H"
+                ]
+            )
+            model_B_atoms = np.asarray(
+                [
+                    atom.get_coord()
+                    for i, res in enumerate(chain2.get_residues())
+                    for atom in res.get_atoms()
+                    if atom.element != "H"
+                ]
+            )
+        else:
+            model_A_atoms = []
+            model_B_atoms = []
+            res_chain1 = chain1.get_residues()
+            res_chain2 = chain2.get_residues()
+            for match in alignments[0]:
+                if match == "|":
+                    res1 = next(res_chain1)
+                    
+                    model_A_atoms.extend([atom.get_coord() for atom in res1.get_atoms()])
+
+            for match in alignments[1]:
+                if match == "|":
+                    res2 = next(res_chain2)
+                    model_B_atoms.extend([atom.get_coord() for atom in res2.get_atoms()])
+            model_A_atoms = np.asarray(model_A_atoms)
+            model_B_atoms = np.asarray(model_B_atoms)
 
     else:  # distances were already between CBs only
         model_A_atoms = np.asarray(
             [
                 res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
-                for res in chain1.get_residues()
+                for i, res in enumerate(chain1.get_residues())
+                if (alignments[0][i] == "|" if alignments else True)
             ]
         )
         model_B_atoms = np.asarray(
             [
                 res["CB"].get_coord() if "CB" in res else res["CA"].get_coord()
-                for res in chain2.get_residues()
+                for i, res in enumerate(chain2.get_residues())
+                if (alignments[1][i] == "|" if alignments else True)
             ]
         )
 
@@ -691,19 +715,26 @@ def get_residue_distances(chain1, chain2, all_atom=True):
     return model_res_distances
 
 
-def list_atoms_per_residue(chain):
+def list_atoms_per_residue(chain, alignment=""):
     n_atoms_per_residue = []
- 
-    for residue in chain.get_residues():
-        # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
-        atom_ids = set(
-            [a.id for a in residue.get_unpacked_list() if a.element != "H"]
-        )
-        n_atoms_per_residue.append(len(atom_ids))
+    residues = chain.get_residues()
+    
+    if alignment:
+        for match in alignment:
+            if match == "|":
+                residue = next(residues)
+                atom_ids = set(
+                    [a.id for a in residue.get_unpacked_list()]
+                )
+                n_atoms_per_residue.append(len(atom_ids))
+    else:
+        for residue in residues:
+            # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
+            atom_ids = set(
+                [a.id for a in residue.get_unpacked_list()]
+            )
+            n_atoms_per_residue.append(len(atom_ids))
     return np.array(n_atoms_per_residue).astype(int)
-
-
-
 
 
 def get_interacting_pairs(distances, threshold):
@@ -868,10 +899,8 @@ def run_on_chains(
     use_CA_only=False,
     capri_peptide=False,
 ):
-    #remove_extra_chains(model_structure, chains_to_keep=group1 + group2)
-    #remove_extra_chains(native_structure, chains_to_keep=nat_group1 + nat_group2)
-
     # realign each model chain against the corresponding native chain
+    alignments = []
     for model_chain, native_chain in zip(model_chains, native_chains):
         aln = align_chains(
             model_chain,
@@ -879,19 +908,21 @@ def run_on_chains(
             use_numbering=no_needle,
         )
         alignment = format_alignment(aln)
-        fix_chain_residues(model_chain, alignment)
-        fix_chain_residues(native_chain, alignment, invert=True)
+        #fix_chain_residues(model_chain, alignment)
+        #fix_chain_residues(native_chain, alignment, invert=True)
+        alignments.append(alignment["matches"])
+
     info = calc_DockQ(
         model_chains,
         native_chains,
-        native_chains, ####
+        alignments=alignments,
         use_CA_only=use_CA_only,
         capri_peptide=capri_peptide,
     )
     return info
 
 
-@profile
+#@profile
 def run_on_all_native_interfaces(
     model_structure,
     native_structure,
@@ -923,6 +954,7 @@ def run_on_all_native_interfaces(
         ):
             model_chains_this = copy(model_chains)
             native_chains_this = copy(native_chains)
+            print(chain_pair)
             info = run_on_chains(
                 model_chains_this,
                 native_chains_this,
@@ -1084,7 +1116,6 @@ def main():
         for mapping in all_mappings[:5]:
             start = time.time()
             chain_map = {native_chain:mapping[i] for i, native_chain in enumerate(native_chains)}
-            print(chain_map)
             result_this_mapping = run_on_all_native_interfaces(
                 model_structure,
                 native_structure,
@@ -1099,7 +1130,7 @@ def main():
                 best_dockq = total_dockq
                 best_result = result_this_mapping
             stop = time.time()
-            print(stop-start)
+            print(f"Time (s): {stop-start}")
 
         info["model"] = args.model
         info["native"] = args.native
