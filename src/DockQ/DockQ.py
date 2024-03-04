@@ -98,6 +98,7 @@ def parse_args():
     return parser.parse_args()
 
 
+@lru_cache
 def get_aligned_residues(chainA, chainB, alignment):
     aligned_resA = []
     aligned_resB = []
@@ -114,10 +115,10 @@ def get_aligned_residues(chainA, chainB, alignment):
             aligned_resA.append(rA)
             aligned_resB.append(rB)
 
-    return aligned_resA, aligned_resB
+    return tuple(aligned_resA), tuple(aligned_resB)
 
 
-# @profile
+#@profile
 def calc_DockQ(
     sample_chains,
     ref_chains,
@@ -125,12 +126,12 @@ def calc_DockQ(
     use_CA_only=False,
     capri_peptide=False,
 ):
-    atom_for_sup = ["CA", "C", "N", "O"] if not use_CA_only else ["CA"]
+    atom_for_sup = ("CA", "C", "N", "O") if not use_CA_only else ("CA")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
 
     # total number of native contacts is calculated on untouched native structure
-    ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1])
+    ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1], "ref")
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[
         0
     ].shape[0]
@@ -147,8 +148,8 @@ def calc_DockQ(
         sample_chains[1], ref_chains[1], alignments[1]
     )
 
-    sample_res_distances = get_residue_distances(aligned_sample_1, aligned_sample_2)
-    ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2)
+    sample_res_distances = get_residue_distances(aligned_sample_1, aligned_sample_2, "sample")
+    ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2, "ref")
 
     assert (
         sample_res_distances.shape == ref_res_distances.shape
@@ -176,8 +177,8 @@ def calc_DockQ(
     # get a copy of each structure, then only keep backbone atoms
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
         interacting_pairs,
-        [aligned_sample_1, aligned_sample_2],
-        [aligned_ref_1, aligned_ref_2],
+        (aligned_sample_1, aligned_sample_2),
+        (aligned_ref_1, aligned_ref_2),
         atom_types=atom_for_sup,
     )
     super_imposer = Bio.PDB.Superimposer()
@@ -205,16 +206,16 @@ def calc_DockQ(
     )
 
     receptor_atoms_native = np.asarray(
-        get_atoms_per_residue(receptor_chains[0], coords=True, atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[0], what="ref", atom_types=atom_for_sup)
     )
     receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains[1], coords=True, atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[1], what="sample", atom_types=atom_for_sup)
     )
     ligand_atoms_native = np.asarray(
-        get_atoms_per_residue(ligand_chains[0], coords=True, atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[0], what="ref", atom_types=atom_for_sup)
     )
     ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains[1], coords=True, atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[1], what="sample", atom_types=atom_for_sup)
     )
 
     # Set to align on receptor
@@ -265,7 +266,7 @@ def dockq_formula(fnat, irms, Lrms):
         + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
     ) / 3
 
-
+@lru_cache
 def align_chains(model_chain, native_chain, use_numbering=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
@@ -348,13 +349,12 @@ def remove_h(model):
         model[chain][res].detach_child(atom[0])
 
 
-# @lru_cache
-def get_residue_distances(chain1, chain2, alignments=[], all_atom=True):
+@lru_cache
+def get_residue_distances(chain1, chain2, what, all_atom=True):
     if all_atom:
         # how many atoms per aligned amino acid
-        n_atoms_per_res_chain1 = list_atoms_per_residue(chain1)
-        n_atoms_per_res_chain2 = list_atoms_per_residue(chain2)
-
+        n_atoms_per_res_chain1 = list_atoms_per_residue(chain1, what)
+        n_atoms_per_res_chain2 = list_atoms_per_residue(chain2, what)
         model_A_atoms = np.asarray(
             [
                 atom.get_coord()
@@ -395,7 +395,8 @@ def get_residue_distances(chain1, chain2, alignments=[], all_atom=True):
     return model_res_distances
 
 
-def list_atoms_per_residue(chain):
+@lru_cache
+def list_atoms_per_residue(chain, what):
     n_atoms_per_residue = []
     residues = [r for r in chain]
 
@@ -406,10 +407,11 @@ def list_atoms_per_residue(chain):
     return np.array(n_atoms_per_residue).astype(int)
 
 
+@lru_cache
 def get_atoms_per_residue(
     chain,
-    coords=False,
-    atom_types=["CA", "C", "N", "O"],
+    what,
+    atom_types=("CA", "C", "N", "O"),
 ):
     residues = chain
     atoms = []
@@ -417,7 +419,7 @@ def get_atoms_per_residue(
     for residue in residues:
         atoms.extend(
             [
-                atom.coord if coords else atom
+                atom.coord
                 for atom in residue.get_atoms()
                 if atom.id in atom_types
             ]
@@ -426,9 +428,11 @@ def get_atoms_per_residue(
 
 
 def get_interacting_pairs(distances, threshold):
-    return np.nonzero(np.asarray(distances) < threshold)
+    interacting_pairs = np.nonzero(np.asarray(distances) < threshold)
+    return tuple(interacting_pairs[0]), tuple(interacting_pairs[1])
 
 
+@lru_cache
 def get_interface_atoms(
     interacting_pairs,
     model_chains,
@@ -586,12 +590,6 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
 def main():
     args = parse_args()
 
-    bio_ver = 1.79
-    if float(Bio.__version__) < bio_ver:
-        print(
-            f"WARNING: Biopython version {Bio.__version__} is older than the recommended version {bio_ver}"
-        )
-
     native_structure = load_PDB(args.native, is_mmcif=args.mmcif_native)
     model_structure = load_PDB(args.model, is_mmcif=args.mmcif_model)
 
@@ -599,18 +597,27 @@ def main():
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
 
-    if args.mapping:
-        model_mapping, native_mapping = args.mapping.split(":")
-        if model_mapping:
-            if "*" not in model_mapping:
-                model_chains = [chain for chain in model_mapping]
-        if native_mapping:
-            if "*" not in native_mapping:
-                native_chains = [chain for chain in native_mapping]
-
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
+
+    initial_mapping = None
+    if args.mapping:
+        model_mapping, native_mapping = args.mapping.split(":")
+        if not native_mapping:
+            print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
+            sys.exit()
+        else:
+            # :ABC or *:ABC only use those natives chains, permute model chains
+            if not model_mapping or model_mapping == "*":
+                native_chains = [chain for chain in native_mapping]
+            elif len(model_mapping) == len(native_mapping):
+                # ABC*:ABC* fix the first part of the mapping, try all other combinations
+                initial_mapping = {nm:mm for nm, mm in zip(native_mapping, model_mapping) if nm != "*" and mm != "*"}
+                if model_mapping[-1] != "*" and native_mapping[-1] != "*":
+                    # ABC:ABC use the specific mapping
+                    model_chains = [chain for chain in model_mapping]
+                    native_chains = [chain for chain in native_mapping]
 
     # permute chains and run on a for loop
     best_dockq = -1
@@ -630,6 +637,8 @@ def main():
         chain_map = {
             native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
         }
+        if initial_mapping and not initial_mapping.items() <= chain_map.items():
+            continue
 
         result_this_mapping = run_on_all_native_interfaces(
             model_structure,
