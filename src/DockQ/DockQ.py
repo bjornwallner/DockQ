@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
-import os
 import sys
-import time
-import pickle
 import traceback
 import itertools
-from functools import lru_cache 
+from functools import lru_cache
 from argparse import ArgumentParser
 
 import Bio.PDB
@@ -18,7 +15,7 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 # fallback in case the cython version doesn't work, though it will be slower
 try:
     from .operations import residue_distances, get_fnat_stats
-except:
+except ImportError:
     print(
         "WARNING: It looks like cython is not working, falling back on native python. This will make DockQ slower"
     )
@@ -34,47 +31,41 @@ def parse_args():
         "native", metavar="<native>", type=str, help="path to native file"
     )
     parser.add_argument(
-        "-capri_peptide",
+        "--capri_peptide",
         default=False,
         action="store_true",
         help="use version for capri_peptide (DockQ cannot not be trusted for this setting)",
     )
     parser.add_argument(
-        "-short", default=False, action="store_true", help="short output"
+        "--short", default=False, action="store_true", help="short output"
     )
     parser.add_argument(
-        "-verbose", default=False, action="store_true", help="talk a lot!"
+        "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
     )
     parser.add_argument(
-        "-quiet", default=False, action="store_true", help="keep quiet!"
+        "--use_CA", "-ca", default=False, action="store_true", help="use CA instead of backbone"
     )
     parser.add_argument(
-        "-useCA", default=False, action="store_true", help="use CA instead of backbone"
-    )
-    parser.add_argument(
-        "-mmcif_model",
+        "--mmcif_model",
         default=False,
         action="store_true",
         help="The model is in mmCIF format",
     )
     parser.add_argument(
-        "-mmcif_native",
+        "--mmcif_native",
         default=False,
         action="store_true",
         help="The native is in mmCIF format",
     )
     parser.add_argument(
-        "-no_needle",
+        "--no_needle",
         default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
     parser.add_argument(
-        "-auto_map",
-        default=True,
-        action="store_true",
-        help="automatically calculate chain mapping between model and native to maximize total DockQ (sum DockQ for all native interfaces)",
-    )
+        "--mapping",
+        help="Specify a chain mapping between model and native (e.g.: 'ABC:ACB' to switch last two chains in the native)")
     parser.add_argument(
         "-model_chain1",
         metavar="model_chain1",
@@ -122,11 +113,11 @@ def get_aligned_residues(chainA, chainB, alignment):
         if match == "|":
             aligned_resA.append(rA)
             aligned_resB.append(rB)
-    
-    return aligned_resA, aligned_resB
-    
 
-@profile
+    return aligned_resA, aligned_resB
+
+
+# @profile
 def calc_DockQ(
     sample_chains,
     ref_chains,
@@ -139,20 +130,22 @@ def calc_DockQ(
     interface_threshold = 8.0 if capri_peptide else 10.0
 
     # total number of native contacts is calculated on untouched native structure
-    ref_res_distances = get_residue_distances(
-        ref_chains[0], ref_chains[1]
-    )
+    ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1])
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold**2)[
         0
     ].shape[0]
-    
+
     if nat_total == 0:
         # if the native has no interface between the two chain groups
         # nothing to do here
         return None
 
-    aligned_sample_1, aligned_ref_1 = get_aligned_residues(sample_chains[0], ref_chains[0], alignments[0])
-    aligned_sample_2, aligned_ref_2 = get_aligned_residues(sample_chains[1], ref_chains[1], alignments[1])
+    aligned_sample_1, aligned_ref_1 = get_aligned_residues(
+        sample_chains[0], ref_chains[0], alignments[0]
+    )
+    aligned_sample_2, aligned_ref_2 = get_aligned_residues(
+        sample_chains[1], ref_chains[1], alignments[1]
+    )
 
     sample_res_distances = get_residue_distances(aligned_sample_1, aligned_sample_2)
     ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2)
@@ -175,7 +168,7 @@ def calc_DockQ(
         )
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
-        # working with squared thresholds to avoid using sqrt in distance calculations
+        # working with squared thresholds to avoid using sqrt
         ref_res_distances,
         threshold=interface_threshold**2,
     )
@@ -185,15 +178,14 @@ def calc_DockQ(
         interacting_pairs,
         [aligned_sample_1, aligned_sample_2],
         [aligned_ref_1, aligned_ref_2],
-        atom_types=["CA", "C", "N", "O"],
+        atom_types=atom_for_sup,
     )
-
     super_imposer = Bio.PDB.Superimposer()
     super_imposer.set_atoms(sample_interface_atoms, ref_interface_atoms)
 
     irms = super_imposer.rms
 
-    # assign which group of chains constitutes the receptor, then the other is the ligand
+    # assign which chains constitute the receptor, ligand
     ref_group1_size = len(ref_chains[0])
     ref_group2_size = len(ref_chains[1])
     receptor_chains = (
@@ -212,19 +204,32 @@ def calc_DockQ(
         else ("ligand", "receptor")
     )
 
-    receptor_atoms_native = get_atoms_per_residue(receptor_chains[0])
-    receptor_atoms_sample = get_atoms_per_residue(receptor_chains[1])
-    
-    ligand_atoms_native = np.asarray(get_atoms_per_residue(ligand_chains[0], coords=True))
-    ligand_atoms_sample = np.asarray(get_atoms_per_residue(ligand_chains[1], coords=True))
+    receptor_atoms_native = np.asarray(
+        get_atoms_per_residue(receptor_chains[0], coords=True, atom_types=atom_for_sup)
+    )
+    receptor_atoms_sample = np.asarray(
+        get_atoms_per_residue(receptor_chains[1], coords=True, atom_types=atom_for_sup)
+    )
+    ligand_atoms_native = np.asarray(
+        get_atoms_per_residue(ligand_chains[0], coords=True, atom_types=atom_for_sup)
+    )
+    ligand_atoms_sample = np.asarray(
+        get_atoms_per_residue(ligand_chains[1], coords=True, atom_types=atom_for_sup)
+    )
 
     # Set to align on receptor
-    super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
-    super_imposer.apply([atom for chain in sample_chains for atom in chain.get_atoms()])
+    # super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
+    # super_imposer.apply([atom for chain in sample_chains for atom in chain.get_atoms()])
 
     sup = SVDSuperimposer()
+    sup.set(receptor_atoms_native, receptor_atoms_sample)
+    sup.run()
+
+    rot, tran = sup.get_rotran()
+    rotated_sample_atoms = np.dot(ligand_atoms_sample, rot) + tran
+
     Lrms = sup._rms(
-        ligand_atoms_native, ligand_atoms_sample
+        ligand_atoms_native, rotated_sample_atoms
     )  # using the private _rms function which does not superimpose
 
     info = {}
@@ -249,32 +254,26 @@ def calc_DockQ(
     return info
 
 
-def f1(tp, fp, p):
-    precision = tp / tp + fp
-    recall =    tp / p
-    return 2 * (precision * recall) / (precision + recall)
+def f1_formula(tp, fp, p):
+    return 2 * tp / (tp + fp + p)
 
 
 def dockq_formula(fnat, irms, Lrms):
-    # fnat is recall
-    # precision is num
-    dockq = (
+    return (
         float(fnat)
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
         + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
     ) / 3
 
 
-def align_chains(
-    model_chain, native_chain, use_numbering=False
-):
+def align_chains(model_chain, native_chain, use_numbering=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
     numbering. If the numbering is used, then each residue number from the pdb structure
     is converted to a unique character. Then the two vectors of character are aligned
     as if they were two sequences
     """
-    
+
     if use_numbering:
         model_numbering = []
         native_numbering = []
@@ -295,13 +294,11 @@ def align_chains(
 
     else:
         model_sequence = "".join(
-            seq1(residue.get_resname())
-            for residue in model_chain.get_residues()
+            seq1(residue.get_resname()) for residue in model_chain.get_residues()
         )
 
         native_sequence = "".join(
-            seq1(residue.get_resname())
-            for residue in native_chain.get_residues()
+            seq1(residue.get_resname()) for residue in native_chain.get_residues()
         )
 
     aligner = Align.PairwiseAligner()
@@ -320,14 +317,6 @@ def format_alignment(aln):
     alignment["matches"] = formatted_aln[1]
     alignment["seqB"] = formatted_aln[2]
     return alignment
-
-
-def remove_extra_chains(model, chains_to_keep):
-    chains = [chain.id for chain in model.get_chains()]
-
-    chains_to_remove = set(chains).difference(set(chains_to_keep))
-    for chain in chains_to_remove:
-        model.detach_child(chain)
 
 
 def remove_hetatms(model):
@@ -359,31 +348,13 @@ def remove_h(model):
         model[chain][res].detach_child(atom[0])
 
 
-def fix_chain_residues(chain, alignment, invert=False):
-    residues = chain.get_residues()
-    residues_to_delete = []
-
-    seqA = alignment["seqA"] if not invert else alignment["seqB"]
-    seqB = alignment["seqB"] if not invert else alignment["seqA"]
-    for (aligned_residue_A, aligned_residue_B) in zip(seqA, seqB):
-        if aligned_residue_A != "-":
-            residue = next(residues)
-        if aligned_residue_B == "-":  # gap residue: remove from structure
-            residues_to_delete.append(residue.get_full_id())
-
-    for _, _, _, res in residues_to_delete:
-        chain.detach_child(res)
-    return chain
-
-
-
-#@lru_cache
+# @lru_cache
 def get_residue_distances(chain1, chain2, alignments=[], all_atom=True):
     if all_atom:
-        # get information about how many atoms correspond to each amino acid in each group of chains
+        # how many atoms per aligned amino acid
         n_atoms_per_res_chain1 = list_atoms_per_residue(chain1)
         n_atoms_per_res_chain2 = list_atoms_per_residue(chain2)
-        
+
         model_A_atoms = np.asarray(
             [
                 atom.get_coord()
@@ -427,22 +398,30 @@ def get_residue_distances(chain1, chain2, alignments=[], all_atom=True):
 def list_atoms_per_residue(chain):
     n_atoms_per_residue = []
     residues = [r for r in chain]
-    
+
     for residue in residues:
-        # important to remove duplicate atoms (e.g. alternates) at this stage, remove also hydrogens
-        atom_ids = set(
-            [a.id for a in residue.get_unpacked_list()]
-        )
+        # important to remove duplicate atoms (e.g. alternates) at this stage
+        atom_ids = set([a.id for a in residue.get_unpacked_list()])
         n_atoms_per_residue.append(len(atom_ids))
     return np.array(n_atoms_per_residue).astype(int)
 
 
-def get_atoms_per_residue(chain, coords=False, atom_types=["CA", "C", "N", "O"],):
+def get_atoms_per_residue(
+    chain,
+    coords=False,
+    atom_types=["CA", "C", "N", "O"],
+):
     residues = chain
     atoms = []
 
     for residue in residues:
-        atoms.extend([atom.coord if coords else atom for atom in residue.get_atoms() if atom.id in atom_types])
+        atoms.extend(
+            [
+                atom.coord if coords else atom
+                for atom in residue.get_atoms()
+                if atom.id in atom_types
+            ]
+        )
     return atoms
 
 
@@ -459,19 +438,11 @@ def get_interface_atoms(
     ref_interface = []
     mod_interface = []
 
-    ref_residues_group1 = [
-        res for res in ref_chains[0]
-    ]
-    ref_residues_group2 = [
-        res for res in ref_chains[1]
-    ]
+    ref_residues_group1 = [res for res in ref_chains[0]]
+    ref_residues_group2 = [res for res in ref_chains[1]]
 
-    mod_residues_group1 = [
-        res for res in model_chains[0]
-    ]
-    mod_residues_group2 = [
-        res for res in model_chains[1]
-    ]
+    mod_residues_group1 = [res for res in model_chains[0]]
+    mod_residues_group2 = [res for res in model_chains[1]]
     # remove duplicate residues
     interface_residues_group1 = set(interacting_pairs[0])
     interface_residues_group2 = set(interacting_pairs[1])
@@ -481,48 +452,38 @@ def get_interface_atoms(
         mod_atoms = [atom for atom in mod_residues_group1[i].get_atoms()]
         ref_atoms_ids = [atom.id for atom in ref_atoms]
         mod_atoms_ids = [atom.id for atom in mod_atoms]
-        ref_interface += [atom for atom in ref_atoms if atom.id in atom_types and atom.id in mod_atoms_ids]
-        mod_interface += [atom for atom in mod_atoms if atom.id in atom_types and atom.id in ref_atoms_ids]
+        ref_interface += [
+            atom
+            for atom in ref_atoms
+            if atom.id in atom_types and atom.id in mod_atoms_ids
+        ]
+        mod_interface += [
+            atom
+            for atom in mod_atoms
+            if atom.id in atom_types and atom.id in ref_atoms_ids
+        ]
 
     for j in interface_residues_group2:
         ref_atoms = [atom for atom in ref_residues_group2[j].get_atoms()]
         mod_atoms = [atom for atom in mod_residues_group2[j].get_atoms()]
         ref_atoms_ids = [atom.id for atom in ref_atoms]
         mod_atoms_ids = [atom.id for atom in mod_atoms]
-        ref_interface += [atom for atom in ref_atoms if atom.id in atom_types and atom.id in mod_atoms_ids]
-        mod_interface += [atom for atom in mod_atoms if atom.id in atom_types and atom.id in ref_atoms_ids]
+        ref_interface += [
+            atom
+            for atom in ref_atoms
+            if atom.id in atom_types and atom.id in mod_atoms_ids
+        ]
+        mod_interface += [
+            atom
+            for atom in mod_atoms
+            if atom.id in atom_types and atom.id in ref_atoms_ids
+        ]
 
     return mod_interface, ref_interface
 
 
-def set_common_backbone_atoms(model, reference, atom_types=["CA", "C", "N", "O"]):
-    # model and reference should have the same number of amino acids and be aligned
-    for mod_res, ref_res in zip(model.get_residues(), reference.get_residues()):
-        mod_atoms = [atom for atom in mod_res.get_atoms()]
-        ref_atoms = [atom for atom in ref_res.get_atoms()]
-
-        atom_ids_in_mod_res = [atm.id for atm in mod_atoms]
-        atom_ids_in_ref_res = [atm.id for atm in ref_atoms]
-
-        atom_ids_in_ref_and_mod_res = (
-            set(atom_ids_in_mod_res)
-            .intersection(atom_types)
-            .intersection(atom_ids_in_ref_res)
-        )
-        # whatever atom is not in the shared list, remove it from the both structures
-        for atom_id in set(atom_ids_in_mod_res).difference(atom_ids_in_ref_and_mod_res):
-            mod_res.detach_child(atom_id)
-
-        for atom_id in set(atom_ids_in_ref_res).difference(atom_ids_in_ref_and_mod_res):
-            ref_res.detach_child(atom_id)
-
-
-def copy(structure):
-    return pickle.loads(pickle.dumps(structure, protocol=4))
-
-
 @lru_cache
-@profile
+# @profile
 def run_on_chains(
     model_chains,
     native_chains,
@@ -561,22 +522,25 @@ def run_on_all_native_interfaces(
 ):
     """Given a native-model chain map, finds all non-null native interfaces and runs DockQ for each native-model pair of interfaces"""
     results_dic = {}
-    native_chain_ids = [c.id for c in native_structure]
+    native_chain_ids = list(chain_map.keys())
 
     for chain_pair in itertools.combinations(native_chain_ids, 2):
-                
         native_chains = tuple([native_structure[chain] for chain in chain_pair])
-        model_chains = tuple([model_structure[chain] for chain in [chain_map[chain_pair[0]], chain_map[chain_pair[1]]]])
+        model_chains = tuple(
+            [
+                model_structure[chain]
+                for chain in [chain_map[chain_pair[0]], chain_map[chain_pair[1]]]
+            ]
+        )
 
-        if (
-            chain_pair[0] in chain_map
-            and chain_pair[1] in chain_map
-        ):
+        if chain_pair[0] in chain_map and chain_pair[1] in chain_map:
             info = run_on_chains(
                 model_chains,
                 native_chains,
+                no_needle=no_needle,
+                use_CA_only=use_CA_only,
+                capri_peptide=capri_peptide,
             )
-            
             if info:
                 info["chain1"], info["chain2"] = model_chains
                 results_dic[chain_pair] = info
@@ -585,7 +549,6 @@ def run_on_all_native_interfaces(
 
 
 def load_PDB(path, n_model=0, is_mmcif=False):
-
     if not is_mmcif:
         pdb_parser = Bio.PDB.PDBParser(QUIET=True)
     else:
@@ -600,17 +563,21 @@ def load_PDB(path, n_model=0, is_mmcif=False):
             print("       (use -mmcif_model or -mmcif_native with mmCIF inputs)")
         print(traceback.format_exc())
         sys.exit(1)
+    remove_hetatms(model)
+    remove_h(model)
     return model
 
 
 def group_model_chains(model_structure, native_structure, model_chains, native_chains):
     alignment_targets = itertools.product(model_chains, native_chains)
-    native_chain_clusters = {chain:[] for chain in native_chains}
+    native_chain_clusters = {chain: [] for chain in native_chains}
 
     for model_chain, native_chain in alignment_targets:
         aln = align_chains(model_structure[model_chain], native_structure[native_chain])
         alignment = format_alignment(aln)
-        if "." not in alignment["matches"] and ("-" not in alignment["seqA"] or "-" not in alignment["seqB"]):
+        if "." not in alignment["matches"] and (
+            "-" not in alignment["seqA"] or "-" not in alignment["seqB"]
+        ):
             # 100% sequence identity, 100% coverage of native sequence in model sequence
             native_chain_clusters[native_chain].append(model_chain)
     return native_chain_clusters
@@ -627,104 +594,64 @@ def main():
 
     native_structure = load_PDB(args.native, is_mmcif=args.mmcif_native)
     model_structure = load_PDB(args.model, is_mmcif=args.mmcif_model)
-    remove_hetatms(native_structure)
-    remove_hetatms(model_structure)
-    remove_h(model_structure)
-    remove_h(native_structure)
 
-    best_info = ""
     info = {}
     model_chains = [c.id for c in model_structure]
     native_chains = [c.id for c in native_structure]
+
+    if args.mapping:
+        model_mapping, native_mapping = args.mapping.split(":")
+        if model_mapping:
+            if "*" not in model_mapping:
+                model_chains = [chain for chain in model_mapping]
+        if native_mapping:
+            if "*" not in native_mapping:
+                native_chains = [chain for chain in native_mapping]
 
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
 
-    if not args.auto_map:
-        # Some of these might be None
-        group1 = [model_chains[0]] if len(model_chains) == 2 else args.model_chain1
-        group2 = args.model_chain2
-        nat_group1 = args.native_chain1
-        nat_group2 = args.native_chain2
-        
-        # at this stage either group1 or nat_group1 are not None
-        if not nat_group1:  # then the user has set group1. Try to follow the same mapping
-            if (
-                model_chains == native_chains
-            ):  # easier case: the chains have the same naming between native/model, so just copy them
-                nat_group1 = group1
-                # use complement to nat_group1 if group2 hasn't been decided yet
-                nat_group2 = group2
-            else:  # otherwise, group the chains by however many where in either model group
-                nat_group1 = native_chains[: len(group1)]
-                nat_group2 = (
-                    native_chains[len(group1) : len(group1) + len(group2)]
-                    if group2
-                    else None
-                )
+    # permute chains and run on a for loop
+    best_dockq = -1
+    best_result = None
 
-        if not group1:  # viceversa, the user has set nat_group1
-            if model_chains == native_chains:
-                group1 = nat_group1
-                group2 = nat_group2
-            else:
-                group1 = model_chains[: len(nat_group1)]
-                group2 = (
-                    model_chains[len(nat_group1) : len(nat_group1) + len(nat_group2)]
-                    if nat_group2
-                    else None
-                )
+    native_chain_clusters = group_model_chains(
+        model_structure, native_structure, model_chains, native_chains
+    )
 
-        if not group2:  # no group2 set yet, use the complement to group1
-            group2 = [chain for chain in model_chains if chain not in group1]
-        if not nat_group2:
-            nat_group2 = [chain for chain in native_chains if chain not in nat_group1]
+    all_mappings = itertools.product(*[cluster for cluster in native_chain_clusters.values() if cluster])
+    # remove mappings where the same model chain is present more than once
+    all_mappings = [
+        element for element in all_mappings if len(set(element)) == len(element)
+    ]
 
-        info = run_on_groups(
+    for mapping in all_mappings:
+        chain_map = {
+            native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
+        }
+
+        result_this_mapping = run_on_all_native_interfaces(
             model_structure,
             native_structure,
-            group1,
-            group2,
-            nat_group1,
-            nat_group2,
-            args.no_needle,
-            args.useCA,
-            args.capri_peptide,
+            chain_map=chain_map,
+            no_needle=args.no_needle,
+            use_CA_only=args.use_CA,
+            capri_peptide=args.capri_peptide,
         )
-    else:  # permute chains and run on a for loop
-        best_dockq = -1
-        best_result = None
 
-        native_chain_clusters = group_model_chains(model_structure, native_structure, model_chains, native_chains)
-        all_mappings = itertools.product(*native_chain_clusters.values())
-        # remove mappings where the same model chain is present more than once
-        all_mappings = [element for element in all_mappings if len(set(element)) == len(element)]
-        combo_dockq = -1
+        total_dockq = sum(
+            [result["DockQ"] for result in result_this_mapping.values()]
+        )
+        if total_dockq > best_dockq:
+            best_dockq = total_dockq
+            best_result = result_this_mapping
+            print(mapping, best_dockq)
 
-        for mapping in all_mappings:
-            start = time.time()
-            chain_map = {native_chain:mapping[i] for i, native_chain in enumerate(native_chains)}
-            result_this_mapping = run_on_all_native_interfaces(
-                model_structure,
-                native_structure,
-                chain_map=chain_map,
-                no_needle=args.no_needle,
-                use_CA_only=args.useCA,
-                capri_peptide=args.capri_peptide,
-            )
-
-            total_dockq = sum([result["DockQ"] for result in result_this_mapping.values()])
-            if total_dockq > best_dockq:
-                best_dockq = total_dockq
-                best_result = result_this_mapping
-                print(mapping, best_dockq)
-            stop = time.time()
-
-        info["model"] = args.model
-        info["native"] = args.native
-        info["best_dockq"] = best_dockq
-        info["best_result"] = best_result
+    info["model"] = args.model
+    info["native"] = args.native
+    info["best_dockq"] = best_dockq
+    info["best_result"] = best_result
 
     print_results(info, args.short, args.capri_peptide)
 
