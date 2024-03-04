@@ -195,9 +195,9 @@ def calc_DockQ(
         else (aligned_ref_2, aligned_sample_2)
     )
     ligand_chains = (
-        (aligned_ref_2, aligned_sample_2)
+        (aligned_ref_1, aligned_sample_1)
         if ref_group1_size <= ref_group2_size
-        else (aligned_ref_1, aligned_sample_1)
+        else (aligned_ref_2, aligned_sample_2)
     )
     class1, class2 = (
         ("receptor", "ligand")
@@ -206,16 +206,16 @@ def calc_DockQ(
     )
 
     receptor_atoms_native = np.asarray(
-        get_atoms_per_residue(receptor_chains[0], what="ref", atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[0], what="refr", atom_types=atom_for_sup)
     )
     receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains[1], what="sample", atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[1], what="sampler", atom_types=atom_for_sup)
     )
     ligand_atoms_native = np.asarray(
-        get_atoms_per_residue(ligand_chains[0], what="ref", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[0], what="refl", atom_types=atom_for_sup)
     )
     ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains[1], what="sample", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[1], what="samplel", atom_types=atom_for_sup)
     )
 
     # Set to align on receptor
@@ -235,7 +235,7 @@ def calc_DockQ(
 
     info = {}
 
-    info["F1"] = f1_formula(nat_correct, nonnat_count, nat_total)
+    info["DockQ_F1"] = f1_formula(nat_correct, nonnat_count, nat_total)
     info["DockQ"] = dockq_formula(fnat, irms, Lrms)
     info["irms"] = irms
     info["Lrms"] = Lrms
@@ -546,7 +546,7 @@ def run_on_all_native_interfaces(
                 capri_peptide=capri_peptide,
             )
             if info:
-                info["chain1"], info["chain2"] = model_chains
+                info["chain1"], info["chain2"] = chain_map[chain_pair[0]], chain_map[chain_pair[1]]
                 results_dic[chain_pair] = info
 
     return results_dic
@@ -705,9 +705,14 @@ def print_results(info, short=False, capri_peptide=False):
             print("****************************************************************")
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
+        items = ["DockQ_F1", "DockQ", "irms", "Lrms", "fnat"]
         if "best_dockq" in info:
-            print(info["best_result"])
-            print(info["best_dockq"])
+            for chains, results in info["best_result"].items():
+                print(f"Native chains: {chains[0]}, {chains[1]}")
+                print(f"\tModel chains: {results['chain1']} {results['chain2']}")
+                print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
+            #print(info["best_result"])
+            #print(info["best_dockq"])
         else:
             print(
                 f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
