@@ -511,9 +511,11 @@ def run_on_chains(
         use_CA_only=use_CA_only,
         capri_peptide=capri_peptide,
     )
+    #print(info)
     return info
 
 
+# @lru_cache
 def run_on_all_native_interfaces(
     model_structure,
     native_structure,
@@ -534,7 +536,8 @@ def run_on_all_native_interfaces(
                 for chain in [chain_map[chain_pair[0]], chain_map[chain_pair[1]]]
             ]
         )
-
+        if len(set(model_chains)) < 2:
+            continue
         if chain_pair[0] in chain_map and chain_pair[1] in chain_map:
             info = run_on_chains(
                 model_chains,
@@ -626,15 +629,19 @@ def main():
     )
 
     all_mappings = itertools.product(*[cluster for cluster in native_chain_clusters.values() if cluster])
+
     # remove mappings where the same model chain is present more than once
-    all_mappings = [
-        element for element in all_mappings if len(set(element)) == len(element)
-    ]
+    # only if the mapping is supposed to be 1-1
+    if len(model_chains) == len(native_chains):
+        all_mappings = [
+            element for element in all_mappings if len(set(element)) == len(element)
+        ]
 
     for mapping in all_mappings:
         chain_map = {
             native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
         }
+
         if initial_mapping and not initial_mapping.items() <= chain_map.items():
             continue
 
