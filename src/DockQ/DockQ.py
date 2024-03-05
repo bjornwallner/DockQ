@@ -165,7 +165,7 @@ def calc_DockQ(
 
     if capri_peptide:
         ref_res_distances = get_residue_distances(
-            ref_chains[0], ref_chains[1], all_atom=False
+            ref_chains[0], ref_chains[1], "ref", all_atom=False
         )
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
@@ -659,10 +659,10 @@ def main():
     info["best_dockq"] = best_dockq
     info["best_result"] = best_result
 
-    print_results(info, args.short, args.capri_peptide)
+    print_results(info, args.short, args.verbose, args.capri_peptide)
 
 
-def print_results(info, short=False, capri_peptide=False):
+def print_results(info, short=False, verbose=False, capri_peptide=False):
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         print(
@@ -670,45 +670,16 @@ def print_results(info, short=False, capri_peptide=False):
         )
 
     else:
-        if capri_peptide:
-            print("****************************************************************")
-            print("*                DockQ-CAPRI peptide                           *")
-            print("*   Do not trust any thing you read....                        *")
-            print("*   OBS THE DEFINITION OF Fnat and iRMS are different for      *")
-            print("*   peptides in CAPRI                                          *")
-            print("*                                                              *")
-            print("*   For the record:                                            *")
-            print("*   Definition of contact <4A all heavy atoms (Fnat)           *")
-            print("*   Definition of interface <8A CB (iRMS)                      *")
-            print("*   For comments, please email: bjorn.wallner@.liu.se          *")
-            print("****************************************************************")
-        else:
-            print("****************************************************************")
-            print("*                       DockQ                                  *")
-            print("*   Scoring function for protein-protein docking models        *")
-            print("*   Statistics on CAPRI data:                                  *")
-            print("*    0.00 <= DockQ <  0.23 - Incorrect                         *")
-            print("*    0.23 <= DockQ <  0.49 - Acceptable quality                *")
-            print("*    0.49 <= DockQ <  0.80 - Medium quality                    *")
-            print("*            DockQ >= 0.80 - High quality                      *")
-            print("*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *")
-            print("*   protein-protein docking models                             *")
-            print("*                            doi:10.1371/journal.pone.0161879  *")
-            print("*   For the record:                                            *")
-            print("*   Definition of contact <5A (Fnat)                           *")
-            print("*   Definition of interface <10A all heavy atoms (iRMS)        *")
-            print("*   For comments, please email: bjorn.wallner@.liu.se          *")
-            print("*                                                              *")
-            print("****************************************************************")
+        print_header(verbose, capri_peptide)
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
         items = ["DockQ_F1", "DockQ", "irms", "Lrms", "fnat"]
-        if "best_dockq" in info:
-            for chains, results in info["best_result"].items():
-                print(f"Native chains: {chains[0]}, {chains[1]}")
-                print(f"\tModel chains: {results['chain1']} {results['chain2']}")
-                print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
-        else:
+
+        for chains, results in info["best_result"].items():
+            print(f"Native chains: {chains[0]}, {chains[1]}")
+            print(f"\tModel chains: {results['chain1']} {results['chain2']}")
+            print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
+            """
             print(
                 f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
             )
@@ -730,7 +701,44 @@ def print_results(info, short=False, capri_peptide=False):
                 else ""
             )
             print(f"DockQ {info['DockQ']:.3f}{peptide_disclaimer}")
+            """
 
+
+def print_header(verbose=False, capri_peptide=False):
+    if not capri_peptide:
+        header = """****************************************************************
+*                       DockQ                                  *
+*   Scoring function for protein-protein docking models        *
+*   Statistics on CAPRI data:                                  *
+*    0.00 <= DockQ <  0.23 - Incorrect                         *
+*    0.23 <= DockQ <  0.49 - Acceptable quality                *
+*    0.49 <= DockQ <  0.80 - Medium quality                    *
+*            DockQ >= 0.80 - High quality                      *
+*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
+*   protein-protein docking models                             *
+*                            doi:10.1371/journal.pone.0161879  *
+*   For comments, please email: bjorn.wallner@.liu.se          *"""
+    else:
+        header = """****************************************************************
+*                DockQ-CAPRI peptide                           *
+*   Do not trust any thing you read....                        *
+*   OBS THE DEFINITION OF Fnat and iRMS are different for      *
+*   peptides in CAPRI                                          *
+*                                                              *
+*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
+*   protein-protein docking models                             *
+*                            doi:10.1371/journal.pone.0161879  *
+*   For comments, please email: bjorn.wallner@.liu.se          *"""
+    if verbose:
+        notice = f"""*   For the record:                                            *
+*   Definition of contact <{"5A" if not capri_peptide else "4A"} (Fnat)                           *
+*   Definition of interface <{"10A all heavy atoms" if not capri_peptide else "8A CB              "} (iRMS)        *
+****************************************************************"""
+    else:
+        notice = "****************************************************************"
+
+    print(header)
+    print(notice)
 
 if __name__ == "__main__":
     main()
