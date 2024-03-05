@@ -705,39 +705,37 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
 
 
 def print_header(verbose=False, capri_peptide=False):
+    reference = "*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *\n" \
+                "*   protein-protein docking models                             *\n" \
+                "*                            doi:10.1371/journal.pone.0161879  *\n" \
+                "*   For comments, please email: bjorn.wallner@.liu.se          *"
     if not capri_peptide:
-        header = """****************************************************************
-*                       DockQ                                  *
-*   Scoring function for protein-protein docking models        *
-*   Statistics on CAPRI data:                                  *
-*    0.00 <= DockQ <  0.23 - Incorrect                         *
-*    0.23 <= DockQ <  0.49 - Acceptable quality                *
-*    0.49 <= DockQ <  0.80 - Medium quality                    *
-*            DockQ >= 0.80 - High quality                      *
-*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
-*   protein-protein docking models                             *
-*                            doi:10.1371/journal.pone.0161879  *
-*   For comments, please email: bjorn.wallner@.liu.se          *"""
+        header = "****************************************************************\n" \
+                 "*                       DockQ                                  *\n" \
+                 "*   Scoring function for protein-protein docking models        *\n" \
+                 "*   Statistics on CAPRI data:                                  *\n" \
+                 "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n" \
+                 "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n" \
+                 "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n" \
+                 "*            DockQ >= 0.80 - High quality                      *"
     else:
-        header = """****************************************************************
-*                DockQ-CAPRI peptide                           *
-*   Do not trust any thing you read....                        *
-*   OBS THE DEFINITION OF Fnat and iRMS are different for      *
-*   peptides in CAPRI                                          *
-*                                                              *
-*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
-*   protein-protein docking models                             *
-*                            doi:10.1371/journal.pone.0161879  *
-*   For comments, please email: bjorn.wallner@.liu.se          *"""
+        header = "****************************************************************\n" \
+                 "*                DockQ-CAPRI peptide                           *\n" \
+                 "*   Do not trust any thing you read....                        *\n" \
+                 "*   OBS THE DEFINITION OF Fnat and iRMS are different for      *\n" \
+                 "*   peptides in CAPRI                                          *\n" \
+                 "*                                                              *"
+
     if verbose:
-        notice = f"""*   For the record:                                            *
-*   Definition of contact <{"5A" if not capri_peptide else "4A"} (Fnat)                           *
-*   Definition of interface <{"10A all heavy atoms" if not capri_peptide else "8A CB              "} (iRMS)        *
-****************************************************************"""
+        notice = "*   For the record:                                            *\n" \
+                 f"*   Definition of contact <{'5A' if not capri_peptide else '4A'} (Fnat)                           *\n" \
+                 f"*   Definition of interface <{'10A all heavy atoms (iRMS)       ' if not capri_peptide else '8A CB (iRMS)                     '} *\n" \
+                 "****************************************************************"
     else:
         notice = "****************************************************************"
 
     print(header)
+    print(reference)
     print(notice)
 
 if __name__ == "__main__":
