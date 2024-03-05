@@ -653,7 +653,7 @@ def main():
         if total_dockq > best_dockq:
             best_dockq = total_dockq
             best_result = result_this_mapping
-            print(mapping, best_dockq)
+            #print(mapping, best_dockq)
 
     info["model"] = args.model
     info["native"] = args.native
@@ -666,9 +666,10 @@ def main():
 def print_results(info, short=False, verbose=False, capri_peptide=False):
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
-        print(
-            f"DockQ{capri_peptide_str} {info['DockQ']:.3f} Fnat {info['fnat']:.3f} iRMS {info['irms']:.3f} LRMS {info['Lrms']:.3f} Fnonnat {info['fnonnat']:.3f} {info['model']} {info['native']} {info['best']}"
-        )
+        for chains, results in info["best_result"].items():
+            print(
+                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
+            )
 
     else:
         print_header(verbose, capri_peptide)
