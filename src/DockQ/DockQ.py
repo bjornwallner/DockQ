@@ -668,7 +668,7 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         for chains, results in info["best_result"].items():
             print(
-                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
+                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
             )
 
     else:
