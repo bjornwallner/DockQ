@@ -16,7 +16,7 @@ def atom_distances_to_residue_distances(atom_distances, atoms_per_res1, atoms_pe
         cum_j_atoms = 0
         for j, j_atoms in enumerate(atoms_per_res2):
             res_distances[i, j] = atom_distances[
-                cum_i_atoms : cum_i_atoms + i_atoms, cum_j_atoms : cum_j_atoms + j_atoms
+                cum_i_atoms:cum_i_atoms + i_atoms, cum_j_atoms:cum_j_atoms + j_atoms
             ].min()
             cum_j_atoms += j_atoms
         cum_i_atoms += i_atoms

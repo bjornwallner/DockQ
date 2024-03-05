@@ -118,7 +118,7 @@ def get_aligned_residues(chainA, chainB, alignment):
     return tuple(aligned_resA), tuple(aligned_resB)
 
 
-#@profile
+# @profile
 def calc_DockQ(
     sample_chains,
     ref_chains,
@@ -262,6 +262,7 @@ def dockq_formula(fnat, irms, Lrms):
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
         + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
     ) / 3
+
 
 @lru_cache
 def align_chains(model_chain, native_chain, use_numbering=False):
@@ -558,7 +559,7 @@ def load_PDB(path, n_model=0, is_mmcif=False):
     try:
         structure = pdb_parser.get_structure("-", path)
         model = structure[n_model]
-    except Exception as e:
+    except Exception:
         print("ERROR: is the file in the correct format? (.pdb, .mmcif)")
         if not is_mmcif:
             print("\t(use --mmcif_model or --mmcif_native with mmCIF inputs)")
@@ -610,7 +611,7 @@ def main():
                 native_chains = [chain for chain in native_mapping]
             elif len(model_mapping) == len(native_mapping):
                 # ABC*:ABC* fix the first part of the mapping, try all other combinations
-                initial_mapping = {nm:mm for nm, mm in zip(native_mapping, model_mapping) if nm != "*" and mm != "*"}
+                initial_mapping = {nm: mm for nm, mm in zip(native_mapping, model_mapping) if nm != "*" and mm != "*"}
                 if model_mapping[-1] != "*" and native_mapping[-1] != "*":
                     # ABC:ABC use the specific mapping
                     model_chains = [chain for chain in model_mapping]
@@ -737,6 +738,7 @@ def print_header(verbose=False, capri_peptide=False):
     print(header)
     print(reference)
     print(notice)
+
 
 if __name__ == "__main__":
     main()
