@@ -206,22 +206,19 @@ def calc_DockQ(
     )
 
     receptor_atoms_native = np.asarray(
-        get_atoms_per_residue(receptor_chains[0], what="refr", atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[0], what="ref", atom_types=atom_for_sup)
     )
     receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains[1], what="sampler", atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains[1], what="sample", atom_types=atom_for_sup)
     )
     ligand_atoms_native = np.asarray(
-        get_atoms_per_residue(ligand_chains[0], what="refl", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[0], what="ref", atom_types=atom_for_sup)
     )
     ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains[1], what="samplel", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains[1], what="sample", atom_types=atom_for_sup)
     )
 
     # Set to align on receptor
-    # super_imposer.set_atoms(receptor_atoms_native, receptor_atoms_sample)
-    # super_imposer.apply([atom for chain in sample_chains for atom in chain.get_atoms()])
-
     sup = SVDSuperimposer()
     sup.set(receptor_atoms_native, receptor_atoms_sample)
     sup.run()
@@ -235,7 +232,7 @@ def calc_DockQ(
 
     info = {}
 
-    info["DockQ_F1"] = f1_formula(nat_correct, nonnat_count, nat_total)
+    info["DockQ_F1"] = dockq_formula(f1(nat_correct, nonnat_count, nat_total), irms, Lrms)
     info["DockQ"] = dockq_formula(fnat, irms, Lrms)
     info["irms"] = irms
     info["Lrms"] = Lrms
@@ -255,7 +252,7 @@ def calc_DockQ(
     return info
 
 
-def f1_formula(tp, fp, p):
+def f1(tp, fp, p):
     return 2 * tp / (tp + fp + p)
 
 
@@ -564,7 +561,7 @@ def load_PDB(path, n_model=0, is_mmcif=False):
     except Exception as e:
         print("ERROR: is the file in the correct format? (.pdb, .mmcif)")
         if not is_mmcif:
-            print("       (use -mmcif_model or -mmcif_native with mmCIF inputs)")
+            print("\t(use --mmcif_model or --mmcif_native with mmCIF inputs)")
         print(traceback.format_exc())
         sys.exit(1)
     remove_hetatms(model)
@@ -711,8 +708,6 @@ def print_results(info, short=False, capri_peptide=False):
                 print(f"Native chains: {chains[0]}, {chains[1]}")
                 print(f"\tModel chains: {results['chain1']} {results['chain2']}")
                 print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
-            #print(info["best_result"])
-            #print(info["best_dockq"])
         else:
             print(
                 f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
