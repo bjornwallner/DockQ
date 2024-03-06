@@ -573,9 +573,11 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     return native_chain_clusters
 
 
-def format_mapping(args_mapping, model_chains, native_chains):
-    mapping = None
-    model_mapping, native_mapping = args_mapping.split(":")
+def format_mapping(mapping, model_chains, native_chains):
+    if not mapping:
+        return mapping, model_chains, native_chains
+
+    model_mapping, native_mapping = mapping.split(":")
     if not native_mapping:
         print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
@@ -607,9 +609,7 @@ def main():
         print("Need at least two chains in the two inputs\n")
         sys.exit()
 
-    initial_mapping = None
-    if args.mapping:
-        initial_mapping, model_chains, native_chains = format_mapping(args.mapping, model_chains, native_chains)
+    initial_mapping, model_chains, native_chains = format_mapping(args.mapping, model_chains, native_chains)
 
     # permute chains and run on a for loop
     best_dockq = -1
