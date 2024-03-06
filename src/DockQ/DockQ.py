@@ -66,12 +66,12 @@ def parse_args():
     parser.add_argument(
         "--mapping",
         default=None,
-        help="""Specify a chain mapping between model and native chains.
-            Chain identifiers are separated by ":".
-            If the native structure contains two chains "H" and "L"
+        metavar="MODELCHAINS:NATIVECHAINS",
+        help="""Specify a chain mapping between model and native structure.
+            If the native contains two chains "H" and "L"
             while the model contains two chains "A" and "B",
-            where the "A" chain is a model of native chain
-            "H" and "B" is a model of native chain "L",
+            and chain A is a model of native chain
+            H and chain B is a model of native chain L,
             the flag can be set as: '--mapping AB:HL'.
             This can also help limit the search to specific native interfaces.
             For example, if the native is a tetramer (ABCD) but the user is only interested
@@ -573,11 +573,12 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     return native_chain_clusters
 
 
-def format_mapping(mapping, model_chains, native_chains):
-    if not mapping:
+def format_mapping(mapping_str, model_chains, native_chains):
+    mapping = None
+    if not mapping_str:
         return mapping, model_chains, native_chains
 
-    model_mapping, native_mapping = mapping.split(":")
+    model_mapping, native_mapping = mapping_str.split(":")
     if not native_mapping:
         print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
@@ -663,6 +664,7 @@ def main():
 def print_results(info, short=False, verbose=False, capri_peptide=False):
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
+        print(f"Total DockQ over {len(info['best_result'])} native interfaces: {info['best_dockq']:.3f}")
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
@@ -672,6 +674,7 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print_header(verbose, capri_peptide)
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
+        print(f"Total DockQ over {len(info['best_result'])} native interfaces: {info['best_dockq']:.3f}")
         items = ["DockQ_F1", "DockQ", "irms", "Lrms", "fnat"]
 
         for chains, results in info["best_result"].items():
