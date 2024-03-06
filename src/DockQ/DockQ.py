@@ -313,8 +313,9 @@ def format_alignment(aln):
     alignment = {}
     alignment["seqA"] = aln[0, :]
     alignment["matches"] = "".join(["|" if aa1 == aa2 else
-                            " " if (aa1 == "-" or aa2 == "-") else
-                            "." for aa1, aa2 in zip(aln[0,:], aln[1,:])])
+                                    " " if (aa1 == "-" or aa2 == "-") else
+                                    "." for aa1, aa2 in
+                                    zip(aln[0, :], aln[1, :])])
     alignment["seqB"] = aln[1, :]
     return alignment
 
@@ -588,6 +589,26 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     return native_chain_clusters
 
 
+def format_mapping(args_mapping, model_chains, native_chains):
+    mapping = None
+    model_mapping, native_mapping = args_mapping.split(":")
+    if not native_mapping:
+        print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
+        sys.exit()
+    else:
+        # :ABC or *:ABC only use those natives chains, permute model chains
+        if not model_mapping or model_mapping == "*":
+            native_chains = [chain for chain in native_mapping]
+        elif len(model_mapping) == len(native_mapping):
+            # ABC*:ABC* fix the first part of the mapping, try all other combinations
+            mapping = {nm: mm for nm, mm in zip(native_mapping, model_mapping) if nm != "*" and mm != "*"}
+            if model_mapping[-1] != "*" and native_mapping[-1] != "*":
+                # ABC:ABC use the specific mapping
+                model_chains = [chain for chain in model_mapping]
+                native_chains = [chain for chain in native_mapping]
+    return mapping, model_chains, native_chains
+
+
 def main():
     args = parse_args()
 
@@ -604,21 +625,7 @@ def main():
 
     initial_mapping = None
     if args.mapping:
-        model_mapping, native_mapping = args.mapping.split(":")
-        if not native_mapping:
-            print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
-            sys.exit()
-        else:
-            # :ABC or *:ABC only use those natives chains, permute model chains
-            if not model_mapping or model_mapping == "*":
-                native_chains = [chain for chain in native_mapping]
-            elif len(model_mapping) == len(native_mapping):
-                # ABC*:ABC* fix the first part of the mapping, try all other combinations
-                initial_mapping = {nm: mm for nm, mm in zip(native_mapping, model_mapping) if nm != "*" and mm != "*"}
-                if model_mapping[-1] != "*" and native_mapping[-1] != "*":
-                    # ABC:ABC use the specific mapping
-                    model_chains = [chain for chain in model_mapping]
-                    native_chains = [chain for chain in native_mapping]
+        initial_mapping, model_chains, native_chains = format_mapping(args.mapping, model_chains, native_chains)
 
     # permute chains and run on a for loop
     best_dockq = -1
