@@ -308,29 +308,15 @@ def align_chains(model_chain, native_chain, use_numbering=False):
     aln = aligner.align(model_sequence, native_sequence)[0]
     return aln
 
+
 def format_alignment(aln):
     alignment = {}
-    if 'target' in str(aln):
-        formatted_aln=aln.format('fasta').split('\n')
-        matches=[]
-        for a,b in zip(formatted_aln[1],formatted_aln[3]): 
-            if a==b:
-                matches.append('|')
-            elif a=='-' or b=='-':
-                matches.append('-')
-            else:
-                matches.append('.')
-        #The order in the dict matters, since only the .values are used in alignments argument in calc_DockQ
-        alignment["seqA"] = formatted_aln[1]        
-        alignment["matches"] = "".join(matches)
-        alignment["seqB"] = formatted_aln[3]
-    else:
-        formatted_aln = aln.format().split("\n")
-        alignment["seqA"] = formatted_aln[0]
-        alignment["matches"] = formatted_aln[1]
-        alignment["seqB"] = formatted_aln[2]
+    alignment["seqA"] = aln[0, :]
+    alignment["matches"] = "".join(["|" if aa1 == aa2 else
+                            " " if (aa1 == "-" or aa2 == "-") else
+                            "." for aa1, aa2 in zip(aln[0,:], aln[1,:])])
+    alignment["seqB"] = aln[1, :]
     return alignment
-
 
 
 def remove_hetatms(model):
@@ -526,7 +512,6 @@ def run_on_chains(
         use_CA_only=use_CA_only,
         capri_peptide=capri_peptide,
     )
-    #print(info)
     return info
 
 
@@ -675,7 +660,6 @@ def main():
         if total_dockq > best_dockq:
             best_dockq = total_dockq
             best_result = result_this_mapping
-            #print(mapping, best_dockq)
 
     info["model"] = args.model
     info["native"] = args.native
@@ -703,29 +687,6 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
             print(f"Native chains: {chains[0]}, {chains[1]}")
             print(f"\tModel chains: {results['chain1']} {results['chain2']}")
             print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
-            """
-            print(
-                f"Number of equivalent residues in chain {info['chain1']} {info['len1']} ({info['class1']})"
-            )
-            print(
-                f"Number of equivalent residues in chain {info['chain2']} {info['len2']} ({info['class2']})"
-            )
-            print(
-                f"Fnat {info['fnat']:.3f} {info['nat_correct']} correct of {info['nat_total']} native contacts"
-            )
-            print(
-                f"Fnonnat {info['fnonnat']:.3f} {info['nonnat_count']} non-native of {info['model_total']} model contacts"
-            )
-            print(f"iRMS {info['irms']:.3f}")
-            print(f"LRMS {info['Lrms']:.3f}")
-
-            peptide_disclaimer = (
-                " DockQ not reoptimized for CAPRI peptide evaluation"
-                if capri_peptide
-                else ""
-            )
-            print(f"DockQ {info['DockQ']:.3f}{peptide_disclaimer}")
-            """
 
 
 def print_header(verbose=False, capri_peptide=False):
