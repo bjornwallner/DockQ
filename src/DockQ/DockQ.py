@@ -308,14 +308,29 @@ def align_chains(model_chain, native_chain, use_numbering=False):
     aln = aligner.align(model_sequence, native_sequence)[0]
     return aln
 
-
 def format_alignment(aln):
     alignment = {}
-    formatted_aln = aln.format().split("\n")
-    alignment["seqA"] = formatted_aln[0]
-    alignment["matches"] = formatted_aln[1]
-    alignment["seqB"] = formatted_aln[2]
+    if 'target' in str(aln):
+        formatted_aln=aln.format('fasta').split('\n')
+        matches=[]
+        for a,b in zip(formatted_aln[1],formatted_aln[3]): 
+            if a==b:
+                matches.append('|')
+            elif a=='-' or b=='-':
+                matches.append('-')
+            else:
+                matches.append('.')
+        #The order in the dict matters, since only the .values are used in alignments argument in calc_DockQ
+        alignment["seqA"] = formatted_aln[1]        
+        alignment["matches"] = "".join(matches)
+        alignment["seqB"] = formatted_aln[3]
+    else:
+        formatted_aln = aln.format().split("\n")
+        alignment["seqA"] = formatted_aln[0]
+        alignment["matches"] = formatted_aln[1]
+        alignment["seqB"] = formatted_aln[2]
     return alignment
+
 
 
 def remove_hetatms(model):
