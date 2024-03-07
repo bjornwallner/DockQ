@@ -816,7 +816,7 @@ def run_on_chains(
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
 
-    info = calc_DockQ2(
+    info = calc_DockQ(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
