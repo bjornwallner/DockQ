@@ -438,14 +438,15 @@ def filter_atoms(model_info, native_info, filter=("CA", "C", "N", "O")):
         native_atom_ids = native_info
 
         n_atoms_per_res = []
-
         for model_ids, native_ids in zip(model_atom_ids, native_atom_ids):
-            model_select = [1 if atom in filter and atom in native_ids else 0 for atom in model_ids]
-            native_select = [1 if atom in filter and atom in model_ids else 0 for atom in native_ids]
+            model_select = [1 if atom in filter and atom in native_ids else 0 for atom in list(dict.fromkeys(model_ids))]
+            native_select = [1 if atom in filter and atom in model_ids else 0 for atom in list(dict.fromkeys(native_ids))]
             model_bools.extend(model_select)
             native_bools.extend(native_select)
             n_atoms_per_res.append(sum(native_select))
             if sum(model_select) != sum(native_select):
+                print(model_ids, model_select)
+                print(native_ids, native_select)
                 print("ERROR!")
     else:  # filter by index
         n_atoms_per_res = model_info
@@ -815,7 +816,7 @@ def run_on_chains(
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
 
-    info = calc_DockQ(
+    info = calc_DockQ2(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
