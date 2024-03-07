@@ -548,19 +548,12 @@ def calc_DockQ(
         else ("ligand", "receptor")
     )
 
-    receptor_atoms_native = np.asarray(
-        get_atoms_per_residue(receptor_chains[0], what="ref", atom_types=atom_for_sup)
+    receptor_atoms_native, receptor_atoms_sample = np.asarray(
+        get_atoms_per_residue(receptor_chains, what="receptor", atom_types=atom_for_sup)
     )
-    receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains[1], what="sample", atom_types=atom_for_sup)
+    ligand_atoms_native, ligand_atoms_sample = np.asarray(
+        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=atom_for_sup)
     )
-    ligand_atoms_native = np.asarray(
-        get_atoms_per_residue(ligand_chains[0], what="ref", atom_types=atom_for_sup)
-    )
-    ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains[1], what="sample", atom_types=atom_for_sup)
-    )
-
     # Set to align on receptor
     super_imposer.set(receptor_atoms_native, receptor_atoms_sample)
     super_imposer.run()
@@ -708,20 +701,31 @@ def list_atoms_per_residue(chain, what):
 
 @lru_cache
 def get_atoms_per_residue(
-    chain,
+    chains,
     what,
     atom_types=("CA", "C", "N", "O"),
 ):
-
-    atoms = (
+    chain1, chain2 = chains
+    atoms1 = (
         [
             atom.coord
-            for res in chain
-            for atom in res.get_atoms()
+            for res1, res2 in zip(chain1, chain2)
+            for atom in res1.get_atoms()
             if atom.id in atom_types
+            and atom.id in [a.id for a in res2.get_atoms()]
         ]
     )
-    return atoms
+
+    atoms2 = (
+        [
+            atom.coord
+            for res1, res2 in zip(chain1, chain2)
+            for atom in res2.get_atoms()
+            if atom.id in atom_types
+            and atom.id in [a.id for a in res1.get_atoms()]
+        ]
+    )
+    return atoms1, atoms2
 
 
 def get_interacting_pairs(distances, threshold):
