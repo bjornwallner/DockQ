@@ -646,12 +646,19 @@ def align_chains(model_chain, native_chain, use_numbering=False):
 
 def format_alignment(aln):
     alignment = {}
-    alignment["seqA"] = aln[0, :]
-    alignment["matches"] = "".join(["|" if aa1 == aa2 else
-                                    " " if (aa1 == "-" or aa2 == "-") else
-                                    "." for aa1, aa2 in
-                                    zip(aln[0, :], aln[1, :])])
-    alignment["seqB"] = aln[1, :]
+    try:
+        alignment["seqA"] = aln[0, :]
+        alignment["matches"] = "".join(["|" if aa1 == aa2 else
+                                        " " if (aa1 == "-" or aa2 == "-") else
+                                        "." for aa1, aa2 in
+                                        zip(aln[0, :], aln[1, :])])
+        alignment["seqB"] = aln[1, :]
+    except NotImplementedError:
+        formatted_aln = aln.format().split("\n")
+        alignment["seqA"] = formatted_aln[0]
+        alignment["matches"] = formatted_aln[1]
+        alignment["seqB"] = formatted_aln[2]
+
     return alignment
 
 
