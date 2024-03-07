@@ -638,7 +638,7 @@ def align_chains(model_chain, native_chain, use_numbering=False):
     aligner = Align.PairwiseAligner()
     aligner.match = 5
     aligner.mismatch = 0
-    aligner.open_gap_score = -10
+    aligner.open_gap_score = -4
     aligner.extend_gap_score = -0.5
     aln = aligner.align(model_sequence, native_sequence)[0]
     return aln
@@ -937,7 +937,6 @@ def main():
     native_chain_clusters = group_model_chains(
         model_structure, native_structure, model_chains, native_chains
     )
-
     all_mappings = itertools.product(*[cluster for cluster in native_chain_clusters.values() if cluster])
 
     # remove mappings where the same model chain is present more than once
