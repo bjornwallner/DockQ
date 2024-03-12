@@ -430,7 +430,7 @@ def calc_DockQ2(
 
 
 @lru_cache
-def filter_atoms(model_info, native_info, filter=("CA", "C", "N", "O")):
+def filter_atoms(model_info, native_info, filter=("CA", "C", "N", "O", "P")):
     model_bools = []
     native_bools = []
     if "CA" in filter:  # backbone filter
@@ -470,7 +470,7 @@ def calc_DockQ(
     use_CA_only=False,
     capri_peptide=False,
 ):
-    atom_for_sup = ("CA", "C", "N", "O") if not use_CA_only else ("CA")
+    atom_for_sup = ("CA", "C", "N", "O", "P") if not use_CA_only else ("CA", "P")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
 
@@ -628,12 +628,14 @@ def align_chains(model_chain, native_chain, use_numbering=False):
         native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
 
     else:
+        model_sequence = [residue.get_resname() for residue in model_chain.get_residues()]
+        native_sequence = [residue.get_resname() for residue in native_chain.get_residues()]
         model_sequence = "".join(
-            seq1(residue.get_resname()) for residue in model_chain.get_residues()
+            seq1(r) if len(r) == 3 else r[:-1] if (len(r) == 2) else r for r in model_sequence
         )
 
         native_sequence = "".join(
-            seq1(residue.get_resname()) for residue in native_chain.get_residues()
+            seq1(r) if len(r) == 3 else r[:-1] if len(r) == 2 else r for r in native_sequence
         )
 
     aligner = Align.PairwiseAligner()
@@ -711,7 +713,7 @@ def list_atoms_per_residue(chain, what):
 def get_atoms_per_residue(
     chains,
     what,
-    atom_types=("CA", "C", "N", "O"),
+    atom_types=("CA", "C", "N", "O", "P"),
 ):
     chain1, chain2 = chains
     atoms1 = (
@@ -891,9 +893,7 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     for model_chain, native_chain in alignment_targets:
         aln = align_chains(model_structure[model_chain], native_structure[native_chain])
         alignment = format_alignment(aln)
-        if "." not in alignment["matches"] and (
-            "-" not in alignment["seqA"] or "-" not in alignment["seqB"]
-        ):
+        if "." not in alignment["matches"]:
             # 100% sequence identity, 100% coverage of native sequence in model sequence
             native_chain_clusters[native_chain].append(model_chain)
     return native_chain_clusters
