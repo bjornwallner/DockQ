@@ -859,7 +859,7 @@ def load_PDB(path, n_model=0):
         pdb_parser = Bio.PDB.PDBParser(QUIET=True)
         structure = pdb_parser.get_structure("-", path)
         model = structure[n_model]
-    except KeyError:
+    except Exception:
         pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
         structure = pdb_parser.get_structure("-", path)
         model = structure[n_model]
