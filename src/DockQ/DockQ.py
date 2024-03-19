@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import gzip
 import hashlib
 import traceback
 import itertools
@@ -72,6 +73,15 @@ def parse_args():
              )
 
     return parser.parse_args()
+
+
+def open_file(filename):
+    if filename.endswith(".gz"):
+        with gzip.open(filename) as f:
+            yield f
+    else:
+        with open(filename) as f:
+            yield f
 
 
 @lru_cache
@@ -857,11 +867,11 @@ def run_on_all_native_interfaces(
 def load_PDB(path, n_model=0):
     try:
         pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-        structure = pdb_parser.get_structure("-", path)
+        structure = pdb_parser.get_structure("-", (gzip.open if path.endswith(".gz") else open)(path, "rt"))
         model = structure[n_model]
     except Exception:
         pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
-        structure = pdb_parser.get_structure("-", path)
+        structure = pdb_parser.get_structure("-", (gzip.open if path.endswith(".gz") else open)(path, "rt"))
         model = structure[n_model]
 
     remove_hetatms(model)
