@@ -50,18 +50,6 @@ def parse_args():
         "--use_CA", "-ca", default=False, action="store_true", help="use CA instead of backbone"
     )
     parser.add_argument(
-        "--mmcif_model",
-        default=False,
-        action="store_true",
-        help="The model is in mmCIF format",
-    )
-    parser.add_argument(
-        "--mmcif_native",
-        default=False,
-        action="store_true",
-        help="The native is in mmCIF format",
-    )
-    parser.add_argument(
         "--no_needle",
         default=False,
         action="store_true",
@@ -866,21 +854,16 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-def load_PDB(path, n_model=0, is_mmcif=False):
-    if not is_mmcif:
-        pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-    else:
-        pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
-
+def load_PDB(path, n_model=0):
     try:
+        pdb_parser = Bio.PDB.PDBParser(QUIET=True)
         structure = pdb_parser.get_structure("-", path)
         model = structure[n_model]
-    except Exception:
-        print("ERROR: is the file in the correct format? (.pdb, .mmcif)")
-        if not is_mmcif:
-            print("\t(use --mmcif_model or --mmcif_native with mmCIF inputs)")
-        print(traceback.format_exc())
-        sys.exit(1)
+    except KeyError:
+        pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
+        structure = pdb_parser.get_structure("-", path)
+        model = structure[n_model]
+
     remove_hetatms(model)
     remove_h(model)
     return model
@@ -925,8 +908,8 @@ def format_mapping(mapping_str, model_chains, native_chains):
 def main():
     args = parse_args()
 
-    native_structure = load_PDB(args.native, is_mmcif=args.mmcif_native)
-    model_structure = load_PDB(args.model, is_mmcif=args.mmcif_model)
+    native_structure = load_PDB(args.native)
+    model_structure = load_PDB(args.model)
 
     info = {}
     model_chains = [c.id for c in model_structure]
