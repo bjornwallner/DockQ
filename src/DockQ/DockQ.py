@@ -881,17 +881,24 @@ def load_PDB(path, chains=[], n_model=0):
     return model
 
 
-def group_model_chains(model_structure, native_structure, model_chains, native_chains):
-    alignment_targets = itertools.product(model_chains, native_chains)
-    native_chain_clusters = {chain: [] for chain in native_chains}
+def group_chains(query_structure, ref_structure, query_chains, ref_chains):
+    reverse_map = False
+    # this might happen e.g. when modelling only part of a large homomer
+    if len(query_chains) < len(ref_chains):
+        query_structure, ref_structure = ref_structure, query_structure
+        query_chains, ref_chains = ref_chains, query_chains
+        reverse_map = True
 
-    for model_chain, native_chain in alignment_targets:
-        aln = align_chains(model_structure[model_chain], native_structure[native_chain])
+    alignment_targets = itertools.product(query_chains, ref_chains)
+    chain_clusters = {chain: [] for chain in ref_chains}
+
+    for query_chain, ref_chain in alignment_targets:
+        aln = align_chains(query_structure[query_chain], ref_structure[ref_chain])
         alignment = format_alignment(aln)
         if "." not in alignment["matches"]:
             # 100% sequence identity, 100% coverage of native sequence in model sequence
-            native_chain_clusters[native_chain].append(model_chain)
-    return native_chain_clusters
+            chain_clusters[ref_chain].append(query_chain)
+    return chain_clusters, reverse_map
 
 
 def format_mapping(mapping_str):
@@ -939,10 +946,10 @@ def main():
     best_dockq = -1
     best_result = None
 
-    native_chain_clusters = group_model_chains(
+    chain_clusters, reverse_map = group_chains(
         model_structure, native_structure, model_chains, native_chains
     )
-    all_mappings = itertools.product(*[cluster for cluster in native_chain_clusters.values() if cluster])
+    all_mappings = itertools.product(*[cluster for cluster in chain_clusters.values() if cluster])
 
     # remove mappings where the same model chain is present more than once
     # only if the mapping is supposed to be 1-1
@@ -952,10 +959,14 @@ def main():
         ]
 
     for mapping in all_mappings:
-        chain_map = {
-            native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
-        }
-
+        if reverse_map:
+            chain_map = {
+               mapping[i]: model_chain  for i, model_chain in enumerate(model_chains)
+            }
+        else:
+            chain_map = {
+                native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
+            }
         if initial_mapping and not initial_mapping.items() <= chain_map.items():
             continue
 
