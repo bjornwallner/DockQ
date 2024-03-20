@@ -13,6 +13,7 @@ import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
+from .parsers import PDBParser
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -864,10 +865,11 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-def load_PDB(path, n_model=0):
+#@profile
+def load_PDB(path, chains=[], n_model=0):
     try:
-        pdb_parser = Bio.PDB.PDBParser(QUIET=True)
-        structure = pdb_parser.get_structure("-", (gzip.open if path.endswith(".gz") else open)(path, "rt"))
+        pdb_parser = PDBParser(QUIET=True)
+        structure = pdb_parser.get_structure("-", (gzip.open if path.endswith(".gz") else open)(path, "rt"), chains=chains)
         model = structure[n_model]
     except Exception:
         pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
@@ -892,8 +894,10 @@ def group_model_chains(model_structure, native_structure, model_chains, native_c
     return native_chain_clusters
 
 
-def format_mapping(mapping_str, model_chains, native_chains):
+def format_mapping(mapping_str):
     mapping = None
+    model_chains = None
+    native_chains = None
     if not mapping_str:
         return mapping, model_chains, native_chains
 
@@ -915,21 +919,21 @@ def format_mapping(mapping_str, model_chains, native_chains):
     return mapping, model_chains, native_chains
 
 
+#@profile
 def main():
     args = parse_args()
+    initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
 
-    native_structure = load_PDB(args.native)
-    model_structure = load_PDB(args.model)
+    model_structure = load_PDB(args.model, chains=model_chains)
+    native_structure = load_PDB(args.native, chains=native_chains)
 
     info = {}
-    model_chains = [c.id for c in model_structure]
-    native_chains = [c.id for c in native_structure]
+    model_chains = [c.id for c in model_structure] if not model_chains else model_chains
+    native_chains = [c.id for c in native_structure] if not native_chains else native_chains
 
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
-
-    initial_mapping, model_chains, native_chains = format_mapping(args.mapping, model_chains, native_chains)
 
     # permute chains and run on a for loop
     best_dockq = -1
