@@ -1002,8 +1002,8 @@ def load_PDB(path, chains=[], n_model=0):
             "-", (gzip.open if path.endswith(".gz") else open)(path, "rt")
         )
         model = structure[n_model]
+        remove_hetatms(model)
 
-    # remove_hetatms(model)
     remove_h(model)
     return model
 
@@ -1166,7 +1166,7 @@ def main():
     info["best_result"] = best_result
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
-    info["best_mapping_str"] = f"{format_mapping_string(best_mapping)} {best_mapping}"
+    info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
     print_results(info, args.short, args.verbose, args.capri_peptide)
 
 
@@ -1176,7 +1176,6 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
