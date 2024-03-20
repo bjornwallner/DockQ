@@ -58,6 +58,12 @@ def parse_args():
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
     parser.add_argument(
+        "--optDockQF1",
+        default=False,
+        action="store_true",
+        help="optimize on DockQ_F1 instead of DockQ",
+    )
+    parser.add_argument(
         "--mapping",
         default=None,
         metavar="MODELCHAINS:NATIVECHAINS",
@@ -979,10 +985,14 @@ def main():
             use_CA_only=args.use_CA,
             capri_peptide=args.capri_peptide,
         )
-
-        total_dockq = sum(
-            [result["DockQ"] for result in result_this_mapping.values()]
-        )
+        if args.optDockQF1:
+            total_dockq = sum(
+                [result["DockQ_F1"] for result in result_this_mapping.values()]
+                )
+        else:
+             total_dockq = sum(
+                [result["DockQ"] for result in result_this_mapping.values()]
+                )
         if total_dockq > best_dockq:
             best_dockq = total_dockq
             best_result = result_this_mapping
