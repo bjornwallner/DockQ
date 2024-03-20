@@ -612,7 +612,7 @@ def dockq_formula(fnat, irms, Lrms):
 
 
 @lru_cache
-def align_chains(model_chain, native_chain, use_numbering=False):
+def align_chains(model_chain, native_chain, use_numbering=False,verbose=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
     numbering. If the numbering is used, then each residue number from the pdb structure
@@ -639,14 +639,15 @@ def align_chains(model_chain, native_chain, use_numbering=False):
         native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
 
     else:
+        custom_map={'MSE':'M','CME':'C'}
         model_sequence = [residue.get_resname() for residue in model_chain.get_residues()]
         native_sequence = [residue.get_resname() for residue in native_chain.get_residues()]
         model_sequence = "".join(
-            seq1(r) if len(r) == 3 else r[:-1] if (len(r) == 2) else r for r in model_sequence
+            seq1(r,custom_map=custom_map) if len(r) == 3 else r[:-1] if (len(r) == 2) else r for r in model_sequence
         )
 
         native_sequence = "".join(
-            seq1(r) if len(r) == 3 else r[:-1] if len(r) == 2 else r for r in native_sequence
+            seq1(r,custom_map=custom_map) if len(r) == 3 else r[:-1] if len(r) == 2 else r for r in native_sequence
         )
 
     aligner = Align.PairwiseAligner()
