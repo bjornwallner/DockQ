@@ -876,7 +876,7 @@ def load_PDB(path, chains=[], n_model=0):
         structure = pdb_parser.get_structure("-", (gzip.open if path.endswith(".gz") else open)(path, "rt"))
         model = structure[n_model]
 
-    remove_hetatms(model)
+    #remove_hetatms(model)
     remove_h(model)
     return model
 
