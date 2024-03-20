@@ -64,6 +64,12 @@ def parse_args():
         help="optimize on DockQ_F1 instead of DockQ",
     )
     parser.add_argument(
+        "--allowed_mismatches",
+        default=0,
+        type=int,
+        help="number of allowed mismatches when mapping model sequence to native sequence.",
+    )
+    parser.add_argument(
         "--mapping",
         default=None,
         metavar="MODELCHAINS:NATIVECHAINS",
@@ -887,16 +893,24 @@ def load_PDB(path, chains=[], n_model=0):
     return model
 
 
-def group_model_chains(model_structure, native_structure, model_chains, native_chains):
+def group_model_chains(model_structure, native_structure, model_chains, native_chains,allowed_mismatches=0):
     alignment_targets = itertools.product(model_chains, native_chains)
     native_chain_clusters = {chain: [] for chain in native_chains}
-
+    mismatches_={} # for diagnostics
     for model_chain, native_chain in alignment_targets:
         aln = align_chains(model_structure[model_chain], native_structure[native_chain])
         alignment = format_alignment(aln)
-        if "." not in alignment["matches"]:
+        mismatches=alignment["matches"].count('.')
+        if mismatches > 0 and mismatches < 10:
+            mismatches_[(model_chain,native_chain)]=mismatches
+
+        if mismatches <= allowed_mismatches: 
             # 100% sequence identity, 100% coverage of native sequence in model sequence
             native_chain_clusters[native_chain].append(model_chain)
+    chains_without_match=[native_chain for native_chain in native_chain_clusters if len(native_chain_clusters[native_chain])==0]
+    if len(chains_without_match):
+        print(f'For these chains {chains_without_match} no match was found between model and native, try increasing the --allowed_mismatches from {allowed_mismatches}')
+        print(f'Current number of alignments with 1-10 mismatches: {mismatches_}')   
     return native_chain_clusters
 
 
@@ -958,7 +972,7 @@ def main():
     best_mapping = None
     ref_switch=False
     native_chain_clusters = group_model_chains(
-        model_structure, native_structure, model_chains, native_chains
+        model_structure, native_structure, model_chains, native_chains,args.allowed_mismatches
     )
     all_mappings = itertools.product(*[cluster for cluster in native_chain_clusters.values() if cluster])
 
