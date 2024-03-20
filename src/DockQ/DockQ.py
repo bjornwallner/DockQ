@@ -918,7 +918,18 @@ def format_mapping(mapping_str):
                 native_chains = [chain for chain in native_mapping]
     return mapping, model_chains, native_chains
 
-
+def format_mapping_string(chain_mapping, model_first=True):
+    chain1=""
+    chain2=""
+    if model_first:
+        mapping=sorted([(b,a) for a,b in chain_mapping.items()])
+    else:
+        mapping=sorted(chain_mapping.items())   
+    for model_chain,native_chain in mapping: #sorted([(b,a) for a,b in chain_mapping.items()]):
+        chain1+=model_chain
+        chain2+=native_chain
+  
+    return f'{chain1}:{chain2}'
 #@profile
 def main():
     args = parse_args()
@@ -938,7 +949,8 @@ def main():
     # permute chains and run on a for loop
     best_dockq = -1
     best_result = None
-
+    best_mapping = None
+    ref_switch=False
     native_chain_clusters = group_model_chains(
         model_structure, native_structure, model_chains, native_chains
     )
@@ -974,19 +986,23 @@ def main():
         if total_dockq > best_dockq:
             best_dockq = total_dockq
             best_result = result_this_mapping
+            best_mapping = chain_map
 
     info["model"] = args.model
     info["native"] = args.native
     info["best_dockq"] = best_dockq
     info["best_result"] = best_result
-
+    info["GlobalDockQ"] = best_dockq/len(best_result)
+    info['best_mapping']=best_mapping
+    info['best_mapping_str']=f'{format_mapping_string(best_mapping,model_first=not ref_switch)} {best_mapping}' 
     print_results(info, args.short, args.verbose, args.capri_peptide)
 
 
 def print_results(info, short=False, verbose=False, capri_peptide=False):
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
-        print(f"Total DockQ over {len(info['best_result'])} native interfaces: {info['best_dockq']:.3f}")
+        print(f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping")
+        print(info['best_result'])
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
