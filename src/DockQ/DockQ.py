@@ -1028,7 +1028,7 @@ def group_chains(
         n_mismatches = alignment["matches"].count(".")
 
         if n_mismatches > 0 and n_mismatches < 10:
-            mismatch_dict[(model_chain, native_chain)] = n_mismatches
+            mismatch_dict[(query_chain, ref_chain)] = n_mismatches
 
         if n_mismatches <= allowed_mismatches:
             # 100% sequence identity, 100% coverage of native sequence in model sequence
@@ -1176,12 +1176,11 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        print(info["best_result"])
+        #print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
-                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} {info['native']} {chains[0]} {chains[1]} -> {info['model']} {results['chain1']} {results['chain2']}"
+                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
-
     else:
         print_header(verbose, capri_peptide)
         print(f"Model  : {info['model']}")
