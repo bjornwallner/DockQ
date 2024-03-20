@@ -961,7 +961,7 @@ def main():
     for mapping in all_mappings:
         if reverse_map:
             chain_map = {
-               mapping[i]: model_chain  for i, model_chain in enumerate(model_chains)
+                mapping[i]: model_chain  for i, model_chain in enumerate(model_chains)
             }
         else:
             chain_map = {
