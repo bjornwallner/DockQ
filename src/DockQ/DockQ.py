@@ -935,7 +935,7 @@ def run_on_chains(
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
 
-    info = calc_DockQ2(
+    info = calc_DockQ(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
@@ -1048,7 +1048,7 @@ def group_chains(
 
 
 def format_mapping(mapping_str):
-    mapping = None
+    mapping = dict()
     model_chains = None
     native_chains = None
     if not mapping_str:
@@ -1104,17 +1104,13 @@ def product_without_dupl(*args, repeat=1):
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
-    
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
     
-    group_and_combine = False
-    if not model_chains or not native_chains:
-        group_and_combine = True
-        model_chains = [c.id for c in model_structure] if not model_chains else model_chains
-        native_chains = (
-            [c.id for c in native_structure] if not native_chains else native_chains
-        )
+    model_chains = [c.id for c in model_structure] if not model_chains else model_chains
+    native_chains = (
+        [c.id for c in native_structure] if not native_chains else native_chains
+    )
 
     info = {}
 
@@ -1125,22 +1121,22 @@ def main():
     # permute chains and run on a for loop
     best_dockq = -1
     best_result = None
+    model_chains_to_combo = [mc for mc in model_chains if mc not in initial_mapping.values()]
+    native_chains_to_combo = [nc for nc in native_chains if nc not in initial_mapping.keys()]
 
-    if group_and_combine:
-        chain_clusters, reverse_map = group_chains(
-            model_structure,
-            native_structure,
-            model_chains,
-            native_chains,
-            args.allowed_mismatches,
-        )
-        all_mappings = product_without_dupl(
-            *[cluster for cluster in chain_clusters.values() if cluster]
-        )
+    chain_clusters, reverse_map = group_chains(
+        model_structure,
+        native_structure,
+        model_chains_to_combo,
+        native_chains_to_combo,
+        args.allowed_mismatches,
+    )
+
+    all_mappings = product_without_dupl(
+        *[cluster for cluster in chain_clusters.values() if cluster]
+    )
+        #print(len(list(all_mappings)))
         #print([cluster for cluster in chain_clusters.values() if cluster])
-    else:
-        all_mappings = [list(initial_mapping.values())]
-        reverse_map = False
 
     # remove mappings where the same model chain is present more than once
     # only if the mapping is supposed to be 1-1
@@ -1150,16 +1146,15 @@ def main():
     #    ]
     # print(list(set(all_mappings)))
     for mapping in all_mappings:
+        chain_map = {key:value for key, value in initial_mapping.items()}
         if reverse_map:
-            chain_map = {
-                mapping[i]: model_chain for i, model_chain in enumerate(model_chains)
-            }
+            chain_map.update({
+                mapping[i]: model_chain for i, model_chain in enumerate(model_chains_to_combo)
+            })
         else:
-            chain_map = {
-                native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
-            }
-        #if initial_mapping and not initial_mapping.items() <= chain_map.items():
-        #    continue
+            chain_map.update({
+                native_chain: mapping[i] for i, native_chain in enumerate(native_chains_to_combo)
+            })
 
         result_this_mapping = run_on_all_native_interfaces(
             model_structure,
