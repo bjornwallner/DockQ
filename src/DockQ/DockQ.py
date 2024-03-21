@@ -13,7 +13,7 @@ import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from .parsers import PDBParser
+from .parsers import PDBParser, MMCIFParser
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -935,7 +935,7 @@ def run_on_chains(
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
 
-    info = calc_DockQ(
+    info = calc_DockQ2(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
@@ -986,7 +986,7 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-# @profile
+#@profile
 def load_PDB(path, chains=[], n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
@@ -997,14 +997,14 @@ def load_PDB(path, chains=[], n_model=0):
         )
         model = structure[n_model]
     except Exception:
-        pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
+        pdb_parser = MMCIFParser(QUIET=True)
         structure = pdb_parser.get_structure(
-            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt")
+            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            chains=None,
         )
         model = structure[n_model]
-        remove_hetatms(model)
 
-    remove_h(model)
+    #remove_h(model)
     return model
 
 
@@ -1090,19 +1090,33 @@ def format_mapping_string(chain_mapping):
     return f"{chain1}:{chain2}"
 
 
-# @profile
+def product_without_dupl(*args, repeat=1):
+    pools = [tuple(pool) for pool in args] * repeat
+    result = [[]]
+    for pool in pools:
+        result = [x+[y] for x in result for y in pool if y not in x] # here we added condition
+    #result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
+    for prod in result:
+        yield tuple(prod)
+
+
+#@profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
-
+    
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
+    
+    group_and_combine = False
+    if not model_chains or not native_chains:
+        group_and_combine = True
+        model_chains = [c.id for c in model_structure] if not model_chains else model_chains
+        native_chains = (
+            [c.id for c in native_structure] if not native_chains else native_chains
+        )
 
     info = {}
-    model_chains = [c.id for c in model_structure] if not model_chains else model_chains
-    native_chains = (
-        [c.id for c in native_structure] if not native_chains else native_chains
-    )
 
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
@@ -1112,24 +1126,29 @@ def main():
     best_dockq = -1
     best_result = None
 
-    chain_clusters, reverse_map = group_chains(
-        model_structure,
-        native_structure,
-        model_chains,
-        native_chains,
-        args.allowed_mismatches,
-    )
-    all_mappings = itertools.product(
-        *[cluster for cluster in chain_clusters.values() if cluster]
-    )
+    if group_and_combine:
+        chain_clusters, reverse_map = group_chains(
+            model_structure,
+            native_structure,
+            model_chains,
+            native_chains,
+            args.allowed_mismatches,
+        )
+        all_mappings = product_without_dupl(
+            *[cluster for cluster in chain_clusters.values() if cluster]
+        )
+        #print([cluster for cluster in chain_clusters.values() if cluster])
+    else:
+        all_mappings = [list(initial_mapping.values())]
+        reverse_map = False
 
     # remove mappings where the same model chain is present more than once
     # only if the mapping is supposed to be 1-1
-    if len(model_chains) == len(native_chains):
-        all_mappings = [
-            element for element in all_mappings if len(set(element)) == len(element)
-        ]
-
+    #if len(model_chains) == len(native_chains):
+    #    all_mappings = [
+    #        element for element in all_mappings if len(set(element)) == len(element)
+    #    ]
+    # print(list(set(all_mappings)))
     for mapping in all_mappings:
         if reverse_map:
             chain_map = {
@@ -1139,8 +1158,8 @@ def main():
             chain_map = {
                 native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
             }
-        if initial_mapping and not initial_mapping.items() <= chain_map.items():
-            continue
+        #if initial_mapping and not initial_mapping.items() <= chain_map.items():
+        #    continue
 
         result_this_mapping = run_on_all_native_interfaces(
             model_structure,
