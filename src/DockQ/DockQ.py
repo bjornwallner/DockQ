@@ -14,17 +14,18 @@ import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from .parsers import PDBParser, MMCIFParser
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
     from .operations import residue_distances, get_fnat_stats
+    from .parsers import PDBParser, MMCIFParser
 except ImportError:
     print(
-        "WARNING: It looks like cython is not working, \
-        falling back on native python. This will make DockQ slower"
+        """WARNING: It looks like cython is not working,
+         falling back on native python. This will make DockQ slower"""
     )
     from operations_nocy import residue_distances, get_fnat_stats
+    from parsers import PDBParser, MMCIFParser
 
 
 def parse_args():
