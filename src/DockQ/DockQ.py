@@ -7,6 +7,7 @@ import traceback
 import itertools
 from functools import lru_cache, wraps
 from argparse import ArgumentParser
+from tqdm import tqdm
 
 import Bio.PDB
 import numpy as np
@@ -1089,6 +1090,32 @@ def format_mapping_string(chain_mapping):
 
     return f"{chain1}:{chain2}"
 
+import math
+def product_without_dupl(*args, repeat=1):
+    pools = [tuple(pool) for pool in args] * repeat
+    result = [[]]
+    for pool in pools:
+        result = [x+[y] for x in result for y in pool if y not in x] # here we added condition
+    #result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
+    for prod in result:
+        yield tuple(prod)
+def chain_combinations(chain_clusters):
+    counts={}
+    for chain in chain_clusters:
+        chains=tuple(chain_clusters[chain])
+        if chains not in counts:
+            counts[chains]=0
+        counts[chains]+=1
+    #set(chain_clusters.values())
+  
+    combos=itertools.product(*[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
+
+    
+    print(len(list(combos)))
+    sys.exit()
+    number_of_combinations=np.prod([math.factorial(a) for a in counts.values()])
+    print(number_of_combinations)
+
 
 # @profile
 def main():
@@ -1097,6 +1124,7 @@ def main():
 
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
+
 
     info = {}
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
@@ -1119,18 +1147,41 @@ def main():
         native_chains,
         args.allowed_mismatches,
     )
+    
+    if args.verbose:
+        print(chain_clusters)
+        number_of_chain_combinations(chain_clusters)
+
     all_mappings = itertools.product(
         *[cluster for cluster in chain_clusters.values() if cluster]
     )
+    all_mappings = product_without_dupl(
+        *[cluster for cluster in chain_clusters.values() if cluster]
+    )
+    
+    all_mappings = itertools.product(
+        *[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
 
+    #print(len(list(all_mappings)))
+    #sys.exit()
+    
     # remove mappings where the same model chain is present more than once
     # only if the mapping is supposed to be 1-1
     if len(model_chains) == len(native_chains):
-        all_mappings = [
-            element for element in all_mappings if len(set(element)) == len(element)
-        ]
+        #unique_mappings=set()
+        #for element in tqdm(all_mappings):
+        #    if element not in unique_mappings:
+        #        unique_mappings.add(element)
 
-    for mapping in all_mappings:
+        all_mappings = [
+            element for element in tqdm(list(all_mappings)) if len(set(element)) == len(element)
+        ]
+    
+    #print(all_mappings)
+    def progressbar(l):
+        return tqdm(l,desc='Chain combinations') if len(l) > 1 else l
+ 
+    for mapping in progressbar(list(all_mappings)):
         if reverse_map:
             chain_map = {
                 mapping[i]: model_chain for i, model_chain in enumerate(model_chains)
@@ -1176,10 +1227,10 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        #print(info["best_result"])
+        print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
-                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
+                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} clashes {results['clashes']} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
     else:
         print_header(verbose, capri_peptide)
