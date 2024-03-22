@@ -1,3 +1,5 @@
+![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
+
 # DockQ
 Requires python packages: `numpy` and `Biopython`
 
