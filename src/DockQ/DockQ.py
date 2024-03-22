@@ -57,7 +57,7 @@ def parse_args():
         help="use CA instead of backbone",
     )
     parser.add_argument(
-        "--no_needle",
+        "--no_align",
         default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
@@ -921,7 +921,7 @@ def get_interface_atoms(
 def run_on_chains(
     model_chains,
     native_chains,
-    no_needle=False,
+    no_align=False,
     use_CA_only=False,
     capri_peptide=False,
 ):
@@ -931,7 +931,7 @@ def run_on_chains(
         aln = align_chains(
             model_chain,
             native_chain,
-            use_numbering=no_needle,
+            use_numbering=no_align,
         )
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
@@ -950,7 +950,7 @@ def run_on_all_native_interfaces(
     model_structure,
     native_structure,
     chain_map={"A": "A", "B": "B"},
-    no_needle=False,
+    no_align=False,
     use_CA_only=False,
     capri_peptide=False,
 ):
@@ -973,7 +973,7 @@ def run_on_all_native_interfaces(
             info = run_on_chains(
                 model_chains,
                 native_chains,
-                no_needle=no_needle,
+                no_align=no_align,
                 use_CA_only=use_CA_only,
                 capri_peptide=capri_peptide,
             )
@@ -1186,7 +1186,7 @@ def main():
             model_structure,
             native_structure,
             chain_map=chain_map,
-            no_needle=args.no_needle,
+            no_align=args.no_align,
             use_CA_only=args.use_CA,
             capri_peptide=args.capri_peptide,
         )
