@@ -1,8 +1,8 @@
 ![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
 
-# DockQ
+# DockQ: A Quality Measure for Protein-Protein Docking Models
 
-Installation
+## Installation
 
 Clone the repository, then install the necessary libraries with `pip`:
 
@@ -12,15 +12,19 @@ cd DockQ
 pip install .
 ```
 
-Quick start for two interacting partners (two-chain-models) run with:
+## Quick start:
+
+After installing DockQ with `pip`, the `DockQ` binary will be in your path. Just run DockQ with:
 
 `DockQ <model> <native>`
 
-Example
+**Example**
+
+When running DockQ on model/native complexes with one or more interfaces, you will get a result for each interface. Results are computed to maximise the average DockQ across all interface:
 
 ```
 
-bash$ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
+$ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
 
 ****************************************************************
 *                       DockQ                                  *
@@ -61,7 +65,21 @@ Native chains: B, C
         fnat: 0.500
 ```
 
-Help page
+A more compact output option is available with the flag `--short`:
+
+```
+$ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --short
+
+DockQ 0.994 DockQ_F1 0.996 Fnat 0.983 iRMS 0.000 LRMS 0.000 Fnonnat 0.008 clashes 0 mapping BA:AB examples/1A2K_r_l_b.model.pdb B A -> examples/1A2K_r_l_b.pdb A B
+DockQ 0.511 DockQ_F1 0.567 Fnat 0.333 iRMS 1.237 LRMS 6.864 Fnonnat 0.000 clashes 0 mapping BC:AC examples/1A2K_r_l_b.model.pdb B C -> examples/1A2K_r_l_b.pdb A C
+DockQ 0.453 DockQ_F1 0.500 Fnat 0.500 iRMS 2.104 LRMS 8.131 Fnonnat 0.107 clashes 0 mapping AC:BC examples/1A2K_r_l_b.model.pdb A C -> examples/1A2K_r_l_b.pdb B C
+
+```
+
+**Other uses**
+
+Run DockQ with `-h/--help` to see a list of the available flags:
+
 ```
 bash$ DockQ -h
 
