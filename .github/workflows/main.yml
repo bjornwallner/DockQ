@@ -31,4 +31,5 @@ jobs:
       - name: Test pipeline output
         run: |
           python -m pip install biopython==1.79
+          python -m pip install .
           bash ./run_test.sh
