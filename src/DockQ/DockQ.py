@@ -14,7 +14,7 @@ import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from .parsers import PDBParser
+from .parsers import PDBParser, MMCIFParser
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -987,7 +987,7 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-# @profile
+#@profile
 def load_PDB(path, chains=[], n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
@@ -998,14 +998,14 @@ def load_PDB(path, chains=[], n_model=0):
         )
         model = structure[n_model]
     except Exception:
-        pdb_parser = Bio.PDB.MMCIFParser(QUIET=True)
+        pdb_parser = MMCIFParser(QUIET=True)
         structure = pdb_parser.get_structure(
-            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt")
+            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            chains=None,
         )
         model = structure[n_model]
 
-    # remove_hetatms(model)
-    remove_h(model)
+    #remove_h(model)
     return model
 
 
@@ -1049,7 +1049,7 @@ def group_chains(
 
 
 def format_mapping(mapping_str):
-    mapping = None
+    mapping = dict()
     model_chains = None
     native_chains = None
     if not mapping_str:
@@ -1117,21 +1117,19 @@ def chain_combinations(chain_clusters):
     print(number_of_combinations)
 
 
-# @profile
+#@profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
-
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
 
-
-    info = {}
+    
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
     )
-
+    info = {}
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
@@ -1139,60 +1137,51 @@ def main():
     # permute chains and run on a for loop
     best_dockq = -1
     best_result = None
+    best_mapping = None
+    model_chains_to_combo = [mc for mc in model_chains if mc not in initial_mapping.values()]
+    native_chains_to_combo = [nc for nc in native_chains if nc not in initial_mapping.keys()]
 
     chain_clusters, reverse_map = group_chains(
         model_structure,
         native_structure,
-        model_chains,
-        native_chains,
+        model_chains_to_combo,
+        native_chains_to_combo,
         args.allowed_mismatches,
     )
-    
-    if args.verbose:
-        print(chain_clusters)
-        number_of_chain_combinations(chain_clusters)
 
-    all_mappings = itertools.product(
-        *[cluster for cluster in chain_clusters.values() if cluster]
-    )
+   
     all_mappings = product_without_dupl(
         *[cluster for cluster in chain_clusters.values() if cluster]
     )
-    
-    all_mappings = itertools.product(
-        *[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
+#    else:
+#    all_mappings = itertools.product(
+#            *[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
 
     #print(len(list(all_mappings)))
+
     #sys.exit()
-    
+            #print(len(list(all_mappings)))
+        #print([cluster for cluster in chain_clusters.values() if cluster])
+
     # remove mappings where the same model chain is present more than once
     # only if the mapping is supposed to be 1-1
-    if len(model_chains) == len(native_chains):
-        #unique_mappings=set()
-        #for element in tqdm(all_mappings):
-        #    if element not in unique_mappings:
-        #        unique_mappings.add(element)
-
-        all_mappings = [
-            element for element in tqdm(list(all_mappings)) if len(set(element)) == len(element)
-        ]
-    
-    #print(all_mappings)
+    #if len(model_chains) == len(native_chains):
+    #    all_mappings = [
+    #        element for element in all_mappings if len(set(element)) == len(element)
+    #    ]
     def progressbar(l):
         return tqdm(l,desc='Chain combinations') if len(l) > 1 else l
  
     for mapping in progressbar(list(all_mappings)):
+        chain_map = {key:value for key, value in initial_mapping.items()}
         if reverse_map:
-            chain_map = {
-                mapping[i]: model_chain for i, model_chain in enumerate(model_chains)
-            }
+            chain_map.update({
+                mapping[i]: model_chain for i, model_chain in enumerate(model_chains_to_combo)
+            })
         else:
-            chain_map = {
-                native_chain: mapping[i] for i, native_chain in enumerate(native_chains)
-            }
-        if initial_mapping and not initial_mapping.items() <= chain_map.items():
-            continue
-
+            chain_map.update({
+                native_chain: mapping[i] for i, native_chain in enumerate(native_chains_to_combo)
+            })
         result_this_mapping = run_on_all_native_interfaces(
             model_structure,
             native_structure,
@@ -1210,14 +1199,14 @@ def main():
             best_dockq = total_dockq
             best_result = result_this_mapping
             best_mapping = chain_map
-
+    
     info["model"] = args.model
     info["native"] = args.native
     info["best_dockq"] = best_dockq
     info["best_result"] = best_result
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
-    info["best_mapping_str"] = f"{format_mapping_string(best_mapping)} {best_mapping}"
+    info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
     print_results(info, args.short, args.verbose, args.capri_peptide)
 
 
