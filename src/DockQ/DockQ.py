@@ -16,17 +16,18 @@ import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from .parsers import PDBParser, MMCIFParser
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
     from .operations import residue_distances, get_fnat_stats
+    from .parsers import PDBParser, MMCIFParser
 except ImportError:
     print(
-        "WARNING: It looks like cython is not working, \
-        falling back on native python. This will make DockQ slower"
+        """WARNING: It looks like cython is not working,
+         falling back on native python. This will make DockQ slower"""
     )
     from operations_nocy import residue_distances, get_fnat_stats
+    from parsers import PDBParser, MMCIFParser
 
 
 def parse_args():
@@ -51,9 +52,7 @@ def parse_args():
     parser.add_argument(
         "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
     )
-    #parser.add_argument(
-    #    "--progress_bar", "-v", default=False, action="store_true", help="talk a lot!"
-    #)
+
     parser.add_argument(
         "--use_CA",
         "-ca",
@@ -62,7 +61,7 @@ def parse_args():
         help="use CA instead of backbone",
     )
     parser.add_argument(
-        "--no_needle",
+        "--no_align",
         default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
@@ -300,248 +299,6 @@ def superimpose(from_atoms, to_atoms):
     super_imposer.run()
     rot, tran = super_imposer.get_rotran()
     return rot, tran, super_imposer
-
-
-# @profile
-def calc_DockQ2(
-    model_chains,
-    native_chains,
-    alignments,
-    use_CA_only=False,
-    capri_peptide=False,
-):
-    atom_for_sup = ("CA", "C", "N", "O") if not use_CA_only else ("CA")
-    fnat_threshold = 4.0 if capri_peptide else 5.0
-    interface_threshold = 8.0 if capri_peptide else 10.0
-
-    native_atoms_1 = get_atoms(native_chains[0], "native")
-    native_atoms_2 = get_atoms(native_chains[1], "native")
-    native_n_atoms_1, native_atom_ids_1 = list_atoms_per_residue2(
-        native_chains[0], "native"
-    )
-    native_n_atoms_2, native_atom_ids_2 = list_atoms_per_residue2(
-        native_chains[1], "native"
-    )
-
-    native_distances = get_atom_distances(
-        native_atoms_1, native_atoms_2, (native_n_atoms_1, native_n_atoms_2), "native"
-    )
-    nat_total = np.nonzero(np.asarray(native_distances) < fnat_threshold ** 2)[0].shape[
-        0
-    ]
-
-    if nat_total == 0:
-        return None
-
-    model_atoms_1 = get_atoms(model_chains[0], "model")
-    model_atoms_2 = get_atoms(model_chains[1], "model")
-    model_n_atoms_1, model_atom_ids_1 = list_atoms_per_residue2(
-        model_chains[0], "model"
-    )
-    model_n_atoms_2, model_atom_ids_2 = list_atoms_per_residue2(
-        model_chains[1], "model"
-    )
-
-    (
-        model_atom_index_1,
-        native_atom_index_1,
-        model_res_index_1,
-        native_res_index_1,
-    ) = get_aligned_atoms(model_n_atoms_1, native_n_atoms_1, tuple(alignments[0]))
-    (
-        model_atom_index_2,
-        native_atom_index_2,
-        model_res_index_2,
-        native_res_index_2,
-    ) = get_aligned_atoms(model_n_atoms_2, native_n_atoms_2, tuple(alignments[1]))
-
-    if len(model_res_index_1) != len(model_chains[0]):
-        # filter model, native atoms by alignment atom indexes
-        model_atoms_1 = model_atoms_1[model_atom_index_1]
-        model_n_atoms_1 = tuple(
-            [
-                n_atoms
-                for i, n_atoms in enumerate(model_n_atoms_1)
-                if i in model_res_index_1
-            ]
-        )
-        model_atom_ids_1 = tuple(
-            [
-                atom_ids
-                for i, atom_ids in enumerate(model_atom_ids_1)
-                if i in model_res_index_1
-            ]
-        )
-
-    if len(model_res_index_2) != len(model_chains[1]):
-        model_atoms_2 = model_atoms_2[model_atom_index_2]
-        model_n_atoms_2 = tuple(
-            [
-                n_atoms
-                for i, n_atoms in enumerate(model_n_atoms_2)
-                if i in model_res_index_2
-            ]
-        )
-        model_atom_ids_2 = tuple(
-            [
-                atom_ids
-                for i, atom_ids in enumerate(model_atom_ids_2)
-                if i in model_res_index_2
-            ]
-        )
-
-    model_distances = get_atom_distances(
-        model_atoms_1, model_atoms_2, (model_n_atoms_1, model_n_atoms_2), "model"
-    )
-    # only recalculate distances if model was missing residues compared to native
-    if len(native_res_index_1) != len(native_chains[0]) or len(
-        native_res_index_2
-    ) != len(native_chains[1]):
-        native_atoms_1 = native_atoms_1[native_atom_index_1]
-        native_atoms_2 = native_atoms_1[native_atom_index_2]
-        native_n_atoms_1 = tuple(
-            [
-                n_atoms
-                for i, n_atoms in enumerate(native_n_atoms_1)
-                if i in native_res_index_1
-            ]
-        )
-        native_n_atoms_2 = tuple(
-            [
-                n_atoms
-                for i, n_atoms in enumerate(native_n_atoms_2)
-                if i in native_res_index_2
-            ]
-        )
-        native_atom_ids_1 = tuple(
-            [
-                atom_ids
-                for i, atom_ids in enumerate(native_atom_ids_1)
-                if i in native_res_index_1
-            ]
-        )
-        native_atom_ids_2 = tuple(
-            [
-                atom_ids
-                for i, atom_ids in enumerate(native_atom_ids_2)
-                if i in native_res_index_2
-            ]
-        )
-        native_distances = get_atom_distances(
-            native_atoms_1,
-            native_atoms_2,
-            (native_n_atoms_1, native_n_atoms_2),
-            "native",
-        )
-
-    assert (
-        model_distances.shape == native_distances.shape
-    ), f"Native and model have incompatible sizes ({model_distances.shape} != {native_distances.shape})"
-
-    nat_correct, nonnat_count, _, model_total = get_fnat_stats(
-        model_distances, native_distances, threshold=fnat_threshold
-    )
-
-    # avoids divide by 0 errors
-    fnat = nat_total and nat_correct / nat_total or 0
-    fnonnat = model_total and nonnat_count / model_total or 0
-
-    # filter out backbone atoms now
-    model_index_1, native_index_1, n_atoms_1 = filter_atoms(
-        model_atom_ids_1, native_atom_ids_1, filter=atom_for_sup
-    )
-    model_index_2, native_index_2, n_atoms_2 = filter_atoms(
-        model_atom_ids_2, native_atom_ids_2, filter=atom_for_sup
-    )
-    model_atoms_1 = model_atoms_1[model_index_1]
-    model_atoms_2 = model_atoms_2[model_index_2]
-    native_atoms_1 = native_atoms_1[native_index_1]
-    native_atoms_2 = native_atoms_2[native_index_2]
-
-    # assign which chains constitute the receptor, ligand
-    native1_size = len(native_chains[0])
-    native2_size = len(native_chains[1])
-    receptor_atoms = (
-        (model_atoms_1, native_atoms_1)
-        if native1_size > native2_size
-        else (model_atoms_2, native_atoms_2)
-    )
-    ligand_atoms = (
-        (model_atoms_1, native_atoms_1)
-        if native1_size <= native2_size
-        else (model_atoms_2, native_atoms_2)
-    )
-    receptor_n_atoms = n_atoms_1 if native1_size > native2_size else n_atoms_2
-    ligand_n_atoms = n_atoms_1 if native1_size <= native2_size else n_atoms_2
-
-    class1, class2 = (
-        ("receptor", "ligand")
-        if native1_size > native2_size
-        else ("ligand", "receptor")
-    )
-
-    # Set to align on receptor
-    rot, tran, super_imposer = superimpose(receptor_atoms[0], receptor_atoms[1])
-    rotated_ligand_atoms = np.dot(ligand_atoms[0], rot) + tran
-
-    Lrms = super_imposer._rms(
-        ligand_atoms[1], rotated_ligand_atoms
-    )  # using the private _rms function which does not superimpose
-
-    # Get interfacial atoms from reference, and corresponding atoms from sample
-    interacting_pairs = get_interacting_pairs(
-        # working with squared thresholds to avoid using sqrt
-        native_distances,
-        threshold=interface_threshold ** 2,
-    )
-
-    if class1 == "ligand":
-        interacting_pairs = interacting_pairs[::-1]
-
-    receptor_interface_index, _, _ = filter_atoms(
-        receptor_n_atoms, None, filter=interacting_pairs[0]
-    )
-    ligand_interface_index, _, _ = filter_atoms(
-        ligand_n_atoms, None, filter=interacting_pairs[1]
-    )
-
-    model_interface_atoms = np.vstack(
-        (
-            receptor_atoms[0][receptor_interface_index],
-            ligand_atoms[0][ligand_interface_index],
-        )
-    )
-    native_interface_atoms = np.vstack(
-        (
-            receptor_atoms[1][receptor_interface_index],
-            ligand_atoms[1][ligand_interface_index],
-        )
-    )
-
-    _, _, super_imposer = superimpose(model_interface_atoms, native_interface_atoms)
-    irms = super_imposer.get_rms()
-
-    info = {}
-
-    info["DockQ_F1"] = dockq_formula(
-        f1(nat_correct, nonnat_count, nat_total), irms, Lrms
-    )
-    info["DockQ"] = dockq_formula(fnat, irms, Lrms)
-    info["irms"] = irms
-    info["Lrms"] = Lrms
-    info["fnat"] = fnat
-    info["nat_correct"] = nat_correct
-    info["nat_total"] = nat_total
-
-    info["fnonnat"] = fnonnat
-    info["nonnat_count"] = nonnat_count
-    info["model_total"] = model_total
-
-    info["len1"] = native1_size
-    info["len2"] = native2_size
-    info["class1"] = class1
-    info["class2"] = class2
-    return info
 
 
 @lru_cache
@@ -944,7 +701,7 @@ def get_interface_atoms(
 def run_on_chains(
     model_chains,
     native_chains,
-    no_needle=False,
+    no_align=False,
     use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
@@ -955,7 +712,7 @@ def run_on_chains(
         aln = align_chains(
             model_chain,
             native_chain,
-            use_numbering=no_needle,
+            use_numbering=no_align,
         )
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
@@ -975,7 +732,7 @@ def run_on_all_native_interfaces(
     model_structure,
     native_structure,
     chain_map={"A": "A", "B": "B"},
-    no_needle=False,
+    no_align=False,
     use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
@@ -999,7 +756,7 @@ def run_on_all_native_interfaces(
             info = run_on_chains(
                 model_chains,
                 native_chains,
-                no_needle=no_needle,
+                no_align=no_align,
                 use_CA_only=use_CA_only,
                 capri_peptide=capri_peptide,
                 low_memory=False,
@@ -1175,8 +932,7 @@ def get_all_mappings(
 def run_on_all_native_interfaces_multi(args):
     return run_on_all_native_interfaces(*args)
 
-def func(args):
-    print(args)
+
 #@profile
 def main():
     args = parse_args()
@@ -1200,21 +956,9 @@ def main():
     best_mapping = None
 
 
-   # model_chains_to_combo = [mc for mc in model_chains if mc not in initial_mapping.values()]
-   # native_chains_to_combo = [nc for nc in native_chains if nc not in initial_mapping.keys()]
 
-  #  chain_clusters, reverse_map = group_chains(
-  #      model_structure,
-  #      native_structure,
-  #      model_chains_to_combo,
-  #      native_chains_to_combo,
-  #      args.allowed_mismatches,
-  #  )
-       
-    
-    #all_mappings = product_without_dupl(
-    #    *[cluster for cluster in chain_clusters.values() if cluster]
-    #)
+
+  
     chain_maps=get_all_mappings(
         model_structure,
         native_structure,
@@ -1226,7 +970,7 @@ def main():
 
 
     low_memory=len(chain_maps) > 100
-    chain_map_args=[(model_structure,native_structure,chain_map,args.no_needle,args.use_CA,args.capri_peptide,low_memory) for chain_map in chain_maps]
+    chain_map_args=[(model_structure,native_structure,chain_map,args.no_align,args.use_CA,args.capri_peptide,low_memory) for chain_map in chain_maps]
     if len(chain_maps)>1:
         chunk_size=len(chain_maps) // args.n_cpu
         result_this_mappings=progress_map(run_on_all_native_interfaces_multi,chain_map_args, n_cpu=args.n_cpu, chunk_size=chunk_size)
@@ -1245,7 +989,7 @@ def main():
             model_structure,
             native_structure,
             best_mapping,
-            args.no_needle,
+            args.no_align,
             args.use_CA,
             args.capri_peptide,
             low_memory=False)
