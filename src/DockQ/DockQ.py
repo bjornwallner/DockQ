@@ -972,7 +972,7 @@ def main():
     low_memory=len(chain_maps) > 100
     chain_map_args=[(model_structure,native_structure,chain_map,args.no_align,args.use_CA,args.capri_peptide,low_memory) for chain_map in chain_maps]
     if len(chain_maps)>1:
-        chunk_size=len(chain_maps) // args.n_cpu
+        chunk_size=max(1,len(chain_maps) // args.n_cpu)
         result_this_mappings=progress_map(run_on_all_native_interfaces_multi,chain_map_args, n_cpu=args.n_cpu, chunk_size=chunk_size)
     else: #skip multi-threading for single jobs (skip the bar basically)
         result_this_mappings=[run_on_all_native_interfaces(*chain_map_arg) for chain_map_arg in chain_map_args]
