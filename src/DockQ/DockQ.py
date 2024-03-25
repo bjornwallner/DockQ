@@ -3,6 +3,7 @@
 import sys
 import gzip
 import hashlib
+import warnings
 import traceback
 import itertools
 import math
@@ -22,7 +23,7 @@ try:
     from .operations import residue_distances, get_fnat_stats
     from .parsers import PDBParser, MMCIFParser
 except ImportError:
-    print(
+    warnings.warn(
         """WARNING: It looks like cython is not working,
          falling back on native python. This will make DockQ slower"""
     )
