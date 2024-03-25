@@ -17,3 +17,5 @@ coverage run -a -m DockQ.DockQ examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b
 # Test that cif parsing behaves same as pdb parsing
 coverage run -a -m DockQ.DockQ examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb --mapping DH:AE
 coverage run -a -m DockQ.DockQ examples/1EXB_r_l_b.model.pdb examples/1EXB.cif.gz --mapping DH:AE
+
+coverage report
