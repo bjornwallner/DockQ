@@ -68,7 +68,7 @@ def parse_args():
     )
     parser.add_argument(
         "--n_cpu",
-        default=32,
+        default=8,
         type=int,
         metavar="n_cpu",
         help="Number of cores to use",
@@ -448,7 +448,7 @@ def calc_DockQ(
     )  # using the private _rms function which does not superimpose
 
     info = {}
-        
+
     info["DockQ_F1"] = dockq_formula(
         f1(nat_correct, nonnat_count, nat_total), irms, Lrms
     )
@@ -771,7 +771,7 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-#@profile
+# @profile
 def load_PDB(path, chains=[], n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
@@ -784,12 +784,13 @@ def load_PDB(path, chains=[], n_model=0):
     except Exception:
         pdb_parser = MMCIFParser(QUIET=True)
         structure = pdb_parser.get_structure(
-            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            "-",
+            (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=None,
         )
         model = structure[n_model]
 
-    #remove_h(model)
+    # remove_h(model)
     return model
 
 
@@ -828,7 +829,7 @@ def group_chains(
             f"For these chains {chains_without_match} no match was found between model and native, try increasing the --allowed_mismatches from {allowed_mismatches}"
         )
         print(f"Current number of alignments with 1-10 mismatches: {mismatch_dict}")
-        
+
     return chain_clusters, reverse_map
 
 
@@ -864,9 +865,9 @@ def format_mapping(mapping_str):
 def format_mapping_string(chain_mapping):
     chain1 = ""
     chain2 = ""
-    
-    #mapping = sorted([(b, a) for a, b in chain_mapping.items()])
-    #Sorting might change LRMSD since the definition of receptor/ligand for equal length depends on order
+
+    # mapping = sorted([(b, a) for a, b in chain_mapping.items()])
+    # Sorting might change LRMSD since the definition of receptor/ligand for equal length depends on order
     mapping = [(b, a) for a, b in chain_mapping.items()]
     for (
         model_chain,
@@ -877,32 +878,46 @@ def format_mapping_string(chain_mapping):
 
     return f"{chain1}:{chain2}"
 
+
 def product_without_dupl(*args, repeat=1):
     pools = [tuple(pool) for pool in args] * repeat
     result = [[]]
     for pool in pools:
-        result = [x+[y] for x in result for y in pool if y not in x] # here we added condition
-    #result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
+        result = [
+            x + [y] for x in result for y in pool if y not in x
+        ]  # here we added condition
+    # result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
     for prod in result:
         yield tuple(prod)
+
+
 def count_chain_combinations(chain_clusters):
-    counts={}
+    counts = {}
     for chain in chain_clusters:
-        chains=tuple(chain_clusters[chain])
+        chains = tuple(chain_clusters[chain])
         if chains not in counts:
-            counts[chains]=0
-        counts[chains]+=1
-    number_of_combinations=np.prod([math.factorial(a) for a in counts.values()])
-    #combos=itertools.product(*[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
-    return(number_of_combinations,counts)
-    #set(chain_clusters.values())
+            counts[chains] = 0
+        counts[chains] += 1
+    number_of_combinations = np.prod([math.factorial(a) for a in counts.values()])
+    # combos=itertools.product(*[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
+    return (number_of_combinations, counts)
+    # set(chain_clusters.values())
 
 
 def get_all_mappings(
-    model_structure, native_structure, model_chains, native_chains,initial_mapping,allowed_mismatches=0
-): 
-    model_chains_to_combo = [mc for mc in model_chains if mc not in initial_mapping.values()]
-    native_chains_to_combo = [nc for nc in native_chains if nc not in initial_mapping.keys()]
+    model_structure,
+    native_structure,
+    model_chains,
+    native_chains,
+    initial_mapping,
+    allowed_mismatches=0,
+):
+    model_chains_to_combo = [
+        mc for mc in model_chains if mc not in initial_mapping.values()
+    ]
+    native_chains_to_combo = [
+        nc for nc in native_chains if nc not in initial_mapping.keys()
+    ]
 
     chain_clusters, reverse_map = group_chains(
         model_structure,
@@ -915,32 +930,39 @@ def get_all_mappings(
     all_mappings = product_without_dupl(
         *[cluster for cluster in chain_clusters.values() if cluster]
     )
-    chain_maps=[]
-    for mapping in all_mappings:   
-        chain_map = {key:value for key, value in initial_mapping.items()}
+    chain_maps = []
+    for mapping in all_mappings:
+        chain_map = {key: value for key, value in initial_mapping.items()}
         if reverse_map:
-            chain_map.update({
-                mapping[i]: model_chain for i, model_chain in enumerate(model_chains_to_combo)
-            })
+            chain_map.update(
+                {
+                    mapping[i]: model_chain
+                    for i, model_chain in enumerate(model_chains_to_combo)
+                }
+            )
         else:
-            chain_map.update({
-                native_chain: mapping[i] for i, native_chain in enumerate(native_chains_to_combo)
-            })
+            chain_map.update(
+                {
+                    native_chain: mapping[i]
+                    for i, native_chain in enumerate(native_chains_to_combo)
+                }
+            )
         chain_maps.append(chain_map)
     return chain_maps
+
 
 def run_on_all_native_interfaces_multi(args):
     return run_on_all_native_interfaces(*args)
 
 
-#@profile
+# @profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
 
-    #check user-given chains are in the structures
+    # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
@@ -955,11 +977,7 @@ def main():
     best_result = None
     best_mapping = None
 
-
-
-
-  
-    chain_maps=get_all_mappings(
+    chain_maps = get_all_mappings(
         model_structure,
         native_structure,
         model_chains,
@@ -968,32 +986,54 @@ def main():
         args.allowed_mismatches,
     )
 
-
-    low_memory=len(chain_maps) > 100
-    chain_map_args=[(model_structure,native_structure,chain_map,args.no_align,args.use_CA,args.capri_peptide,low_memory) for chain_map in chain_maps]
-    if len(chain_maps)>1:
-        chunk_size=max(1,len(chain_maps) // args.n_cpu)
-        result_this_mappings=progress_map(run_on_all_native_interfaces_multi,chain_map_args, n_cpu=args.n_cpu, chunk_size=chunk_size)
-    else: #skip multi-threading for single jobs (skip the bar basically)
-        result_this_mappings=[run_on_all_native_interfaces(*chain_map_arg) for chain_map_arg in chain_map_args]
-    for chain_map,result_this_mapping in zip(chain_maps,result_this_mappings):
+    low_memory = len(chain_maps) > 100
+    chain_map_args = [
+        (
+            model_structure,
+            native_structure,
+            chain_map,
+            args.no_align,
+            args.use_CA,
+            args.capri_peptide,
+            low_memory,
+        )
+        for chain_map in chain_maps
+    ]
+    if len(chain_maps) > 1:
+        chunk_size = max(1, len(chain_maps) // args.n_cpu)
+        result_this_mappings = progress_map(
+            run_on_all_native_interfaces_multi,
+            chain_map_args,
+            n_cpu=args.n_cpu,
+            chunk_size=chunk_size,
+        )
+    else:  # skip multi-threading for single jobs (skip the bar basically)
+        result_this_mappings = [
+            run_on_all_native_interfaces(*chain_map_arg)
+            for chain_map_arg in chain_map_args
+        ]
+    for chain_map, result_this_mapping in zip(chain_maps, result_this_mappings):
         total_dockq = sum(
-            [result["DockQ_F1" if args.optDockQF1 else "DockQ"] for result in result_this_mapping.values()]
+            [
+                result["DockQ_F1" if args.optDockQF1 else "DockQ"]
+                for result in result_this_mapping.values()
+            ]
         )
         if total_dockq > best_dockq:
             best_dockq = total_dockq
             best_result = result_this_mapping
             best_mapping = chain_map
-    if low_memory: #retrieve the full output by reruning the best chain mapping
-        best_result=run_on_all_native_interfaces(
+    if low_memory:  # retrieve the full output by reruning the best chain mapping
+        best_result = run_on_all_native_interfaces(
             model_structure,
             native_structure,
             best_mapping,
             args.no_align,
             args.use_CA,
             args.capri_peptide,
-            low_memory=False)
-  
+            low_memory=False,
+        )
+
     info["model"] = args.model
     info["native"] = args.native
     info["best_dockq"] = best_dockq
@@ -1010,7 +1050,7 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-       # print(info["best_result"])
+        # print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} clashes {results['clashes']} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
