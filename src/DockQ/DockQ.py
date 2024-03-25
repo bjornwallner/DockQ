@@ -2,21 +2,22 @@
 
 import sys
 import gzip
+import math
 import hashlib
 import warnings
 import traceback
 import itertools
-import math
-from functools import lru_cache, wraps, partial
 from argparse import ArgumentParser
-from tqdm import tqdm
-from parallelbar import progress_map
+from functools import lru_cache, wraps, partial
 
 import Bio.PDB
 import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
+from tqdm import tqdm
+from parallelbar import progress_map
+
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -664,7 +665,7 @@ def product_without_dupl(*args, repeat=1):
         result = [
             x + [y] for x in result for y in pool if y not in x
         ]  # here we added condition
-    # result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
+
     for prod in result:
         yield tuple(prod)
 
@@ -678,10 +679,6 @@ def count_chain_combinations(chain_clusters):
         counts[chains] += 1
     number_of_combinations = np.prod([math.factorial(a) for a in counts.values()])
     return number_of_combinations
-    # combos=itertools.product(*[itertools.permutations(chains) for chains in set([tuple(ch) for ch in chain_clusters.values()])])
-
-    # return(number_of_combinations,counts)
-    # set(chain_clusters.values())
 
 
 def get_all_chain_maps(
@@ -770,8 +767,6 @@ def main():
     )  ##args: chain_map
 
     if num_chain_combinations > 1:
-        # chunk_size=max(1,num_chain_combinations // args.n_cpu)
-        # I suspect large chunk_size will result in large input arguments to the workers.
         chunk_size = 512
         # for large num_chain_combinations it should be possible to divide the chain_maps in chunks
         result_this_mappings = progress_map(
@@ -803,7 +798,6 @@ def main():
                 best_mapping = chain_map
 
     else:  # skip multi-threading for single jobs (skip the bar basically)
-        # result_this_mappings=[run_chain_map(chain_map) for chain_map in chain_maps]
         for chain_map in chain_maps:
             result_this_mapping = run_chain_map(chain_map)
             total_dockq = sum(
