@@ -123,10 +123,18 @@ If the user is interested one or more specific interfaces in the native, while t
 --mapping :WX
 ```
 
-Then DockQ will find the interface in the model that best matches the WX interface in the native. More native interfaces can be included:
+which is equivalent to:
+
+
+```
+--mapping *:WX
+```
+
+Then DockQ will find the interface in the model that best matches the WX interface in the native. Multiple native interfaces can be included:
 
 ```
 --mapping :WXY
+--mapping *:WXY
 ```
 
 **Other uses**
