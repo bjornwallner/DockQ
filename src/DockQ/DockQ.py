@@ -157,7 +157,6 @@ def get_residue_distances(chain1, chain2, what, all_atom=True):
     return model_res_distances
 
 
-# @profile
 def calc_DockQ(
     sample_chains,
     ref_chains,
@@ -306,7 +305,7 @@ def dockq_formula(fnat, irms, Lrms):
     ) / 3
 
 
-#@lru_cache
+@lru_cache
 def align_chains(model_chain, native_chain, use_numbering=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
@@ -326,7 +325,7 @@ def align_chains(model_chain, native_chain, use_numbering=False):
         for residue in native_chain.get_residues():
             resn = int(residue.id[1])
             native_numbering.append(resn)
-        # if the samllest resn is negative, it will be used to shift all numbers so they start from 0
+        # if the smallest resn is negative, it will be used to shift all numbers so they start from 0
         # the minimum offset is 45 to avoid including the "-" character that is reserved for gaps
         min_resn = max(45, -min(model_numbering + native_numbering))
 
@@ -483,7 +482,6 @@ def get_interface_atoms(
 
 
 @lru_cache
-# @profile
 def run_on_chains(
     model_chains,
     native_chains,
@@ -553,7 +551,6 @@ def run_on_all_native_interfaces(
     return results_dic
 
 
-# @profile
 def load_PDB(path, chains=[], n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
@@ -572,7 +569,6 @@ def load_PDB(path, chains=[], n_model=0):
         )
         model = structure[n_model]
 
-    # remove_h(model)
     return model
 
 
@@ -591,7 +587,7 @@ def group_chains(
     chain_clusters = {chain: [] for chain in ref_chains}
 
     for query_chain, ref_chain in alignment_targets:
-        aln = align_chains(query_structure[query_chain], ref_structure[ref_chain], use_numbering=False)
+        aln = align_chains(query_structure[query_chain], ref_structure[ref_chain], use_numbering=None)
         alignment = format_alignment(aln)
         n_mismatches = alignment["matches"].count(".")
 
@@ -712,7 +708,6 @@ def get_all_chain_maps(
         yield (chain_map)
 
 
-# @profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
@@ -766,7 +761,7 @@ def main():
         no_align=args.no_align,
         capri_peptide=args.capri_peptide,
         low_memory=low_memory,
-    )  ##args: chain_map
+    )
 
     if num_chain_combinations > 1:
         chunk_size = 512
@@ -839,7 +834,6 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        # print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} clashes {results['clashes']} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
