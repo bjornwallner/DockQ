@@ -306,7 +306,7 @@ def dockq_formula(fnat, irms, Lrms):
     ) / 3
 
 
-@lru_cache
+#@lru_cache
 def align_chains(model_chain, native_chain, use_numbering=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
