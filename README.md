@@ -1,7 +1,7 @@
 ![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
 
 # DockQ
-## A Quality Measure for Protein-Protein Docking Models
+**A Quality Measure for Protein-Protein Docking Models**
 
 ## Installation
 
@@ -115,7 +115,7 @@ where the wildcard `*` indicates that DockQ should optimize the mapping between 
 --mapping AD*:WY*
 ```
 
-**Limiting the search to subset of native interfaces**
+**Limiting the search to subsets of native interfaces**
 
 If the user is interested one or more specific interfaces in the native, while the rest should be ignored, the following can be used:
 
