@@ -77,6 +77,58 @@ DockQ 0.453 DockQ_F1 0.500 Fnat 0.500 iRMS 2.104 LRMS 8.131 Fnonnat 0.107 clashe
 
 ```
 
+## Model/Native chain mapping
+
+By default, DockQ will try to find the optimal mapping between interfaces found in the native and in the model.
+
+The simplest case is when a homodimer has been modelled. Then, the native interface "AB" (between native chains A and B) could be compared to
+either the model AB interface, but also BA, as changing the order of the chains will generally change the results. If the user runs:
+
+`DockQ homodimer_model.pdb homodimer_native.pdb`
+
+the software will report the mapping (AB -> AB or AB -> BA) with highest DockQ score.
+
+If the user wishes to enforce a certain mapping, the flag `--mapping` can be used. This is useful, for example, when model/native contain a large number of homologous chains,
+as it will speed up computations.
+
+**Complete mapping**
+
+The user defines the complete mapping between native and model chains with: `--mapping MODELCHAINS:NATIVECHAINS`. For example, in the previous case, two possible mappings can be:
+
+* `--mapping AB:AB` (native chain A corresponds to model chain A, native B to model B),
+* `--mapping AB:BA` (native chain A corresponds to model chain B, native B to model A).
+
+The pair before the colon `:` defines the chain order in the model, the pair after defines the order in the native.
+
+**Partial mapping**
+
+If the user wishes to fix part of the mapping and let DockQ optimize the rest, wildcards can be used. For example, if a tetramer has chains `ABCD` in the model and `WXYZ` in the native,
+the user might use:
+
+```
+--mapping A*:W*
+```
+
+where the wildcard `*` indicates that DockQ should optimize the mapping between BCD and XYZ while keeping A -> W fixed. Multiple chains can be fixed:
+
+```
+--mapping AD*:WY*
+```
+
+**Limiting the search to subset of native interfaces**
+
+If the user is interested one or more specific interfaces in the native, while the rest should be ignored, the following can be used:
+
+```
+--mapping :WX
+```
+
+Then DockQ will find the interface in the model that best matches the WX interface in the native. More native interfaces can be included:
+
+```
+--mapping :WXY
+```
+
 **Other uses**
 
 Run DockQ with `-h/--help` to see a list of the available flags:
