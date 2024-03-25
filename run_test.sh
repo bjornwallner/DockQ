@@ -9,14 +9,9 @@ else
     binary="DockQ"
 fi
 
-# Test that cython version behaves the same as nocython
 $binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
-python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
-diff test testdata/1A2K.dockq
 $binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
-diff test testdata/1A2K.dockq
-python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
 diff test testdata/1A2K.dockq
 
 # Multiple interfaces
@@ -40,3 +35,13 @@ $binary examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb --mapping DH:AE > 
 diff test testdata/1EXB_DH.AE.dockq
 $binary examples/1EXB_r_l_b.model.pdb examples/1EXB.cif.gz --mapping DH:AE > test
 diff test testdata/1EXB_DH.AE_cif.dockq
+
+# Peptide measures
+$binary examples/6qwn-assembly1.cif.gz examples/6qwn-assembly2.cif.gz --capri_peptide > test
+diff test testdata/6q2n_peptide.dockq
+
+# Test that cython version behaves the same as nocython
+python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
+diff test testdata/1A2K.dockq
+python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
+diff test testdata/1A2K.dockq
