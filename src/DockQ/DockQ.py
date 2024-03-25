@@ -37,9 +37,9 @@ def parse_args():
         description="DockQ - Quality measure for \
         protein-protein docking models"
     )
-    parser.add_argument("model", metavar="<model>", type=str, help="path to model file")
+    parser.add_argument("model", metavar="<model>", type=str, help="Path to model file")
     parser.add_argument(
-        "native", metavar="<native>", type=str, help="path to native file"
+        "native", metavar="<native>", type=str, help="Path to native file"
     )
     parser.add_argument(
         "--capri_peptide",
@@ -49,10 +49,10 @@ def parse_args():
         (DockQ cannot not be trusted for this setting)",
     )
     parser.add_argument(
-        "--short", default=False, action="store_true", help="short output"
+        "--short", default=False, action="store_true", help="Short output"
     )
     parser.add_argument(
-        "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
+        "--verbose", "-v", default=False, action="store_true", help="Verbose output"
     )
     parser.add_argument(
         "--no_align",
@@ -71,13 +71,13 @@ def parse_args():
         "--optDockQF1",
         default=False,
         action="store_true",
-        help="optimize on DockQ_F1 instead of DockQ",
+        help="Optimize on DockQ_F1 instead of DockQ",
     )
     parser.add_argument(
         "--allowed_mismatches",
         default=0,
         type=int,
-        help="number of allowed mismatches when mapping model sequence to native sequence.",
+        help="Number of allowed mismatches when mapping model sequence to native sequence.",
     )
     parser.add_argument(
         "--mapping",
