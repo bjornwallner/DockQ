@@ -161,9 +161,9 @@ def calc_DockQ(
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = ("CA", "C", "N", "O", 
-                    "P", "OP1", "OP2", 
-                    "O2'", "O3'", "O4'", "O5'", 
+    atom_for_sup = ("CA", "C", "N", "O",
+                    "P", "OP1", "OP2",
+                    "O2'", "O3'", "O4'", "O5'",
                     "C1'",  "C2'",  "C3'", "C4'", "C5'")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
@@ -743,6 +743,8 @@ def main():
         model_chains_to_combo,
         native_chains_to_combo,
     )
+    # copy iterator to use later
+    chain_maps, chain_maps2 = itertools.tee(chain_maps)
 
     low_memory = num_chain_combinations > 100
     run_chain_map = partial(
@@ -764,15 +766,8 @@ def main():
             n_cpu=args.n_cpu,
             chunk_size=chunk_size,
         )
-        # get a fresh iterator
-        chain_maps = get_all_chain_maps(
-            chain_clusters,
-            initial_mapping,
-            reverse_map,
-            model_chains_to_combo,
-            native_chains_to_combo,
-        )
-        for chain_map, result_this_mapping in zip(chain_maps, result_this_mappings):
+
+        for chain_map, result_this_mapping in zip(chain_maps2, result_this_mappings):
             total_dockq = sum(
                 [
                     result["DockQ_F1" if args.optDockQF1 else "DockQ"]
