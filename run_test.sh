@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-
+coverage --version
 # Test that cython version behaves the same as nocython
 coverage run -a -m DockQ.DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
 coverage run -a src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
