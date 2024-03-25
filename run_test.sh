@@ -9,9 +9,9 @@ else
     binary="DockQ"
 fi
 
-$binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
-diff test testdata/1A2K.dockq
 $binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
+diff test testdata/1A2K.dockq
+$binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
 
 # Multiple interfaces

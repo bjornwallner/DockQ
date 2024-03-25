@@ -165,7 +165,10 @@ def calc_DockQ(
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = ("CA", "C", "N", "O", "P")
+    atom_for_sup = ("CA", "C", "N", "O", 
+                    "P", "OP1", "OP2", 
+                    "O2'", "O3'", "O4'", "O5'", 
+                    "C1'",  "C2'",  "C3'", "C4'", "C5'")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     clash_threshold = 2.0
@@ -304,7 +307,7 @@ def dockq_formula(fnat, irms, Lrms):
 
 
 @lru_cache
-def align_chains(model_chain, native_chain, use_numbering=False, verbose=False):
+def align_chains(model_chain, native_chain, use_numbering=False):
     """
     Function to align two PDB structures. This can be done by sequence (default) or by
     numbering. If the numbering is used, then each residue number from the pdb structure
@@ -588,7 +591,7 @@ def group_chains(
     chain_clusters = {chain: [] for chain in ref_chains}
 
     for query_chain, ref_chain in alignment_targets:
-        aln = align_chains(query_structure[query_chain], ref_structure[ref_chain])
+        aln = align_chains(query_structure[query_chain], ref_structure[ref_chain], use_numbering=False)
         alignment = format_alignment(aln)
         n_mismatches = alignment["matches"].count(".")
 
@@ -645,13 +648,12 @@ def format_mapping_string(chain_mapping):
     chain1 = ""
     chain2 = ""
 
-    # mapping = sorted([(b, a) for a, b in chain_mapping.items()])
     # Sorting might change LRMSD since the definition of receptor/ligand for equal length depends on order
     mapping = [(b, a) for a, b in chain_mapping.items()]
     for (
         model_chain,
         native_chain,
-    ) in mapping:  # sorted([(b,a) for a,b in chain_mapping.items()]):
+    ) in mapping:
         chain1 += model_chain
         chain2 += native_chain
 
