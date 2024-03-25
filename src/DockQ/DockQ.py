@@ -125,10 +125,10 @@ def get_residue_distances(chain1, chain2, what, all_atom=True):
         n_atoms_per_res_chain1 = list_atoms_per_residue(chain1, what)
         n_atoms_per_res_chain2 = list_atoms_per_residue(chain2, what)
         model_A_atoms = np.asarray(
-            [atom.get_coord() for res in chain1 for atom in res.get_atoms()]
+            [atom.coord for res in chain1 for atom in res.get_atoms()]
         )
         model_B_atoms = np.asarray(
-            [atom.get_coord() for res in chain2 for atom in res.get_atoms()]
+            [atom.coord for res in chain2 for atom in res.get_atoms()]
         )
 
     else:  # distances were already between CBs only
@@ -154,6 +154,7 @@ def get_residue_distances(chain1, chain2, what, all_atom=True):
     return model_res_distances
 
 
+#@profile
 def calc_DockQ(
     sample_chains,
     ref_chains,
@@ -189,7 +190,8 @@ def calc_DockQ(
     sample_res_distances = get_residue_distances(
         aligned_sample_1, aligned_sample_2, "sample"
     )
-    ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2, "ref")
+    if ref_res_distances.shape != sample_res_distances.shape:
+        ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2, "ref")
 
     assert (
         sample_res_distances.shape == ref_res_distances.shape
@@ -424,7 +426,6 @@ def get_interacting_pairs(distances, threshold):
 
 
 @lru_cache
-# @profile
 def get_interface_atoms(
     interacting_pairs,
     model_chains,
@@ -517,7 +518,7 @@ def run_on_all_native_interfaces(
 ):
     """Given a native-model chain map, finds all non-null native interfaces
     and runs DockQ for each native-model pair of interfaces"""
-    results_dic = {}
+    results_dic = dict()
     native_chain_ids = list(chain_map.keys())
 
     for chain_pair in itertools.combinations(native_chain_ids, 2):
@@ -666,8 +667,8 @@ def product_without_dupl(*args, repeat=1):
 
 
 def count_chain_combinations(chain_clusters):
-    tuples = [tuple(l) for l in chain_clusters.values()]
-    number_of_combinations = np.prod([math.factorial(a) for a in Counter(tuples).values()])
+    clusters = [tuple(li) for li in chain_clusters.values()]
+    number_of_combinations = np.prod([math.factorial(a) for a in Counter(clusters).values()])
     return number_of_combinations
 
 
@@ -700,6 +701,7 @@ def get_all_chain_maps(
         yield (chain_map)
 
 
+#@profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
@@ -711,7 +713,7 @@ def main():
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
     )
-    info = {}
+
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
@@ -799,6 +801,7 @@ def main():
             ]
         )
 
+    info = dict()
     info["model"] = args.model
     info["native"] = args.native
     info["best_dockq"] = best_dockq
