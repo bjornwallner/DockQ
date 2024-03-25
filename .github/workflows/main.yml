@@ -20,6 +20,7 @@ jobs:
       - name: Test outputs
         run: |
           python -m pip install .
+          python -m pip install coverage
           bash run_test.sh
       - name: Test with old biopython
         run: |
