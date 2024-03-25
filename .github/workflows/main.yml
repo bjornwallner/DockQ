@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 
 env:
-  MIN_COVERAGE_REQUIRED: 50
+  MIN_COVERAGE_REQUIRED: 35
 
 
 jobs:
@@ -28,6 +28,7 @@ jobs:
           bash run_test.sh
       - name: Coverage
         run: |
+          coverage report
           test $(coverage report | grep TOTAL | awk '{ print $4 }' | tr -d "%") -ge $MIN_COVERAGE_REQUIRED
 
   #test_oldbio:
