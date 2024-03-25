@@ -54,13 +54,6 @@ def parse_args():
         "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
     )
     parser.add_argument(
-        "--use_CA",
-        "-ca",
-        default=False,
-        action="store_true",
-        help="use CA instead of backbone",
-    )
-    parser.add_argument(
         "--no_align",
         default=False,
         action="store_true",
@@ -328,11 +321,10 @@ def calc_DockQ(
     sample_chains,
     ref_chains,
     alignments,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = ("CA", "C", "N", "O", "P") if not use_CA_only else ("CA", "P")
+    atom_for_sup = ("CA", "C", "N", "O", "P")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     clash_threshold = 2.0
@@ -685,7 +677,6 @@ def run_on_chains(
     model_chains,
     native_chains,
     no_align=False,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
@@ -704,7 +695,6 @@ def run_on_chains(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
-        use_CA_only=use_CA_only,
         capri_peptide=capri_peptide,
         low_memory=False,
     )
@@ -716,7 +706,6 @@ def run_on_all_native_interfaces(
     native_structure,
     chain_map={"A": "A", "B": "B"},
     no_align=False,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
@@ -740,7 +729,6 @@ def run_on_all_native_interfaces(
                 model_chains,
                 native_chains,
                 no_align=no_align,
-                use_CA_only=use_CA_only,
                 capri_peptide=capri_peptide,
                 low_memory=False,
             )
@@ -976,7 +964,6 @@ def main():
             native_structure,
             chain_map,
             args.no_align,
-            args.use_CA,
             args.capri_peptide,
             low_memory,
         )
@@ -1012,7 +999,6 @@ def main():
             native_structure,
             best_mapping,
             args.no_align,
-            args.use_CA,
             args.capri_peptide,
             low_memory=False,
         )
