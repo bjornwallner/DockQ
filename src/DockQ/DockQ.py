@@ -52,7 +52,6 @@ def parse_args():
     parser.add_argument(
         "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
     )
-
     parser.add_argument(
         "--use_CA",
         "-ca",
@@ -73,14 +72,6 @@ def parse_args():
         metavar="n_cpu",
         help="Number of cores to use",
     )
-    parser.add_argument(
-        "--chunk_size",
-        default=64,
-        type=int,
-        metavar="chunk_size",
-        help="Size of chunks given to the cores",
-    )
-
     parser.add_argument(
         "--optDockQF1",
         default=False,
@@ -110,15 +101,6 @@ def parse_args():
     )
 
     return parser.parse_args()
-
-
-def open_file(filename):
-    if filename.endswith(".gz"):
-        with gzip.open(filename) as f:
-            yield f
-    else:
-        with open(filename) as f:
-            yield f
 
 
 @lru_cache

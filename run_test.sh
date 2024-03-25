@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Test that cython version behaves the same as nocython
 coverage run -a --source='DockQ.DockQ' -m DockQ.DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
-coverage run -a --source=src/ src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
+coverage run -a src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
 coverage run -a --source='DockQ.DockQ' -m DockQ.DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align
-coverage run -a --source=src/ src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align
+coverage run -a src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align
 # Multiple interfaces
 coverage run -a --source='DockQ.DockQ' -m DockQ.DockQ examples/dimer_dimer.model.pdb examples/dimer_dimer.pdb  --short
 # Test on structures with slightly different sequences
