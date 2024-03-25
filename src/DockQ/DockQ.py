@@ -7,6 +7,7 @@ import hashlib
 import warnings
 import traceback
 import itertools
+from collections import Counter
 from argparse import ArgumentParser
 from functools import lru_cache, wraps, partial
 
@@ -669,13 +670,8 @@ def product_without_dupl(*args, repeat=1):
 
 
 def count_chain_combinations(chain_clusters):
-    counts = {}
-    for chain in chain_clusters:
-        chains = tuple(chain_clusters[chain])
-        if chains not in counts:
-            counts[chains] = 0
-        counts[chains] += 1
-    number_of_combinations = np.prod([math.factorial(a) for a in counts.values()])
+    tuples = [tuple(l) for l in chain_clusters.values()]
+    number_of_combinations = np.prod([math.factorial(a) for a in Counter(tuples).values()])
     return number_of_combinations
 
 
@@ -743,7 +739,6 @@ def main():
         native_chains_to_combo,
         args.allowed_mismatches,
     )
-
     num_chain_combinations = count_chain_combinations(chain_clusters)
     chain_maps = get_all_chain_maps(
         chain_clusters,
@@ -793,29 +788,24 @@ def main():
                 best_dockq = total_dockq
                 best_result = result_this_mapping
                 best_mapping = chain_map
+        if low_memory:  # retrieve the full output by rerunning the best chain mapping
+            best_result = run_on_all_native_interfaces(
+                model_structure,
+                native_structure,
+                best_mapping,
+                args.no_align,
+                args.capri_peptide,
+                low_memory=False,
+            )
 
     else:  # skip multi-threading for single jobs (skip the bar basically)
-        for chain_map in chain_maps:
-            result_this_mapping = run_chain_map(chain_map)
-            total_dockq = sum(
-                [
-                    result["DockQ_F1" if args.optDockQF1 else "DockQ"]
-                    for result in result_this_mapping.values()
-                ]
-            )
-            if total_dockq > best_dockq:
-                best_dockq = total_dockq
-                best_result = result_this_mapping
-                best_mapping = chain_map
-
-    if low_memory:  # retrieve the full output by reruning the best chain mapping
-        best_result = run_on_all_native_interfaces(
-            model_structure,
-            native_structure,
-            best_mapping,
-            args.no_align,
-            args.capri_peptide,
-            low_memory=False,
+        best_mapping = next(chain_maps)
+        best_result = run_chain_map(best_mapping)
+        best_dockq = sum(
+            [
+                result["DockQ_F1" if args.optDockQF1 else "DockQ"]
+                for result in best_result.values()
+            ]
         )
 
     info["model"] = args.model

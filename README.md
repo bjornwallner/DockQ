@@ -21,7 +21,7 @@ After installing DockQ with `pip`, the `DockQ` binary will be in your path. Just
 
 **Example**
 
-When running DockQ on model/native complexes with one or more interfaces, you will get a result for each interface. Results are computed to maximise the average DockQ across all interface:
+When running DockQ on model/native complexes with one or more interfaces, you will get a result for each interface. Results are computed to maximise the average DockQ across all interfaces:
 
 ```
 
@@ -144,30 +144,29 @@ Run DockQ with `-h/--help` to see a list of the available flags:
 ```
 bash$ DockQ -h
 
-usage: DockQ [-h] [--capri_peptide] [--short] [--verbose] [--use_CA] [--no_align] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES] [--mapping MODELCHAINS:NATIVECHAINS]
+usage: DockQ [-h] [--capri_peptide] [--short] [--verbose] [--no_align] [--n_cpu n_cpu] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES] [--mapping MODELCHAINS:NATIVECHAINS]
              <model> <native>
 
 DockQ - Quality measure for protein-protein docking models
 
 positional arguments:
-  <model>               path to model file
-  <native>              path to native file
+  <model>               Path to model file
+  <native>              Path to native file
 
 optional arguments:
   -h, --help            show this help message and exit
   --capri_peptide       use version for capri_peptide (DockQ cannot not be trusted for this setting)
-  --short               short output
-  --verbose, -v         talk a lot!
-  --use_CA, -ca         use CA instead of backbone
+  --short               Short output
+  --verbose, -v         Verbose output
   --no_align            Do not align native and model using sequence alignments, but use the numbering of residues instead
-  --optDockQF1          optimize on DockQ_F1 instead of DockQ
+  --n_cpu n_cpu         Number of cores to use
+  --optDockQF1          Optimize on DockQ_F1 instead of DockQ
   --allowed_mismatches ALLOWED_MISMATCHES
-                        number of allowed mismatches when mapping model sequence to native sequence.
+                        Number of allowed mismatches when mapping model sequence to native sequence.
   --mapping MODELCHAINS:NATIVECHAINS
                         Specify a chain mapping between model and native structure. If the native contains two chains "H" and "L" while the model contains two chains "A" and "B",
                         and chain A is a model of native chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'. This can also help limit the
                         search to specific native interfaces. For example, if the native is a tetramer (ABCD) but the user is only interested in the interface between chains B and
                         C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
-
 ```
 
