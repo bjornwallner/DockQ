@@ -3,20 +3,16 @@
 import sys
 import gzip
 import math
-import hashlib
 import warnings
-import traceback
 import itertools
 from collections import Counter
 from argparse import ArgumentParser
-from functools import lru_cache, wraps, partial
+from functools import lru_cache, partial
 
-import Bio.PDB
 import numpy as np
 from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
-from tqdm import tqdm
 from parallelbar import progress_map
 
 
