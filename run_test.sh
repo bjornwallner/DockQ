@@ -1,16 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-which DockQ
 
+src=$(find $(dirname $(which DockQ))/../ -name "DockQ.py"  -exec dirname {} \;)
+echo $src
 # Test that cython version behaves the same as nocython
 coverage run -a --source='DockQ.DockQ' -m DockQ.DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
-coverage run -a --source='DockQ.DockQ' src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
+coverage run -a --source=$src $src/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
 coverage run -a --source='DockQ.DockQ' -m DockQ.DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
 diff test testdata/1A2K.dockq
-coverage run -a --source='DockQ.DockQ' src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
+coverage run -a --source=$src $src/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
 diff test testdata/1A2K.dockq
 
 # Multiple interfaces
