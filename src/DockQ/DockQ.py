@@ -3,6 +3,7 @@
 import sys
 import gzip
 import hashlib
+import warnings
 import traceback
 import itertools
 import math
@@ -22,7 +23,7 @@ try:
     from .operations import residue_distances, get_fnat_stats
     from .parsers import PDBParser, MMCIFParser
 except ImportError:
-    print(
+    warnings.warn(
         """WARNING: It looks like cython is not working,
          falling back on native python. This will make DockQ slower"""
     )
@@ -52,14 +53,6 @@ def parse_args():
     parser.add_argument(
         "--verbose", "-v", default=False, action="store_true", help="talk a lot!"
     )
-
-    parser.add_argument(
-        "--use_CA",
-        "-ca",
-        default=False,
-        action="store_true",
-        help="use CA instead of backbone",
-    )
     parser.add_argument(
         "--no_align",
         default=False,
@@ -68,19 +61,11 @@ def parse_args():
     )
     parser.add_argument(
         "--n_cpu",
-        default=32,
+        default=8,
         type=int,
         metavar="n_cpu",
         help="Number of cores to use",
     )
-    parser.add_argument(
-        "--chunk_size",
-        default=64,
-        type=int,
-        metavar="chunk_size",
-        help="Size of chunks given to the cores",
-    )
-
     parser.add_argument(
         "--optDockQF1",
         default=False,
@@ -110,15 +95,6 @@ def parse_args():
     )
 
     return parser.parse_args()
-
-
-def open_file(filename):
-    if filename.endswith(".gz"):
-        with gzip.open(filename) as f:
-            yield f
-    else:
-        with open(filename) as f:
-            yield f
 
 
 @lru_cache
@@ -345,11 +321,10 @@ def calc_DockQ(
     sample_chains,
     ref_chains,
     alignments,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = ("CA", "C", "N", "O", "P") if not use_CA_only else ("CA", "P")
+    atom_for_sup = ("CA", "C", "N", "O", "P")
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     clash_threshold = 2.0
@@ -448,7 +423,7 @@ def calc_DockQ(
     )  # using the private _rms function which does not superimpose
 
     info = {}
-        
+
     info["DockQ_F1"] = dockq_formula(
         f1(nat_correct, nonnat_count, nat_total), irms, Lrms
     )
@@ -702,7 +677,6 @@ def run_on_chains(
     model_chains,
     native_chains,
     no_align=False,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
@@ -721,7 +695,6 @@ def run_on_chains(
         model_chains,
         native_chains,
         alignments=tuple(alignments),
-        use_CA_only=use_CA_only,
         capri_peptide=capri_peptide,
         low_memory=False,
     )
@@ -733,7 +706,6 @@ def run_on_all_native_interfaces(
     native_structure,
     chain_map={"A": "A", "B": "B"},
     no_align=False,
-    use_CA_only=False,
     capri_peptide=False,
     low_memory=False,
 ):
@@ -757,21 +729,21 @@ def run_on_all_native_interfaces(
                 model_chains,
                 native_chains,
                 no_align=no_align,
-                use_CA_only=use_CA_only,
                 capri_peptide=capri_peptide,
                 low_memory=False,
             )
-            if info and not low_memory:
+            if info:
                 info["chain1"], info["chain2"] = (
                     chain_map[chain_pair[0]],
                     chain_map[chain_pair[1]],
                 )
                 results_dic[chain_pair] = info
+            
 
     return results_dic
 
 
-#@profile
+# @profile
 def load_PDB(path, chains=[], n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
@@ -784,12 +756,13 @@ def load_PDB(path, chains=[], n_model=0):
     except Exception:
         pdb_parser = MMCIFParser(QUIET=True)
         structure = pdb_parser.get_structure(
-            "-", (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            "-",
+            (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=None,
         )
         model = structure[n_model]
 
-    #remove_h(model)
+    # remove_h(model)
     return model
 
 
@@ -828,7 +801,7 @@ def group_chains(
             f"For these chains {chains_without_match} no match was found between model and native, try increasing the --allowed_mismatches from {allowed_mismatches}"
         )
         print(f"Current number of alignments with 1-10 mismatches: {mismatch_dict}")
-        
+
     return chain_clusters, reverse_map
 
 
@@ -864,9 +837,9 @@ def format_mapping(mapping_str):
 def format_mapping_string(chain_mapping):
     chain1 = ""
     chain2 = ""
-    
-    #mapping = sorted([(b, a) for a, b in chain_mapping.items()])
-    #Sorting might change LRMSD since the definition of receptor/ligand for equal length depends on order
+
+    # mapping = sorted([(b, a) for a, b in chain_mapping.items()])
+    # Sorting might change LRMSD since the definition of receptor/ligand for equal length depends on order
     mapping = [(b, a) for a, b in chain_mapping.items()]
     for (
         model_chain,
@@ -877,19 +850,22 @@ def format_mapping_string(chain_mapping):
 
     return f"{chain1}:{chain2}"
 
+
 def product_without_dupl(*args, repeat=1):
     pools = [tuple(pool) for pool in args] * repeat
     result = [[]]
     for pool in pools:
-        result = [x+[y] for x in result for y in pool if y not in x] # here we added condition
-    #result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
+        result = [
+            x + [y] for x in result for y in pool if y not in x
+        ]  # here we added condition
+    # result = set(list(map(lambda x: tuple(sorted(x)), result))) # to remove symmetric duplicates
     for prod in result:
         yield tuple(prod)
 
 def count_chain_combinations(chain_clusters):
-    counts={}
+    counts = {}
     for chain in chain_clusters:
-        chains=tuple(chain_clusters[chain])
+        chains = tuple(chain_clusters[chain])
         if chains not in counts:
             counts[chains]=0
         counts[chains]+=1
@@ -909,9 +885,12 @@ def get_all_chain_maps(chain_clusters,initial_mapping,reverse_map,model_chains_t
     for mapping in all_mappings:   
         chain_map = {key:value for key, value in initial_mapping.items()}
         if reverse_map:
-            chain_map.update({
-                mapping[i]: model_chain for i, model_chain in enumerate(model_chains_to_combo)
-            })
+            chain_map.update(
+                {
+                    mapping[i]: model_chain
+                    for i, model_chain in enumerate(model_chains_to_combo)
+                }
+            )
         else:
             chain_map.update({
                 native_chain: mapping[i] for i, native_chain in enumerate(native_chains_to_combo)
@@ -919,14 +898,15 @@ def get_all_chain_maps(chain_clusters,initial_mapping,reverse_map,model_chains_t
         yield(chain_map)
 
 
-#@profile
+
+# @profile
 def main():
     args = parse_args()
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
     model_structure = load_PDB(args.model, chains=model_chains)
     native_structure = load_PDB(args.native, chains=native_chains)
 
-    #check user-given chains are in the structures
+    # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
@@ -959,16 +939,14 @@ def main():
     run_chain_map=partial(run_on_all_native_interfaces, 
                           model_structure, 
                           native_structure, 
-                          no_align=args.no_align, 
-                          use_CA_only=args.use_CA, 
+                          no_align=args.no_align,  
                           capri_peptide=args.capri_peptide, 
                           low_memory=low_memory) ##args: chain_map
     
     if num_chain_combinations>1: 
         #chunk_size=max(1,num_chain_combinations // args.n_cpu)
         #I suspect large chunk_size will result in large input arguments to the workers.
-        chuck_size=128
-
+        chunk_size=512
         #for large num_chain_combinations it should be possible to divide the chain_maps in chunks
         result_this_mappings=progress_map(run_chain_map,chain_maps, total=num_chain_combinations,n_cpu=args.n_cpu, chunk_size=chunk_size)
         #get a fresh iterator
@@ -977,16 +955,15 @@ def main():
             total_dockq = sum(
                 [result["DockQ_F1" if args.optDockQF1 else "DockQ"] for result in result_this_mapping.values()]
             )
+         
             if total_dockq > best_dockq:
                 best_dockq = total_dockq
                 best_result = result_this_mapping
                 best_mapping = chain_map
 
-
-
     else: #skip multi-threading for single jobs (skip the bar basically)
        # result_this_mappings=[run_chain_map(chain_map) for chain_map in chain_maps]
-        for chain_maps in chain_maps:
+        for chain_map in chain_maps:
             result_this_mapping=run_chain_map(chain_map)
             total_dockq = sum(
                 [result["DockQ_F1" if args.optDockQF1 else "DockQ"] for result in result_this_mapping.values()]
@@ -995,18 +972,19 @@ def main():
                 best_dockq = total_dockq
                 best_result = result_this_mapping
                 best_mapping = chain_map
+        
     
-
+    
     if low_memory: #retrieve the full output by reruning the best chain mapping
         best_result=run_on_all_native_interfaces(
             model_structure,
             native_structure,
             best_mapping,
             args.no_align,
-            args.use_CA,
             args.capri_peptide,
-            low_memory=False)
-  
+            low_memory=False,
+        )
+
     info["model"] = args.model
     info["native"] = args.native
     info["best_dockq"] = best_dockq
@@ -1023,7 +1001,7 @@ def print_results(info, short=False, verbose=False, capri_peptide=False):
         print(
             f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        print(info["best_result"])
+        # print(info["best_result"])
         for chains, results in info["best_result"].items():
             print(
                 f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} clashes {results['clashes']} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"

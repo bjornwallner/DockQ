@@ -1,0 +1,37 @@
+****************************************************************
+*                       DockQ                                  *
+*   Scoring function for protein-protein docking models        *
+*   Statistics on CAPRI data:                                  *
+*    0.00 <= DockQ <  0.23 - Incorrect                         *
+*    0.23 <= DockQ <  0.49 - Acceptable quality                *
+*    0.49 <= DockQ <  0.80 - Medium quality                    *
+*            DockQ >= 0.80 - High quality                      *
+*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
+*   protein-protein docking models                             *
+*                            doi:10.1371/journal.pone.0161879  *
+*   For comments, please email: bjorn.wallner@.liu.se          *
+****************************************************************
+Model  : examples/1A2K_r_l_b.model.pdb
+Native : examples/1A2K_r_l_b.pdb
+Total DockQ over 3 native interfaces: 1.959
+Native chains: A, B
+	Model chains: B, A
+	DockQ_F1: 0.996
+	DockQ: 0.994
+	irms: 0.000
+	Lrms: 0.000
+	fnat: 0.983
+Native chains: A, C
+	Model chains: B, C
+	DockQ_F1: 0.567
+	DockQ: 0.511
+	irms: 1.237
+	Lrms: 6.864
+	fnat: 0.333
+Native chains: B, C
+	Model chains: A, C
+	DockQ_F1: 0.500
+	DockQ: 0.453
+	irms: 2.104
+	Lrms: 8.131
+	fnat: 0.500

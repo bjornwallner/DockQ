@@ -1,6 +1,7 @@
 ![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
 
-# DockQ: A Quality Measure for Protein-Protein Docking Models
+# DockQ
+## A Quality Measure for Protein-Protein Docking Models
 
 ## Installation
 
@@ -12,7 +13,7 @@ cd DockQ
 pip install .
 ```
 
-## Quick start:
+## Quick start
 
 After installing DockQ with `pip`, the `DockQ` binary will be in your path. Just run DockQ with:
 
