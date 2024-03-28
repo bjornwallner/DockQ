@@ -61,8 +61,15 @@ def parse_args():
         "--n_cpu",
         default=8,
         type=int,
-        metavar="n_cpu",
+        metavar="CPU",
         help="Number of cores to use",
+    )
+    parser.add_argument(
+        "--max_chunk",
+        default=512,
+        type=int,
+        metavar="CHUNK",
+        help="Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)",
     )
     parser.add_argument(
         "--optDockQF1",
@@ -503,7 +510,7 @@ def run_on_chains(
         native_chains,
         alignments=tuple(alignments),
         capri_peptide=capri_peptide,
-        low_memory=False,
+        low_memory=low_memory,
     )
     return info
 
@@ -515,10 +522,11 @@ def run_on_all_native_interfaces(
     no_align=False,
     capri_peptide=False,
     low_memory=False,
+    optDockQF1=False,
 ):
     """Given a native-model chain map, finds all non-null native interfaces
     and runs DockQ for each native-model pair of interfaces"""
-    results_dic = dict()
+    result_mapping = dict()
     native_chain_ids = list(chain_map.keys())
 
     for chain_pair in itertools.combinations(native_chain_ids, 2):
@@ -537,16 +545,23 @@ def run_on_all_native_interfaces(
                 native_chains,
                 no_align=no_align,
                 capri_peptide=capri_peptide,
-                low_memory=False,
+                low_memory=low_memory,
             )
             if info:
                 info["chain1"], info["chain2"] = (
                     chain_map[chain_pair[0]],
                     chain_map[chain_pair[1]],
                 )
-                results_dic[chain_pair] = info
+                info['chain_map']=chain_map #diagonstics
+                result_mapping[chain_pair] = info
+    total_dockq = sum(
+                [
+                    result["DockQ_F1" if optDockQF1 else "DockQ"]
+                    for result in result_mapping.values()
+                ]
+            )
+    return result_mapping,total_dockq   
 
-    return results_dic
 
 
 def load_PDB(path, chains=[], n_model=0):
@@ -687,7 +702,7 @@ def get_all_chain_maps(
         if reverse_map:
             chain_map.update(
                 {
-                    mapping[i]: model_chain
+                    mapping[i]: model_chain 
                     for i, model_chain in enumerate(model_chains_to_combo)
                 }
             )
@@ -699,6 +714,25 @@ def get_all_chain_maps(
                 }
             )
         yield (chain_map)
+
+def get_chain_map_from_dockq(result):
+    chain_map={}
+    for ch1,ch2 in result:
+        chain_map[ch1]=result[ch1,ch2]['chain1']
+        chain_map[ch2]=result[ch1,ch2]['chain2']
+    return chain_map
+def get_best_mapping(result_mappings,optDockF1=False):
+    total_dockq=0
+    for result_mapping in result_mappings:
+        total_dockq = sum(
+                [
+                    result["DockQ_F1" if optDockQF1 else "DockQ"]
+                    for result in result_mapping.values()
+                ]
+            )
+        if total_dockq > best_dockq:
+            best_dockq = total_dockq
+    return best_result, best_dockq    
 
 
 #@profile
@@ -737,7 +771,8 @@ def main():
         native_chains_to_combo,
         args.allowed_mismatches,
     )
-    num_chain_combinations = count_chain_combinations(chain_clusters)
+    
+
     chain_maps = get_all_chain_maps(
         chain_clusters,
         initial_mapping,
@@ -745,6 +780,14 @@ def main():
         model_chains_to_combo,
         native_chains_to_combo,
     )
+    num_chain_combinations = count_chain_combinations(chain_clusters)
+    if num_chain_combinations==1 and not args.mapping: #A HACK count_chain_combinations does not work if there are different number of chains in native.
+        chain_maps, chain_maps_ = itertools.tee(chain_maps)
+        num_chain_combinations=sum(1 for _ in chain_maps_)
+        #print(num_chain_combinations,chain_clusters)
+    #print(list(chain_maps))
+
+    #sys.exit()
     # copy iterator to use later
     chain_maps, chain_maps2 = itertools.tee(chain_maps)
 
@@ -759,30 +802,32 @@ def main():
     )
 
     if num_chain_combinations > 1:
-        chunk_size = 512
+        #chunk_size = args.n_chunk
+        cpus=min(num_chain_combinations,args.n_cpu)
+        chunk_size=min(args.max_chunk,max(1,num_chain_combinations//cpus))
+        #print(cpus,chunk_size)
         # for large num_chain_combinations it should be possible to divide the chain_maps in chunks
         result_this_mappings = progress_map(
             run_chain_map,
             chain_maps,
             total=num_chain_combinations,
-            n_cpu=args.n_cpu,
+            n_cpu=cpus,
             chunk_size=chunk_size,
         )
 
-        for chain_map, result_this_mapping in zip(chain_maps2, result_this_mappings):
-            total_dockq = sum(
-                [
-                    result["DockQ_F1" if args.optDockQF1 else "DockQ"]
-                    for result in result_this_mapping.values()
-                ]
-            )
+        for chain_map, (result_this_mapping,total_dockq) in zip(chain_maps2, result_this_mappings):
+            #print(chain_map,result_this_mapping)
 
             if total_dockq > best_dockq:
                 best_dockq = total_dockq
                 best_result = result_this_mapping
+                #best_mapping2=get_chain_map_from_dockq(best_result)
                 best_mapping = chain_map
+                #print(best_result)
+                #print(f"{format_mapping_string(best_mapping)}")
+                #print(f"{format_mapping_string(best_mapping2)}")
         if low_memory:  # retrieve the full output by rerunning the best chain mapping
-            best_result = run_on_all_native_interfaces(
+            best_result,total_dockq = run_on_all_native_interfaces(
                 model_structure,
                 native_structure,
                 best_mapping,
@@ -793,13 +838,7 @@ def main():
 
     else:  # skip multi-threading for single jobs (skip the bar basically)
         best_mapping = next(chain_maps)
-        best_result = run_chain_map(best_mapping)
-        best_dockq = sum(
-            [
-                result["DockQ_F1" if args.optDockQF1 else "DockQ"]
-                for result in best_result.values()
-            ]
-        )
+        best_result,best_dockq = run_chain_map(best_mapping)
 
     info = dict()
     info["model"] = args.model
