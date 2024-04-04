@@ -22,6 +22,10 @@ diff test testdata/dimer_dimer.dockq
 $binary examples/model.pdb examples/native.pdb --allowed_mismatches 1 > test
 diff test testdata/model.dockq
 
+# lowmem test
+$binary examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb --short > test
+diff test testdata/1EXB.dockq
+
 # Test various mapping strategies
 $binary examples/1EXB_r_l_b.model.pdb examples/1EXB_r_l_b.pdb --short --mapping AB*:BA* > test
 diff test testdata/1EXB_AB.BA.dockq
