@@ -696,13 +696,19 @@ def product_without_dupl(*args, repeat=1):
         yield tuple(prod)
 
 
-def count_chain_combinations(chain_clusters):
-    clusters = [tuple(li) for li in chain_clusters.values()]
-    number_of_combinations = np.prod(
-        [math.factorial(a) for a in Counter(clusters).values()]
-    )
+def count_chain_combinations(chain_clusters, reverse_map=False):        
+    if not reverse_map:
+        clusters = [tuple(li) for li in chain_clusters.values()]
+        number_of_combinations = np.prod(
+            [math.factorial(a) for a in Counter(clusters).values()]
+        )
+    else:
+        number_of_combinations = np.prod([len(c) for c in chain_clusters.values()])
+
     return number_of_combinations
 
+def count_chain_combinations_from_maps(maps):
+    return sum(1 for _ in maps)
 
 def get_all_chain_maps(
     chain_clusters,
@@ -799,15 +805,11 @@ def main():
         model_chains_to_combo,
         native_chains_to_combo,
     )
-    num_chain_combinations = count_chain_combinations(chain_clusters)
-    if (
-        num_chain_combinations == 1 and not args.mapping
-    ):  # A HACK count_chain_combinations does not work if there are different number of chains in native.
-        chain_maps, chain_maps_ = itertools.tee(chain_maps)
-        num_chain_combinations = sum(1 for _ in chain_maps_)
+
+    num_chain_combinations = count_chain_combinations(chain_clusters, reverse_map=reverse_map)
 
     # copy iterator to use later
-    chain_maps, chain_maps2 = itertools.tee(chain_maps)
+    chain_maps, chain_maps_ = itertools.tee(chain_maps)
 
     low_memory = num_chain_combinations > 100
     run_chain_map = partial(
@@ -833,7 +835,7 @@ def main():
         )
 
         for chain_map, (result_this_mapping, total_dockq) in zip(
-            chain_maps2, result_this_mappings
+            chain_maps_, result_this_mappings
         ):
 
             if total_dockq > best_dockq:

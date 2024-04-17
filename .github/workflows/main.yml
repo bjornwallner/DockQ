@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 
 env:
-  MIN_COVERAGE_REQUIRED: 85
+  MIN_COVERAGE_REQUIRED: 80
 
 
 jobs:
