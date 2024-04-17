@@ -26,8 +26,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             self._structure_builder.set_header(self._get_header())
 
         return self._structure_builder.get_structure()
-    
-    
+
     def _build_structure(self, structure_id, chains):
         # two special chars as placeholders in the mmCIF format
         # for item values that cannot be explicitly assigned
@@ -257,14 +256,12 @@ class PDBParser(Bio.PDB.PDBParser):
 
         return structure
 
-
     def _parse(self, header_coords_trailer, chains):
         """Parse the PDB file (PRIVATE)."""
         # Extract the header; return the rest of the file
         self.header, coords_trailer = self._get_header(header_coords_trailer)
         # Parse the atomic data; return the PDB file trailer
         self.trailer = self._parse_coordinates(coords_trailer, chains)
-
 
     def _parse_coordinates(self, coords_trailer, chains=[]):
         """Parse the atomic data in the PDB file (PRIVATE)."""

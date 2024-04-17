@@ -16,7 +16,7 @@ def atom_distances_to_residue_distances(atom_distances, atoms_per_res1, atoms_pe
         cum_j_atoms = 0
         for j, j_atoms in enumerate(atoms_per_res2):
             res_distances[i, j] = atom_distances[
-                cum_i_atoms:cum_i_atoms + i_atoms, cum_j_atoms:cum_j_atoms + j_atoms
+                cum_i_atoms : cum_i_atoms + i_atoms, cum_j_atoms : cum_j_atoms + j_atoms
             ].min()
             cum_j_atoms += j_atoms
         cum_i_atoms += i_atoms
@@ -35,8 +35,8 @@ def residue_distances(
 
 
 def get_fnat_stats(model_res_distances, native_res_distances, threshold=5.0):
-    native_contacts = native_res_distances < threshold**2
-    model_contacts = model_res_distances < threshold**2
+    native_contacts = native_res_distances < threshold ** 2
+    model_contacts = model_res_distances < threshold ** 2
     n_native_contacts = np.sum(native_contacts)
     n_model_contacts = np.sum(model_contacts)
     n_shared_contacts = np.sum(model_contacts * native_contacts)

@@ -696,7 +696,7 @@ def product_without_dupl(*args, repeat=1):
         yield tuple(prod)
 
 
-def count_chain_combinations(chain_clusters, reverse_map=False):        
+def count_chain_combinations(chain_clusters, reverse_map=False):
     if not reverse_map:
         clusters = [tuple(li) for li in chain_clusters.values()]
         number_of_combinations = np.prod(
@@ -707,8 +707,10 @@ def count_chain_combinations(chain_clusters, reverse_map=False):
 
     return number_of_combinations
 
+
 def count_chain_combinations_from_maps(maps):
     return sum(1 for _ in maps)
+
 
 def get_all_chain_maps(
     chain_clusters,
@@ -806,7 +808,9 @@ def main():
         native_chains_to_combo,
     )
 
-    num_chain_combinations = count_chain_combinations(chain_clusters, reverse_map=reverse_map)
+    num_chain_combinations = count_chain_combinations(
+        chain_clusters, reverse_map=reverse_map
+    )
 
     # copy iterator to use later
     chain_maps, chain_maps_ = itertools.tee(chain_maps)
