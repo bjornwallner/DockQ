@@ -170,3 +170,38 @@ optional arguments:
                         C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
 ```
 
+**Import as a python module**
+
+Once DockQ is installed with pip, it can also be used as a module in your python code:
+
+```{python}
+from DockQ.DockQ import load_PDB, run_on_all_native_interfaces
+
+model = load_PDB("examples/1A2K_r_l_b.model.pdb")
+native = load_PDB("examples/1A2K_r_l_b.pdb")
+
+# model:native chain map dictionary for two interfaces
+chain_map = {"A":"A", "B":"B"}
+# returns a dictionary containing the results and the total DockQ score
+run_on_all_native_interfaces(model, native, chain_map=chain_map)
+
+({('A', 'B'): {'DockQ_F1': 0.9437927182141027,
+   'DockQ': 0.9425398964102757,
+   'irms': 0.3753064373774967,
+   'Lrms': 0.5535111803522507,
+   'fnat': 0.8907563025210085,
+   'nat_correct': 106,
+   'nat_total': 119,
+   'fnonnat': 0.1016949152542373,
+   'nonnat_count': 12,
+   'model_total': 118,
+   'clashes': 0,
+   'len1': 124,
+   'len2': 124,
+   'class1': 'ligand',
+   'class2': 'receptor',
+   'chain1': 'A',
+   'chain2': 'B',
+   'chain_map': {'A': 'A', 'B': 'B'}}},
+ 0.9425398964102757)
+```
