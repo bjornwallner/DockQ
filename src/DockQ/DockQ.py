@@ -286,13 +286,15 @@ def calc_DockQ(
     )  # using the private _rms function which does not superimpose
 
     info = {}
-
+    F1=f1(nat_correct, nonnat_count, nat_total)
     info["DockQ_F1"] = dockq_formula(
-        f1(nat_correct, nonnat_count, nat_total), irms, Lrms
+       F1, irms, Lrms
     )
     info["DockQ"] = dockq_formula(fnat, irms, Lrms)
     if low_memory:
         return info
+    
+    info["F1"] = F1
     info["irms"] = irms
     info["Lrms"] = Lrms
     info["fnat"] = fnat
@@ -862,24 +864,25 @@ def main():
 
 
 def print_results(info, short=False, verbose=False, capri_peptide=False):
+    items = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"]
     if short:
         capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         print(
-            f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
+            f"Total DockQ{capri_peptide_str} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
+            
+            score_str=" ".join([f"{item} {results[item]:.3f}" for item in items])
             print(
-                f"DockQ{capri_peptide_str} {results['DockQ']:.3f} DockQ_F1 {results['DockQ_F1']:.3f} Fnat {results['fnat']:.3f} iRMS {results['irms']:.3f} LRMS {results['Lrms']:.3f} Fnonnat {results['fnonnat']:.3f} clashes {results['clashes']} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
+                f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
     else:
         print_header(verbose, capri_peptide)
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
         print(
-            f"Total DockQ over {len(info['best_result'])} native interfaces: {info['best_dockq']:.3f}"
+            f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
-        items = ["DockQ_F1", "DockQ", "irms", "Lrms", "fnat"]
-
         for chains, results in info["best_result"].items():
             print(f"Native chains: {chains[0]}, {chains[1]}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
