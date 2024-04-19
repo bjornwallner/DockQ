@@ -227,7 +227,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
 
 
 class PDBParser(Bio.PDB.PDBParser):
-    def get_structure(self, id, file, chains):
+    def get_structure(self, id, file, chains, parse_hetatms):
         """Return the structure.
 
         Arguments:
@@ -248,7 +248,7 @@ class PDBParser(Bio.PDB.PDBParser):
                 lines = handle.readlines()
                 if not lines:
                     raise ValueError("Empty file.")
-                self._parse(lines, chains)
+                self._parse(lines, chains, hetatms=parse_hetatms)
 
             self.structure_builder.set_header(self.header)
             # Return the Structure instance
@@ -256,14 +256,14 @@ class PDBParser(Bio.PDB.PDBParser):
 
         return structure
 
-    def _parse(self, header_coords_trailer, chains):
+    def _parse(self, header_coords_trailer, chains, hetatms):
         """Parse the PDB file (PRIVATE)."""
         # Extract the header; return the rest of the file
         self.header, coords_trailer = self._get_header(header_coords_trailer)
         # Parse the atomic data; return the PDB file trailer
-        self.trailer = self._parse_coordinates(coords_trailer, chains)
+        self.trailer = self._parse_coordinates(coords_trailer, chains, hetatms)
 
-    def _parse_coordinates(self, coords_trailer, chains=[]):
+    def _parse_coordinates(self, coords_trailer, chains=[], hetatms=None):
         """Parse the atomic data in the PDB file (PRIVATE)."""
         allowed_records = {
             "ATOM  ",
@@ -289,9 +289,9 @@ class PDBParser(Bio.PDB.PDBParser):
             structure_builder.set_line_counter(global_line_counter)
             if not line.strip():
                 continue  # skip empty lines
-            elif record_type == "HETATM":
+            elif record_type == "HETATM" and not hetatms:
                 continue
-            elif record_type == "ATOM  ":
+            elif record_type == "ATOM  " or record_type == "HETATM":
                 # Initialize the Model - there was no explicit MODEL record
                 if not model_open:
                     structure_builder.init_model(current_model_id)
@@ -315,13 +315,20 @@ class PDBParser(Bio.PDB.PDBParser):
                     name = split_list[0]
                 altloc = line[16]
                 resname = line[17:20].strip()
+                hetero_flag = " "
+                if record_type == "HETATM":  # hetero atom flag
+                    # if a small molecule and the name matches what we're looking for
+                    if hetatms and hetatms == resname:
+                        chainid = "~"
+                        hetero_flag = "H"
+                    else:
+                        continue
                 try:
                     serial_number = int(line[6:11])
                 except Exception:
                     serial_number = 0
                 resseq = int(line[22:26].split()[0])  # sequence identifier
                 icode = line[26]  # insertion code
-                hetero_flag = " "
                 residue_id = (hetero_flag, resseq, icode)
                 # atomic coordinates
                 try:

@@ -14,7 +14,7 @@ from Bio import Align
 from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
 from parallelbar import progress_map
-
+import networkx as nx
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -44,6 +44,11 @@ def parse_args():
         action="store_true",
         help="use version for capri_peptide \
         (DockQ cannot not be trusted for this setting)",
+    )
+    parser.add_argument(
+        "--small_molecule",
+        type=str,
+        help="If the docking pose of a small molecule should be evaluated, provide the name of the molecule in the PDB e.g. --small_molecule GLC",
     )
     parser.add_argument(
         "--short", default=False, action="store_true", help="Short output"
@@ -531,6 +536,63 @@ def run_on_chains(
     return info
 
 
+def create_graph(atom_list, threshold=2.0):
+    G = nx.Graph()
+    for i, atom_i in enumerate(atom_list):
+        for j, atom_j in enumerate(atom_list):
+            if i != j:
+                distance = np.linalg.norm(atom_i - atom_j)
+                if distance < threshold:  # Adjust threshold as needed
+                    G.add_edge(i, j)
+    return G
+
+
+def run_on_ligand(model_structure, native_structure, model_chains, native_chains, no_align=False):
+
+    model_receptor = model_structure[model_chains[0]]
+    native_receptor = native_structure[native_chains[0]]
+        
+    aln = align_chains(
+            model_receptor,
+            native_receptor,
+            use_numbering=no_align,
+        )
+    alignment = tuple(format_alignment(aln).values())
+
+    aligned_sample_1, aligned_ref_1 = get_aligned_residues(
+        model_receptor, native_receptor, alignment
+    )
+
+    receptor_atoms_native, receptor_atoms_sample = np.asarray(
+        get_atoms_per_residue((native_receptor, model_receptor), what="receptor")
+    )
+    ligand_atoms_model = np.array([atom.coord for atom in model_structure["~"].get_atoms()])
+    ligand_atoms_native = np.array([atom.coord for atom in native_structure["~"].get_atoms()])
+    # Set to align on receptor
+    super_imposer = SVDSuperimposer()
+    super_imposer.set(receptor_atoms_native, receptor_atoms_sample)
+    super_imposer.run()
+
+    rot, tran = super_imposer.get_rotran()
+    rotated_ligand_atoms_model = np.dot(ligand_atoms_model, rot) + tran
+    model_graph = create_graph(ligand_atoms_model)
+    native_graph = create_graph(ligand_atoms_native)
+
+    min_Lrms = float("inf")
+    best_mapping = None
+    for isomorphism in nx.vf2pp_all_isomorphisms(model_graph, native_graph):
+        model_i = list(isomorphism.keys())
+        native_i = list(isomorphism.values())
+
+        rmsd = rotated_ligand_atoms_model[model_i] - ligand_atoms_native[native_i]
+        Lrms = super_imposer._rms(
+            rotated_ligand_atoms_model[model_i], ligand_atoms_native[native_i]
+        )
+        if Lrms < min_Lrms:
+            best_mapping = isomorphism
+            min_Lrms = Lrms
+    print(min_Lrms, best_mapping)
+
 def run_on_all_native_interfaces(
     model_structure,
     native_structure,
@@ -579,13 +641,14 @@ def run_on_all_native_interfaces(
     return result_mapping, total_dockq
 
 
-def load_PDB(path, chains=[], n_model=0):
+def load_PDB(path, chains=[], small_molecule=None, n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
         structure = pdb_parser.get_structure(
             "-",
             (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=chains,
+            parse_hetatms=small_molecule,
         )
         model = structure[n_model]
     except Exception:
@@ -641,7 +704,7 @@ def group_chains(
     return chain_clusters, reverse_map
 
 
-def format_mapping(mapping_str):
+def format_mapping(mapping_str, small_molecule=None):
     mapping = dict()
     model_chains = None
     native_chains = None
@@ -652,7 +715,7 @@ def format_mapping(mapping_str):
     if not native_mapping:
         print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
-    else:
+    else:            
         # :ABC or *:ABC only use those natives chains, permute model chains
         if not model_mapping or model_mapping == "*":
             native_chains = [chain for chain in native_mapping]
@@ -758,18 +821,23 @@ def get_best_mapping(result_mappings, optDockF1=False):
 # @profile
 def main():
     args = parse_args()
-    initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
-    model_structure = load_PDB(args.model, chains=model_chains)
-    native_structure = load_PDB(args.native, chains=native_chains)
+
+    initial_mapping, model_chains, native_chains = format_mapping(args.mapping, args.small_molecule)
+    model_structure = load_PDB(args.model, chains=model_chains, small_molecule=args.small_molecule)
+    native_structure = load_PDB(args.native, chains=native_chains, small_molecule=args.small_molecule)
 
     # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
     )
-
+    
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
+        sys.exit()
+
+    if args.small_molecule:
+        run_on_ligand(model_structure, native_structure, model_chains, native_chains)
         sys.exit()
 
     # permute chains and run on a for loop
