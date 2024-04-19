@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["tqdm", "biopython >= 1.79"]
+dependencies = ["tqdm", "biopython >= 1.79", "networkx"]
 
 [project.urls]
 Homepage = "https://github.com/bjornwallner/DockQ"
