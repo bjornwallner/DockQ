@@ -1,5 +1,5 @@
 Total DockQ over 4 native interfaces: 1.000 with ABLH:ABLH model:native mapping
-DockQ 1.000 DockQ_F1 1.000 Fnat 1.000 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping AB:AB examples/dimer_dimer.model.pdb A B -> examples/dimer_dimer.pdb A B
-DockQ 1.000 DockQ_F1 1.000 Fnat 1.000 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping AL:AL examples/dimer_dimer.model.pdb A L -> examples/dimer_dimer.pdb A L
-DockQ 1.000 DockQ_F1 1.000 Fnat 1.000 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping AH:AH examples/dimer_dimer.model.pdb A H -> examples/dimer_dimer.pdb A H
-DockQ 1.000 DockQ_F1 1.000 Fnat 1.000 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping LH:LH examples/dimer_dimer.model.pdb L H -> examples/dimer_dimer.pdb L H
+DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping AB:AB examples/dimer_dimer.model.pdb A B -> examples/dimer_dimer.pdb A B
+DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping AL:AL examples/dimer_dimer.model.pdb A L -> examples/dimer_dimer.pdb A L
+DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping AH:AH examples/dimer_dimer.model.pdb A H -> examples/dimer_dimer.pdb A H
+DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping LH:LH examples/dimer_dimer.model.pdb L H -> examples/dimer_dimer.pdb L H

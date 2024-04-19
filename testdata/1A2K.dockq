@@ -13,25 +13,34 @@
 ****************************************************************
 Model  : examples/1A2K_r_l_b.model.pdb
 Native : examples/1A2K_r_l_b.pdb
-Total DockQ over 3 native interfaces: 1.959
+Total DockQ over 3 native interfaces: 0.653 with BAC:ABC model:native mapping
 Native chains: A, B
 	Model chains: B, A
-	DockQ_F1: 0.996
 	DockQ: 0.994
 	irms: 0.000
 	Lrms: 0.000
 	fnat: 0.983
+	fnonnat: 0.008
+	clashes: 0.000
+	F1: 0.987
+	DockQ_F1: 0.996
 Native chains: A, C
 	Model chains: B, C
-	DockQ_F1: 0.567
 	DockQ: 0.511
 	irms: 1.237
 	Lrms: 6.864
 	fnat: 0.333
+	fnonnat: 0.000
+	clashes: 0.000
+	F1: 0.500
+	DockQ_F1: 0.567
 Native chains: B, C
 	Model chains: A, C
-	DockQ_F1: 0.500
 	DockQ: 0.453
 	irms: 2.104
 	Lrms: 8.131
 	fnat: 0.500
+	fnonnat: 0.107
+	clashes: 0.000
+	F1: 0.641
+	DockQ_F1: 0.500
