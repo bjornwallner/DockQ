@@ -1,17 +1,17 @@
 Total DockQ over 16 native interfaces: 0.852 with BACDFHEG:ABDCEGFH model:native mapping
-DockQ 1.000 DockQ_F1 1.000 Fnat 1.000 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping BC:AD examples/1EXB_r_l_b.model.pdb B C -> examples/1EXB_r_l_b.pdb A D
-DockQ 0.995 DockQ_F1 0.998 Fnat 0.985 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping BD:AC examples/1EXB_r_l_b.model.pdb B D -> examples/1EXB_r_l_b.pdb A C
-DockQ 0.552 DockQ_F1 0.606 Fnat 0.304 iRMS 1.458 LRMS 3.757 Fnonnat 0.000 clashes 0 mapping BF:AE examples/1EXB_r_l_b.model.pdb B F -> examples/1EXB_r_l_b.pdb A E
-DockQ 0.694 DockQ_F1 0.751 Fnat 0.400 iRMS 0.793 LRMS 2.831 Fnonnat 0.000 clashes 0 mapping BH:AG examples/1EXB_r_l_b.model.pdb B H -> examples/1EXB_r_l_b.pdb A G
-DockQ 0.995 DockQ_F1 0.998 Fnat 0.985 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping AC:BD examples/1EXB_r_l_b.model.pdb A C -> examples/1EXB_r_l_b.pdb B D
-DockQ 0.995 DockQ_F1 0.998 Fnat 0.985 iRMS 0.000 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping AD:BC examples/1EXB_r_l_b.model.pdb A D -> examples/1EXB_r_l_b.pdb B C
-DockQ 0.742 DockQ_F1 0.772 Fnat 0.609 iRMS 0.850 LRMS 3.426 Fnonnat 0.176 clashes 0 mapping AE:BF examples/1EXB_r_l_b.model.pdb A E -> examples/1EXB_r_l_b.pdb B F
-DockQ 0.824 DockQ_F1 0.853 Fnat 0.800 iRMS 0.625 LRMS 3.994 Fnonnat 0.000 clashes 0 mapping AG:BH examples/1EXB_r_l_b.model.pdb A G -> examples/1EXB_r_l_b.pdb B H
-DockQ 0.687 DockQ_F1 0.737 Fnat 0.600 iRMS 1.161 LRMS 3.757 Fnonnat 0.000 clashes 0 mapping CF:DE examples/1EXB_r_l_b.model.pdb C F -> examples/1EXB_r_l_b.pdb D E
-DockQ 0.477 DockQ_F1 0.502 Fnat 0.087 iRMS 1.425 LRMS 3.994 Fnonnat 0.000 clashes 0 mapping CG:DH examples/1EXB_r_l_b.model.pdb C G -> examples/1EXB_r_l_b.pdb D H
-DockQ 0.775 DockQ_F1 0.812 Fnat 0.609 iRMS 0.711 LRMS 2.831 Fnonnat 0.125 clashes 0 mapping DH:CG examples/1EXB_r_l_b.model.pdb D H -> examples/1EXB_r_l_b.pdb C G
-DockQ 0.914 DockQ_F1 0.914 Fnat 1.000 iRMS 0.547 LRMS 3.426 Fnonnat 0.000 clashes 0 mapping DE:CF examples/1EXB_r_l_b.model.pdb D E -> examples/1EXB_r_l_b.pdb C F
-DockQ 0.992 DockQ_F1 0.996 Fnat 0.976 iRMS 0.001 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping FH:EG examples/1EXB_r_l_b.model.pdb F H -> examples/1EXB_r_l_b.pdb E G
-DockQ 0.992 DockQ_F1 0.996 Fnat 0.976 iRMS 0.001 LRMS 0.000 Fnonnat 0.000 clashes 0 mapping FG:EH examples/1EXB_r_l_b.model.pdb F G -> examples/1EXB_r_l_b.pdb E H
-DockQ 0.992 DockQ_F1 0.996 Fnat 0.976 iRMS 0.001 LRMS 0.001 Fnonnat 0.000 clashes 0 mapping HE:GF examples/1EXB_r_l_b.model.pdb H E -> examples/1EXB_r_l_b.pdb G F
-DockQ 1.000 DockQ_F1 0.996 Fnat 1.000 iRMS 0.001 LRMS 0.001 Fnonnat 0.024 clashes 0 mapping EG:FH examples/1EXB_r_l_b.model.pdb E G -> examples/1EXB_r_l_b.pdb F H
+DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping BC:AD examples/1EXB_r_l_b.model.pdb B C -> examples/1EXB_r_l_b.pdb A D
+DockQ 0.995 irms 0.000 Lrms 0.000 fnat 0.985 fnonnat 0.000 clashes 0.000 F1 0.993 DockQ_F1 0.998 mapping BD:AC examples/1EXB_r_l_b.model.pdb B D -> examples/1EXB_r_l_b.pdb A C
+DockQ 0.552 irms 1.458 Lrms 3.757 fnat 0.304 fnonnat 0.000 clashes 0.000 F1 0.467 DockQ_F1 0.606 mapping BF:AE examples/1EXB_r_l_b.model.pdb B F -> examples/1EXB_r_l_b.pdb A E
+DockQ 0.694 irms 0.793 Lrms 2.831 fnat 0.400 fnonnat 0.000 clashes 0.000 F1 0.571 DockQ_F1 0.751 mapping BH:AG examples/1EXB_r_l_b.model.pdb B H -> examples/1EXB_r_l_b.pdb A G
+DockQ 0.995 irms 0.000 Lrms 0.000 fnat 0.985 fnonnat 0.000 clashes 0.000 F1 0.993 DockQ_F1 0.998 mapping AC:BD examples/1EXB_r_l_b.model.pdb A C -> examples/1EXB_r_l_b.pdb B D
+DockQ 0.995 irms 0.000 Lrms 0.000 fnat 0.985 fnonnat 0.000 clashes 0.000 F1 0.993 DockQ_F1 0.998 mapping AD:BC examples/1EXB_r_l_b.model.pdb A D -> examples/1EXB_r_l_b.pdb B C
+DockQ 0.742 irms 0.850 Lrms 3.426 fnat 0.609 fnonnat 0.176 clashes 0.000 F1 0.700 DockQ_F1 0.772 mapping AE:BF examples/1EXB_r_l_b.model.pdb A E -> examples/1EXB_r_l_b.pdb B F
+DockQ 0.824 irms 0.625 Lrms 3.994 fnat 0.800 fnonnat 0.000 clashes 0.000 F1 0.889 DockQ_F1 0.853 mapping AG:BH examples/1EXB_r_l_b.model.pdb A G -> examples/1EXB_r_l_b.pdb B H
+DockQ 0.687 irms 1.161 Lrms 3.757 fnat 0.600 fnonnat 0.000 clashes 0.000 F1 0.750 DockQ_F1 0.737 mapping CF:DE examples/1EXB_r_l_b.model.pdb C F -> examples/1EXB_r_l_b.pdb D E
+DockQ 0.477 irms 1.425 Lrms 3.994 fnat 0.087 fnonnat 0.000 clashes 0.000 F1 0.160 DockQ_F1 0.502 mapping CG:DH examples/1EXB_r_l_b.model.pdb C G -> examples/1EXB_r_l_b.pdb D H
+DockQ 0.775 irms 0.711 Lrms 2.831 fnat 0.609 fnonnat 0.125 clashes 0.000 F1 0.718 DockQ_F1 0.812 mapping DH:CG examples/1EXB_r_l_b.model.pdb D H -> examples/1EXB_r_l_b.pdb C G
+DockQ 0.914 irms 0.547 Lrms 3.426 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 0.914 mapping DE:CF examples/1EXB_r_l_b.model.pdb D E -> examples/1EXB_r_l_b.pdb C F
+DockQ 0.992 irms 0.001 Lrms 0.000 fnat 0.976 fnonnat 0.000 clashes 0.000 F1 0.988 DockQ_F1 0.996 mapping FH:EG examples/1EXB_r_l_b.model.pdb F H -> examples/1EXB_r_l_b.pdb E G
+DockQ 0.992 irms 0.001 Lrms 0.000 fnat 0.976 fnonnat 0.000 clashes 0.000 F1 0.988 DockQ_F1 0.996 mapping FG:EH examples/1EXB_r_l_b.model.pdb F G -> examples/1EXB_r_l_b.pdb E H
+DockQ 0.992 irms 0.001 Lrms 0.001 fnat 0.976 fnonnat 0.000 clashes 0.000 F1 0.988 DockQ_F1 0.996 mapping HE:GF examples/1EXB_r_l_b.model.pdb H E -> examples/1EXB_r_l_b.pdb G F
+DockQ 1.000 irms 0.001 Lrms 0.001 fnat 1.000 fnonnat 0.024 clashes 0.000 F1 0.988 DockQ_F1 0.996 mapping EG:FH examples/1EXB_r_l_b.model.pdb E G -> examples/1EXB_r_l_b.pdb F H
