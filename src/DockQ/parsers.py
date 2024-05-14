@@ -6,9 +6,8 @@ from Bio.PDB.StructureBuilder import StructureBuilder
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from Bio.PDB.PDBParser import as_handle
 
-
 class MMCIFParser(Bio.PDB.MMCIFParser):
-    def get_structure(self, structure_id, filename, chains=[]):
+    def get_structure(self, structure_id, filename, chains=[], parse_hetatms=False, auth_chains=True):
         """Return the structure.
 
         Arguments:
@@ -16,18 +15,18 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
          - filename - name of mmCIF file, OR an open text mode file handle
 
         """
-        self.auth_chains = True
+        self.auth_chains = auth_chains
         self.auth_residues = True
         with warnings.catch_warnings():
             if self.QUIET:
                 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
             self._mmcif_dict = MMCIF2Dict(filename)
-            self._build_structure(structure_id, chains)
+            self._build_structure(structure_id, chains, parse_hetatms=parse_hetatms)
             self._structure_builder.set_header(self._get_header())
 
         return self._structure_builder.get_structure()
 
-    def _build_structure(self, structure_id, chains):
+    def _build_structure(self, structure_id, chains, parse_hetatms):
         # two special chars as placeholders in the mmCIF format
         # for item values that cannot be explicitly assigned
         # see: pdbx/mmcif syntax web page
@@ -99,7 +98,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             if chains and chainid not in chains:
                 continue
             fieldname = fieldname_list[i]
-            if fieldname == "HETATM":
+            if fieldname == "HETATM" and not parse_hetatms:
                 continue
             element = element_list[i].upper() if element_list else None
             if element == "H":
@@ -154,7 +153,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 occupancy = float(occupancy_list[i])
             except ValueError:
                 raise PDBConstructionException("Invalid or missing occupancy") from None
-            hetatm_flag = " "
+            hetatm_flag = " " if fieldname != "HETATM" else "H"
 
             resseq = (hetatm_flag, int_resseq, icode)
 
@@ -175,6 +174,10 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
 
             if current_chain_id != chainid:
                 current_chain_id = chainid
+                #if hetatm_flag == "H":
+                #    het_chain_id = f"HET_{chainid}"
+                #    structure_builder.init_chain(het_chain_id)
+                #else:
                 structure_builder.init_chain(current_chain_id)
                 current_residue_id = None
                 current_resname = None
@@ -248,7 +251,7 @@ class PDBParser(Bio.PDB.PDBParser):
                 lines = handle.readlines()
                 if not lines:
                     raise ValueError("Empty file.")
-                self._parse(lines, chains, hetatms=parse_hetatms)
+                self._parse(lines, chains, parse_hetatms=parse_hetatms)
 
             self.structure_builder.set_header(self.header)
             # Return the Structure instance
@@ -256,14 +259,14 @@ class PDBParser(Bio.PDB.PDBParser):
 
         return structure
 
-    def _parse(self, header_coords_trailer, chains, hetatms):
+    def _parse(self, header_coords_trailer, chains, parse_hetatms):
         """Parse the PDB file (PRIVATE)."""
         # Extract the header; return the rest of the file
         self.header, coords_trailer = self._get_header(header_coords_trailer)
         # Parse the atomic data; return the PDB file trailer
-        self.trailer = self._parse_coordinates(coords_trailer, chains, hetatms)
+        self.trailer = self._parse_coordinates(coords_trailer, chains, parse_hetatms)
 
-    def _parse_coordinates(self, coords_trailer, chains=[], hetatms=None):
+    def _parse_coordinates(self, coords_trailer, chains=[], parse_hetatms=False):
         """Parse the atomic data in the PDB file (PRIVATE)."""
         allowed_records = {
             "ATOM  ",
@@ -289,7 +292,7 @@ class PDBParser(Bio.PDB.PDBParser):
             structure_builder.set_line_counter(global_line_counter)
             if not line.strip():
                 continue  # skip empty lines
-            elif record_type == "HETATM" and not hetatms:
+            elif record_type == "HETATM" and not parse_hetatms:
                 continue
             elif record_type == "ATOM  " or record_type == "HETATM":
                 # Initialize the Model - there was no explicit MODEL record
@@ -318,11 +321,8 @@ class PDBParser(Bio.PDB.PDBParser):
                 hetero_flag = " "
                 if record_type == "HETATM":  # hetero atom flag
                     # if a small molecule and the name matches what we're looking for
-                    if hetatms and hetatms == resname:
-                        chainid = "~"
-                        hetero_flag = "H"
-                    else:
-                        continue
+                    hetero_flag = "H"
+
                 try:
                     serial_number = int(line[6:11])
                 except Exception:
