@@ -2,7 +2,6 @@ import warnings
 import numpy as np
 import Bio
 from Bio.PDB.MMCIF2Dict import MMCIF2Dict
-from Bio.PDB.StructureBuilder import StructureBuilder
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from Bio.PDB.PDBExceptions import PDBConstructionException
 from Bio.PDB.PDBParser import as_handle

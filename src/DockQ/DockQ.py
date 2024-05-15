@@ -11,10 +11,8 @@ from functools import lru_cache, partial
 
 import numpy as np
 from Bio import Align
-from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
 from parallelbar import progress_map
-import networkx as nx
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -172,7 +170,7 @@ def calc_sym_corrected_lrmsd(
     alignments,
     low_memory=False,
 ):
-
+    import networkx as nx
     is_het_sample_0 = bool(sample_chains[0].is_het)
     is_het_sample_1 = bool(sample_chains[1].is_het)
 
@@ -596,6 +594,7 @@ def run_on_chains(
 
 
 def create_graph(atom_list, threshold=2.0):
+    import networkx as nx
     G = nx.Graph()
     for i, atom_i in enumerate(atom_list):
         for j, atom_j in enumerate(atom_list):
