@@ -137,6 +137,22 @@ Then DockQ will find the interface in the model that best matches the WX interfa
 --mapping *:WXY
 ```
 
+## Scoring small molecule docking poses
+
+Small molecules in PDB or mmCIF files can be scored and the mapping optimized in the same way as for proteins. Just add the flag `--small_molecules`:
+
+```
+$ DockQ examples/example_hetatm.pdb examples/7bbv.cif --small_molecule --mapping :ACDEFGH
+```
+
+Only LRMSD is reported for small molecules.
+
+**NB: Small molecules must be in the PDB/mmCIF files. They also must have separate chain identifiers** (the `label_asym_id` field is used in mmCIF formatted files).
+
+## Scoring DNA/RNA poses
+
+Interfaces involving nucleic acids are seamlessly scored along with protein interfaces. The DockQ score is calculated for protein-NA or NA-NA interfaces in the same way as for protein-protein interfaces (two DockQ scores are reported for double helix chains).
+
 **Other uses**
 
 Run DockQ with `-h/--help` to see a list of the available flags:

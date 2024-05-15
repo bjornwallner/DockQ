@@ -58,7 +58,7 @@ def parse_args():
     )
     parser.add_argument(
         "--no_align",
-        default=False,
+        #default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
@@ -173,10 +173,8 @@ def calc_sym_corrected_lrmsd(
     low_memory=False,
 ):
 
-    is_het_sample_0 = bool(is_het(sample_chains[0]))
-    is_het_sample_1 = bool(is_het(sample_chains[1]))
-    is_het_ref_0 = bool(is_het(ref_chains[0]))
-    is_het_ref_1 = bool(is_het(ref_chains[1]))
+    is_het_sample_0 = bool(sample_chains[0].is_het)
+    is_het_sample_1 = bool(sample_chains[1].is_het)
 
     if is_het_sample_0 and not is_het_sample_1:
         sample_ligand = sample_chains[0]
@@ -232,7 +230,8 @@ def calc_sym_corrected_lrmsd(
             best_mapping = isomorphism
             min_Lrms = Lrms
 
-    info = {"Lrms": min_Lrms, "mapping": best_mapping}
+    dockq_f1 = dockq = dockq_formula(0, 0, min_Lrms)
+    info = {"DockQ_F1": dockq_f1, "DockQ": dockq, "Lrms": min_Lrms, "mapping": best_mapping, "is_het": True}
     return info
 
 
@@ -387,6 +386,7 @@ def calc_DockQ(
     info["len2"] = ref_group2_size
     info["class1"] = class1
     info["class2"] = class2
+    info["is_het"] = False
 
     return info
 
@@ -401,33 +401,6 @@ def dockq_formula(fnat, irms, Lrms):
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
         + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
     ) / 3
-
-
-def is_het(chain):
-    res0 = next(chain.get_residues())
-    if res0.get_id()[0][0] == "H":
-        return res0.get_resname()
-    else:
-        return None
-
-
-def get_sequence_from_structure(chain):
-    custom_map = {"MSE": "M", "CME": "C"}
-    if is_het(chain) is None:
-        sequence = [
-                residue.get_resname() for residue in chain.get_residues()
-            ]
-        sequence = "".join(
-                seq1(r, custom_map=custom_map)
-                if len(r) == 3
-                else r[:-1]
-                if (len(r) == 2)
-                else r
-                for r in sequence
-            )
-    else:
-        sequence = "".join([residue.get_resname() for residue in chain.get_residues()])
-    return sequence
 
 
 @lru_cache
@@ -459,8 +432,8 @@ def align_chains(model_chain, native_chain, use_numbering=False):
 
     else:
         custom_map = {"MSE": "M", "CME": "C"}
-        model_sequence = get_sequence_from_structure(model_chain)
-        native_sequence = get_sequence_from_structure(native_chain)
+        model_sequence = model_chain.sequence
+        native_sequence = native_chain.sequence
 
     aligner = Align.PairwiseAligner()
     aligner.match = 5
@@ -655,7 +628,7 @@ def run_on_all_native_interfaces(
             ]
         )
         
-        small_molecule = is_het(native_chains[0]) or is_het(native_chains[1])
+        small_molecule = native_chains[0].is_het or native_chains[1].is_het
         
         if len(set(model_chains)) < 2:
             continue
@@ -675,45 +648,41 @@ def run_on_all_native_interfaces(
                 )
                 info["chain_map"] = chain_map  # diagnostics
                 result_mapping[chain_pair] = info
-    if not small_molecule:
-        total_dockq = sum(
-            [
-                result["DockQ_F1" if optDockQF1 else "DockQ"]
-                for result in result_mapping.values()
-            ]
-        )
-    else:
-        total_dockq = sum(
-            [
-                1/result["Lrms"]
-                for result in result_mapping.values()
-            ]
-        )
+    total_dockq = sum(
+        [
+            result["DockQ_F1" if optDockQF1 else "DockQ"]
+            for result in result_mapping.values()
+        ]
+    )
+
     return result_mapping, total_dockq
 
 
 def load_PDB(path, chains=[], small_molecule=False, n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
-        structure = pdb_parser.get_structure(
+        model = pdb_parser.get_structure(
             "-",
             (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=chains,
             parse_hetatms=small_molecule,
+            model_number=n_model,
         )
-        model = structure[n_model]
         model.id = np.random.rand()
     except Exception:
         pdb_parser = MMCIFParser(QUIET=True)
-        structure = pdb_parser.get_structure(
+        model = pdb_parser.get_structure(
             "-",
             (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=chains,
             parse_hetatms=small_molecule,
-            auth_chains=not small_molecule
+            auth_chains=not small_molecule,
+            model_number=n_model,
         )
-        model = structure[n_model]
 
+    for chain in model:
+        chain.sequence = model.sequences[chain.id]
+        chain.is_het = model.is_het[chain.id]
     return model
 
 
@@ -735,12 +704,12 @@ def group_chains(
         qc = query_structure[query_chain]
         rc = ref_structure[ref_chain]
 
-        het_qc = is_het(qc)
-        het_rc = is_het(rc)
+        het_qc = qc.is_het
+        het_rc = rc.is_het
 
         if het_qc is None and het_rc is None:
             aln = align_chains(
-                qc, rc, use_numbering=None
+                qc, rc, use_numbering=False,
             )
             alignment = format_alignment(aln)
             n_mismatches = alignment["matches"].count(".")
@@ -876,7 +845,6 @@ def main():
     initial_mapping, model_chains, native_chains = format_mapping(args.mapping, args.small_molecule)
     model_structure = load_PDB(args.model, chains=model_chains, small_molecule=args.small_molecule)
     native_structure = load_PDB(args.native, chains=native_chains, small_molecule=args.small_molecule)
-
     # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
@@ -955,9 +923,9 @@ def main():
             best_result, total_dockq = run_on_all_native_interfaces(
                 model_structure,
                 native_structure,
-                best_mapping,
-                args.no_align,
-                args.capri_peptide,
+                chain_map=best_mapping,
+                no_align=args.no_align,
+                capri_peptide=args.capri_peptide,
                 low_memory=False,
             )
 
@@ -977,16 +945,15 @@ def main():
 
 
 def print_results(info, short=False, verbose=False, capri_peptide=False, small_molecule=False):
-    items = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not small_molecule else ["Lrms"]
-    score = "DockQ" if not small_molecule else "sum of inverse LRMSDs"
+    
+    score = "DockQ-small_molecules" if small_molecule else "DockQ-capri_peptide" if capri_peptide else "DockQ"
     if short:
-        capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         print(
-            f"Total {score}{capri_peptide_str} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
+            f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
-            
-            score_str=" ".join([f"{item} {results[item]:.3f}" for item in items])
+            reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
+            score_str=" ".join([f"{item} {results[item]:.3f}" for item in reported_measures])
             print(
                 f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
@@ -998,9 +965,10 @@ def print_results(info, short=False, verbose=False, capri_peptide=False, small_m
             f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
+            reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
             print(f"Native chains: {chains[0]}, {chains[1]}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
-            print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
+            print("\n".join([f"\t{item}: {results[item]:.3f}" for item in reported_measures]))
 
 
 def print_header(verbose=False, capri_peptide=False, small_molecule=False):
@@ -1034,7 +1002,8 @@ def print_header(verbose=False, capri_peptide=False, small_molecule=False):
         header = (
             "****************************************************************\n"
             "*                DockQ-small molecules                         *\n"
-            "*                                                              *"
+            "*   LRMSD is reported for small molecule ligands               *\n"
+            "*   DockQ is reported for macromolecules                       *"
         )
 
     if verbose:
