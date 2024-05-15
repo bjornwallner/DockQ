@@ -196,7 +196,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 current_residue_id = resseq
                 current_resname = resname
                 if hetatm_flag == " ":
-                    resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else r[:-1] if (len(current_resname) == 2) else r
+                    resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else current_resname[:-1] if (len(current_resname) == 2) else current_resname
                     sequences[current_chain_id] += resname1
                 else:
                     sequences[current_chain_id] = resname
@@ -409,7 +409,7 @@ class PDBParser(Bio.PDB.PDBParser):
                             resname, hetatm_flag, resseq, icode
                         )
                         if hetatm_flag == " ":
-                            resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else r[:-1] if (len(current_resname) == 2) else r
+                            resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else current_resname[:-1] if (len(current_resname) == 2) else current_resname
                             sequences[current_chain_id] = resname1
                     except PDBConstructionException as message:
                         self._handle_PDB_exception(message, global_line_counter)
