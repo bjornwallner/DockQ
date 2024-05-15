@@ -680,9 +680,6 @@ def load_PDB(path, chains=[], small_molecule=False, n_model=0):
             model_number=n_model,
         )
 
-    for chain in model:
-        chain.sequence = model.sequences[chain.id]
-        chain.is_het = model.is_het[chain.id]
     return model
 
 

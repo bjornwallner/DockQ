@@ -30,8 +30,9 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
 
         structure = self._structure_builder.get_structure()
         model = structure[model_number]
-        model.sequences = sequences
-        model.is_het = is_het
+        for chain in model:
+            chain.sequence = sequences[chain.id]
+            chain.is_het = is_het[chain.id]
         return model
 
 
@@ -274,8 +275,10 @@ class PDBParser(Bio.PDB.PDBParser):
             # Return the Structure instance
             structure = self.structure_builder.get_structure()
             model = structure[model_number]
-            model.sequences = sequences
-            model.is_het = is_het
+
+            for chain in model:
+                chain.sequence = sequences[chain.id]
+                chain.is_het = is_het[chain.id]
         return model
 
     def _parse(self, header_coords_trailer, chains, parse_hetatms):
