@@ -13,11 +13,14 @@
 ****************************************************************
 Model  : examples/model.pdb
 Native : examples/native.pdb
-Total DockQ over 1 native interfaces: 0.700
+Total DockQ over 1 native interfaces: 0.700 with AB:AB model:native mapping
 Native chains: A, B
 	Model chains: A, B
-	DockQ_F1: 0.731
 	DockQ: 0.700
 	irms: 1.232
 	Lrms: 1.516
 	fnat: 0.533
+	fnonnat: 0.238
+	clashes: 2.000
+	F1: 0.627
+	DockQ_F1: 0.731
