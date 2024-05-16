@@ -142,7 +142,17 @@ Then DockQ will find the interface in the model that best matches the WX interfa
 Small molecules in PDB or mmCIF files can be scored and the mapping optimized in the same way as for proteins. Just add the flag `--small_molecules`:
 
 ```
-$ DockQ examples/example_hetatm.pdb examples/7bbv.cif --small_molecule --mapping :ACDEFGH
+# Compare docking of hemoglobin chains (chain A and B in native) as well as HEM and PO4 groups (chains E, F, G)
+$ DockQ examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG --short
+
+Total DockQ-small_molecules over 7 native interfaces: 0.614 with ABDCF:ABEFG model:native mapping
+DockQ 0.950 irms 0.455 Lrms 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
+Lrms 0.592  mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
+Lrms 28.986 mapping AC:AF (PO4) examples/1HHO_hem.cif A C -> examples/2HHB_hem.cif A F
+Lrms 2.264  mapping AF:AG (HEM) examples/1HHO_hem.cif A F -> examples/2HHB_hem.cif A G
+Lrms 1.267  mapping BD:BE (HEM) examples/1HHO_hem.cif B D -> examples/2HHB_hem.cif B E
+Lrms 27.937 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
+Lrms 1.351  mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
 ```
 
 Only LRMSD is reported for small molecules.
