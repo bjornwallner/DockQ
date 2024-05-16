@@ -18,6 +18,7 @@ from parallelbar import progress_map
 try:
     from .operations import residue_distances, get_fnat_stats
     from .parsers import PDBParser, MMCIFParser
+    from .constants import *
 except ImportError:
     warnings.warn(
         """WARNING: It looks like cython is not working,
@@ -25,6 +26,7 @@ except ImportError:
     )
     from operations_nocy import residue_distances, get_fnat_stats
     from parsers import PDBParser, MMCIFParser
+    from constants import *
 
 
 def parse_args():
@@ -197,8 +199,11 @@ def calc_sym_corrected_lrmsd(
         get_atoms_per_residue((aligned_ref_receptor, aligned_sample_receptor), what="receptor")
     )
 
-    sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms() if atom.id != "H"]
-    ref_ligand_atoms_ids = [atom.id for atom in ref_ligand.get_atoms() if atom.id != "H"]
+    sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms()]
+    sample_ligand_atoms_ele = [atom.element for atom in sample_ligand.get_atoms()]
+
+    ref_ligand_atoms_ids = [atom.id for atom in ref_ligand.get_atoms()]
+    ref_ligand_atoms_ele = [atom.element for atom in ref_ligand.get_atoms()]
 
     sample_ligand_atoms = np.array([atom.coord for atom in sample_ligand.get_atoms() if atom.id in ref_ligand_atoms_ids])
     ref_ligand_atoms = np.array([atom.coord for atom in ref_ligand.get_atoms() if atom.id in sample_ligand_atoms_ids])
@@ -211,13 +216,13 @@ def calc_sym_corrected_lrmsd(
     
     sample_rotated_ligand_atoms = np.dot(sample_ligand_atoms, rot) + tran
 
-    sample_graph = create_graph(sample_ligand_atoms)
-    ref_graph = create_graph(ref_ligand_atoms)
+    sample_graph = create_graph(sample_ligand_atoms, sample_ligand_atoms_ele)
+    ref_graph = create_graph(ref_ligand_atoms, ref_ligand_atoms_ele)
 
     min_Lrms = float("inf")
     best_mapping = None
+    print(sample_graph, ref_graph)
     for isomorphism in nx.vf2pp_all_isomorphisms(sample_graph, ref_graph):
-        
         model_i = list(isomorphism.keys())
         native_i = list(isomorphism.values())
 
@@ -593,14 +598,20 @@ def run_on_chains(
     return info
 
 
-def create_graph(atom_list, threshold=2.0):
+def create_graph(atom_list, atom_ids):
     import networkx as nx
     G = nx.Graph()
+
     for i, atom_i in enumerate(atom_list):
+        cr_i = covalent_radius[atom_ids[i]]
         for j, atom_j in enumerate(atom_list):
+            cr_j = covalent_radius[atom_ids[j]]
             distance = np.linalg.norm(atom_i - atom_j)
+            threshold = (cr_i + cr_j + bond_tolerance) if i != j else 0.0
+            #print(atom_ids[i], atom_ids[j], threshold)
             if distance < threshold:  # Adjust threshold as needed
                 G.add_edge(i, j)
+
     return G
 
 
