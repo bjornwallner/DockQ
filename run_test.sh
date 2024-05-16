@@ -4,18 +4,19 @@ set -euo pipefail
 rm -f test .coverage
 
 if command -v coverage &> /dev/null; then
-    binary="coverage run -a -m DockQ.DockQ"
+    binary="coverage run --parallel-mode -m DockQ.DockQ "
 else
     binary="DockQ"
 fi
 
-$binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
-diff test testdata/1A2K.dockq
 $binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
 
+$binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
+diff test testdata/1A2K.dockq
+
 # Multiple interfaces
-$binary examples/dimer_dimer.model.pdb examples/dimer_dimer.pdb  --short > test
+$binary examples/dimer_dimer.model.pdb examples/dimer_dimer.pdb --short > test
 diff test testdata/dimer_dimer.dockq
 
 # Test on structures with slightly different sequences
@@ -44,8 +45,13 @@ diff test testdata/1EXB_DH.AE_cif.dockq
 $binary examples/6qwn-assembly1.cif.gz examples/6qwn-assembly2.cif.gz --capri_peptide > test
 diff test testdata/6q2n_peptide.dockq
 
+# Small molecule test
+$binary examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG
+
 # Test that cython version behaves the same as nocython
 python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff test testdata/1A2K.dockq
 python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
 diff test testdata/1A2K.dockq
+
+coverage combine
