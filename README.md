@@ -158,9 +158,9 @@ Interfaces involving nucleic acids are seamlessly scored along with protein inte
 Run DockQ with `-h/--help` to see a list of the available flags:
 
 ```
-bash$ DockQ -h
-
-usage: DockQ [-h] [--capri_peptide] [--short] [--verbose] [--no_align] [--n_cpu n_cpu] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES] [--mapping MODELCHAINS:NATIVECHAINS]
+usage: DockQ [-h] [--capri_peptide] [--small_molecule] [--short] [--verbose] [--no_align] [--n_cpu CPU]
+             [--max_chunk CHUNK] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES]
+             [--mapping MODELCHAINS:NATIVECHAINS]
              <model> <native>
 
 DockQ - Quality measure for protein-protein docking models
@@ -172,17 +172,23 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --capri_peptide       use version for capri_peptide (DockQ cannot not be trusted for this setting)
+  --small_molecule      If the docking pose of a small molecule should be evaluated
   --short               Short output
   --verbose, -v         Verbose output
-  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues instead
-  --n_cpu n_cpu         Number of cores to use
+  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues
+                        instead
+  --n_cpu CPU           Number of cores to use
+  --max_chunk CHUNK     Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)
   --optDockQF1          Optimize on DockQ_F1 instead of DockQ
   --allowed_mismatches ALLOWED_MISMATCHES
                         Number of allowed mismatches when mapping model sequence to native sequence.
   --mapping MODELCHAINS:NATIVECHAINS
-                        Specify a chain mapping between model and native structure. If the native contains two chains "H" and "L" while the model contains two chains "A" and "B",
-                        and chain A is a model of native chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'. This can also help limit the
-                        search to specific native interfaces. For example, if the native is a tetramer (ABCD) but the user is only interested in the interface between chains B and
+                        Specify a chain mapping between model and native structure. If the native contains two chains
+                        "H" and "L" while the model contains two chains "A" and "B", and chain A is a model of native
+                        chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'.
+                        This can also help limit the search to specific native interfaces. For example, if the native
+                        is a tetramer (ABCD) but the user is only interested in the interface between chains B and C,
+                        the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
                         C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
 ```
 
