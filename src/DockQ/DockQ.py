@@ -221,7 +221,7 @@ def calc_sym_corrected_lrmsd(
     
     min_Lrms = float("inf")
     best_mapping = None
-    print(sample_graph, ref_graph)
+
     for isomorphism in nx.vf2pp_all_isomorphisms(sample_graph, ref_graph):
         model_i = list(isomorphism.keys())
         native_i = list(isomorphism.values())
@@ -232,9 +232,8 @@ def calc_sym_corrected_lrmsd(
         if Lrms < min_Lrms:
             best_mapping = isomorphism
             min_Lrms = Lrms
-
     dockq_f1 = dockq = dockq_formula(0, 0, min_Lrms)
-    info = {"DockQ_F1": dockq_f1, "DockQ": dockq, "Lrms": min_Lrms, "mapping": best_mapping, "is_het": True}
+    info = {"DockQ_F1": dockq_f1, "DockQ": dockq, "Lrms": min_Lrms, "mapping": best_mapping, "is_het": sample_ligand.is_het}
     return info
 
 
@@ -952,7 +951,7 @@ def main():
 
 
 def print_results(info, short=False, verbose=False, capri_peptide=False, small_molecule=False):
-    
+
     score = "DockQ-small_molecules" if small_molecule else "DockQ-capri_peptide" if capri_peptide else "DockQ"
     if short:
         print(
@@ -960,9 +959,10 @@ def print_results(info, short=False, verbose=False, capri_peptide=False, small_m
         )
         for chains, results in info["best_result"].items():
             reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
+            hetname = f" ({results['is_het']})" if results["is_het"] else ""
             score_str=" ".join([f"{item} {results[item]:.3f}" for item in reported_measures])
             print(
-                f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
+                f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]}{hetname} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
     else:
         print_header(verbose, capri_peptide)
@@ -973,7 +973,8 @@ def print_results(info, short=False, verbose=False, capri_peptide=False, small_m
         )
         for chains, results in info["best_result"].items():
             reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
-            print(f"Native chains: {chains[0]}, {chains[1]}")
+            hetname = f" ({results['is_het']})" if results["is_het"] else ""
+            print(f"Native chains: {chains[0]}, {chains[1]}{hetname}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
             print("\n".join([f"\t{item}: {results[item]:.3f}" for item in reported_measures]))
 
