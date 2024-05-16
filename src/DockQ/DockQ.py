@@ -170,7 +170,6 @@ def calc_sym_corrected_lrmsd(
     sample_chains,
     ref_chains,
     alignments,
-    low_memory=False,
 ):
     import networkx as nx
     is_het_sample_0 = bool(sample_chains[0].is_het)
@@ -592,7 +591,6 @@ def run_on_chains(
             model_chains,
             native_chains,
             alignments=tuple(alignments),
-            low_memory=low_memory,
         )
     return info
 
@@ -981,38 +979,23 @@ def print_results(info, short=False, verbose=False, capri_peptide=False, small_m
 
 def print_header(verbose=False, capri_peptide=False, small_molecule=False):
     reference = (
-        "*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *\n"
-        "*   protein-protein docking models                             *\n"
-        "*                            doi:10.1371/journal.pone.0161879  *\n"
+        "*   Ref: Mirabello and Wallner, 'DockQ v2: Improved automatic  *\n"
+        "*   quality measure for protein multimers, nucleic acids       *\n"
+        "*   and small molecules'                                       *\n"
+        "*                                                              *\n"
         "*   For comments, please email: bjorn.wallner@.liu.se          *"
     )
-    if not capri_peptide:
-        header = (
-            "****************************************************************\n"
-            "*                       DockQ                                  *\n"
-            "*   Scoring function for protein-protein docking models        *\n"
-            "*   Statistics on CAPRI data:                                  *\n"
-            "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n"
-            "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n"
-            "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n"
-            "*            DockQ >= 0.80 - High quality                      *"
-        )
-    elif not small_molecule:
-        header = (
-            "****************************************************************\n"
-            "*                DockQ-CAPRI peptide                           *\n"
-            "*   Do not trust any thing you read....                        *\n"
-            "*   OBS THE DEFINITION OF Fnat and iRMS are different for      *\n"
-            "*   peptides in CAPRI                                          *\n"
-            "*                                                              *"
-        )
-    else:
-        header = (
-            "****************************************************************\n"
-            "*                DockQ-small molecules                         *\n"
-            "*   LRMSD is reported for small molecule ligands               *\n"
-            "*   DockQ is reported for macromolecules                       *"
-        )
+
+    header = (
+        "****************************************************************\n"
+        "*                       DockQ                                  *\n"
+        "*   Scoring function for biomolecular models                   *\n"
+        "*   DockQ score legend (proteins and nucleic acids only):      *\n"
+        "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n"
+        "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n"
+        "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n"
+        "*            DockQ >= 0.80 - High quality                      *"
+    )
 
     if verbose:
         notice = (
