@@ -218,7 +218,7 @@ def calc_sym_corrected_lrmsd(
 
     sample_graph = create_graph(sample_ligand_atoms, sample_ligand_atoms_ele)
     ref_graph = create_graph(ref_ligand_atoms, ref_ligand_atoms_ele)
-
+    
     min_Lrms = float("inf")
     best_mapping = None
     print(sample_graph, ref_graph)
@@ -607,7 +607,7 @@ def create_graph(atom_list, atom_ids):
         for j, atom_j in enumerate(atom_list):
             cr_j = covalent_radius[atom_ids[j]]
             distance = np.linalg.norm(atom_i - atom_j)
-            threshold = (cr_i + cr_j + bond_tolerance) if i != j else 0.0
+            threshold = (cr_i + cr_j + bond_tolerance) if i != j else 1
             #print(atom_ids[i], atom_ids[j], threshold)
             if distance < threshold:  # Adjust threshold as needed
                 G.add_edge(i, j)
