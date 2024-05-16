@@ -1,7 +1,7 @@
 ![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
 
 # DockQ
-**A Quality Measure for Protein-Protein Docking Models**
+**A Quality Measure for Protein, Nucleic Acids and Small Molecule Docking Models**
 
 ## Installation
 
