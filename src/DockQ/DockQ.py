@@ -58,7 +58,7 @@ def parse_args():
     )
     parser.add_argument(
         "--no_align",
-        #default=False,
+        # default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
@@ -172,6 +172,7 @@ def calc_sym_corrected_lrmsd(
     alignments,
 ):
     import networkx as nx
+
     is_het_sample_0 = bool(sample_chains[0].is_het)
     is_het_sample_1 = bool(sample_chains[1].is_het)
 
@@ -188,14 +189,18 @@ def calc_sym_corrected_lrmsd(
         ref_receptor = ref_chains[0]
         receptor_alignment = alignments[0]
     else:
-        return # both ligands, no lrmsd
+        return  # both ligands, no lrmsd
 
     aligned_sample_receptor, aligned_ref_receptor = get_aligned_residues(
         sample_receptor, ref_receptor, receptor_alignment
     )
 
     ref_receptor_atoms, sample_receptor_atoms = np.asarray(
-        get_atoms_per_residue((aligned_ref_receptor, aligned_sample_receptor), what="receptor", atom_types=BACKBONE_ATOMS)
+        get_atoms_per_residue(
+            (aligned_ref_receptor, aligned_sample_receptor),
+            what="receptor",
+            atom_types=BACKBONE_ATOMS,
+        )
     )
 
     sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms()]
@@ -204,20 +209,32 @@ def calc_sym_corrected_lrmsd(
     ref_ligand_atoms_ids = [atom.id for atom in ref_ligand.get_atoms()]
     ref_ligand_atoms_ele = [atom.element for atom in ref_ligand.get_atoms()]
 
-    sample_ligand_atoms = np.array([atom.coord for atom in sample_ligand.get_atoms() if atom.id in ref_ligand_atoms_ids])
-    ref_ligand_atoms = np.array([atom.coord for atom in ref_ligand.get_atoms() if atom.id in sample_ligand_atoms_ids])
+    sample_ligand_atoms = np.array(
+        [
+            atom.coord
+            for atom in sample_ligand.get_atoms()
+            if atom.id in ref_ligand_atoms_ids
+        ]
+    )
+    ref_ligand_atoms = np.array(
+        [
+            atom.coord
+            for atom in ref_ligand.get_atoms()
+            if atom.id in sample_ligand_atoms_ids
+        ]
+    )
 
     # Set to align on receptor
     super_imposer = SVDSuperimposer()
     super_imposer.set(ref_receptor_atoms, sample_receptor_atoms)
     super_imposer.run()
     rot, tran = super_imposer.get_rotran()
-    
+
     sample_rotated_ligand_atoms = np.dot(sample_ligand_atoms, rot) + tran
 
     sample_graph = create_graph(sample_ligand_atoms, sample_ligand_atoms_ele)
     ref_graph = create_graph(ref_ligand_atoms, ref_ligand_atoms_ele)
-    
+
     min_Lrms = float("inf")
     best_mapping = None
 
@@ -232,7 +249,13 @@ def calc_sym_corrected_lrmsd(
             best_mapping = isomorphism
             min_Lrms = Lrms
     dockq_f1 = dockq = dockq_formula(0, 0, min_Lrms)
-    info = {"DockQ_F1": dockq_f1, "DockQ": dockq, "Lrms": min_Lrms, "mapping": best_mapping, "is_het": sample_ligand.is_het}
+    info = {
+        "DockQ_F1": dockq_f1,
+        "DockQ": dockq,
+        "Lrms": min_Lrms,
+        "mapping": best_mapping,
+        "is_het": sample_ligand.is_het,
+    }
     return info
 
 
@@ -328,7 +351,9 @@ def calc_DockQ(
     )
 
     receptor_atoms_native, receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains, what="receptor", atom_types=BACKBONE_ATOMS)
+        get_atoms_per_residue(
+            receptor_chains, what="receptor", atom_types=BACKBONE_ATOMS
+        )
     )
     ligand_atoms_native, ligand_atoms_sample = np.asarray(
         get_atoms_per_residue(ligand_chains, what="ligand", atom_types=BACKBONE_ATOMS)
@@ -345,14 +370,12 @@ def calc_DockQ(
     )  # using the private _rms function which does not superimpose
 
     info = {}
-    F1=f1(nat_correct, nonnat_count, nat_total)
-    info["DockQ_F1"] = dockq_formula(
-       F1, irms, Lrms
-    )
+    F1 = f1(nat_correct, nonnat_count, nat_total)
+    info["DockQ_F1"] = dockq_formula(F1, irms, Lrms)
     info["DockQ"] = dockq_formula(fnat, irms, Lrms)
     if low_memory:
         return info
-    
+
     info["F1"] = F1
     info["irms"] = irms
     info["Lrms"] = Lrms
@@ -579,6 +602,7 @@ def run_on_chains(
 
 def create_graph(atom_list, atom_ids):
     import networkx as nx
+
     G = nx.Graph()
 
     for i, atom_i in enumerate(atom_list):
@@ -615,9 +639,9 @@ def run_on_all_native_interfaces(
                 for chain in [chain_map[chain_pair[0]], chain_map[chain_pair[1]]]
             ]
         )
-        
+
         small_molecule = native_chains[0].is_het or native_chains[1].is_het
-        
+
         if len(set(model_chains)) < 2:
             continue
         if chain_pair[0] in chain_map and chain_pair[1] in chain_map:
@@ -694,7 +718,9 @@ def group_chains(
 
         if het_qc is None and het_rc is None:
             aln = align_chains(
-                qc, rc, use_numbering=False,
+                qc,
+                rc,
+                use_numbering=False,
             )
             alignment = format_alignment(aln)
             n_mismatches = alignment["matches"].count(".")
@@ -732,7 +758,7 @@ def format_mapping(mapping_str, small_molecule=None):
     if not native_mapping:
         print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
-    else:            
+    else:
         # :ABC or *:ABC only use those natives chains, permute model chains
         if not model_mapping or model_mapping == "*":
             native_chains = [chain for chain in native_mapping]
@@ -781,8 +807,11 @@ def product_without_dupl(*args, repeat=1):
 def count_chain_combinations(chain_clusters):
     clusters = [tuple(li) for li in chain_clusters.values()]
     number_of_combinations = np.prod(
-            [int(math.factorial(len(a))/math.factorial(len(a)-b)) for a,b in Counter(clusters).items()]
-    ) 
+        [
+            int(math.factorial(len(a)) / math.factorial(len(a) - b))
+            for a, b in Counter(clusters).items()
+        ]
+    )
     return number_of_combinations
 
 
@@ -827,15 +856,21 @@ def get_chain_map_from_dockq(result):
 def main():
     args = parse_args()
 
-    initial_mapping, model_chains, native_chains = format_mapping(args.mapping, args.small_molecule)
-    model_structure = load_PDB(args.model, chains=model_chains, small_molecule=args.small_molecule)
-    native_structure = load_PDB(args.native, chains=native_chains, small_molecule=args.small_molecule)
+    initial_mapping, model_chains, native_chains = format_mapping(
+        args.mapping, args.small_molecule
+    )
+    model_structure = load_PDB(
+        args.model, chains=model_chains, small_molecule=args.small_molecule
+    )
+    native_structure = load_PDB(
+        args.native, chains=native_chains, small_molecule=args.small_molecule
+    )
     # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
     )
-    
+
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
         sys.exit()
@@ -867,8 +902,7 @@ def main():
         native_chains_to_combo,
     )
 
-    num_chain_combinations = count_chain_combinations(
-        chain_clusters)
+    num_chain_combinations = count_chain_combinations(chain_clusters)
     # copy iterator to use later
     chain_maps, chain_maps_ = itertools.tee(chain_maps)
 
@@ -926,20 +960,45 @@ def main():
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
     info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
-    print_results(info, args.short, args.verbose, args.capri_peptide, args.small_molecule)
+    print_results(
+        info, args.short, args.verbose, args.capri_peptide, args.small_molecule
+    )
 
 
-def print_results(info, short=False, verbose=False, capri_peptide=False, small_molecule=False):
+def print_results(
+    info, short=False, verbose=False, capri_peptide=False, small_molecule=False
+):
 
-    score = "DockQ-small_molecules" if small_molecule else "DockQ-capri_peptide" if capri_peptide else "DockQ"
+    score = (
+        "DockQ-small_molecules"
+        if small_molecule
+        else "DockQ-capri_peptide"
+        if capri_peptide
+        else "DockQ"
+    )
     if short:
         print(
             f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
-            reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
+            reported_measures = (
+                [
+                    "DockQ",
+                    "irms",
+                    "Lrms",
+                    "fnat",
+                    "fnonnat",
+                    "clashes",
+                    "F1",
+                    "DockQ_F1",
+                ]
+                if not results["is_het"]
+                else ["Lrms"]
+            )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
-            score_str=" ".join([f"{item} {results[item]:.3f}" for item in reported_measures])
+            score_str = " ".join(
+                [f"{item} {results[item]:.3f}" for item in reported_measures]
+            )
             print(
                 f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]}{hetname} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
@@ -951,11 +1010,28 @@ def print_results(info, short=False, verbose=False, capri_peptide=False, small_m
             f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
-            reported_measures = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"] if not results["is_het"] else ["Lrms"]
+            reported_measures = (
+                [
+                    "DockQ",
+                    "irms",
+                    "Lrms",
+                    "fnat",
+                    "fnonnat",
+                    "clashes",
+                    "F1",
+                    "DockQ_F1",
+                ]
+                if not results["is_het"]
+                else ["Lrms"]
+            )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             print(f"Native chains: {chains[0]}, {chains[1]}{hetname}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
-            print("\n".join([f"\t{item}: {results[item]:.3f}" for item in reported_measures]))
+            print(
+                "\n".join(
+                    [f"\t{item}: {results[item]:.3f}" for item in reported_measures]
+                )
+            )
 
 
 def print_header(verbose=False, capri_peptide=False, small_molecule=False):

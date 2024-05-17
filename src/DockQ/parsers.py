@@ -9,8 +9,17 @@ from Bio.SeqUtils import seq1
 
 custom_map = {"MSE": "M", "CME": "C"}
 
+
 class MMCIFParser(Bio.PDB.MMCIFParser):
-    def get_structure(self, structure_id, filename, chains=[], parse_hetatms=False, auth_chains=True, model_number=0):
+    def get_structure(
+        self,
+        structure_id,
+        filename,
+        chains=[],
+        parse_hetatms=False,
+        auth_chains=True,
+        model_number=0,
+    ):
         """Return the structure.
 
         Arguments:
@@ -24,7 +33,9 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             if self.QUIET:
                 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
             self._mmcif_dict = MMCIF2Dict(filename)
-            sequences, is_het = self._build_structure(structure_id, chains, parse_hetatms=parse_hetatms)
+            sequences, is_het = self._build_structure(
+                structure_id, chains, parse_hetatms=parse_hetatms
+            )
             self._structure_builder.set_header(self._get_header())
 
         structure = self._structure_builder.get_structure()
@@ -33,7 +44,6 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             chain.sequence = sequences[chain.id]
             chain.is_het = is_het[chain.id]
         return model
-
 
     def _build_structure(self, structure_id, chains, parse_hetatms):
         # two special chars as placeholders in the mmCIF format
@@ -195,7 +205,13 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 current_residue_id = resseq
                 current_resname = resname
                 if hetatm_flag == " ":
-                    resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else current_resname[:-1] if (len(current_resname) == 2) else current_resname
+                    resname1 = (
+                        seq1(current_resname, custom_map=custom_map)
+                        if len(current_resname) == 3
+                        else current_resname[:-1]
+                        if (len(current_resname) == 2)
+                        else current_resname
+                    )
                     sequences[current_chain_id] += resname1
                 else:
                     sequences[current_chain_id] = resname
@@ -227,7 +243,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 anisou_array = np.array(mapped_anisou, "f")
                 structure_builder.set_anisou(anisou_array)
         # Now try to set the cell
-        
+
         try:
             a = float(mmcif_dict["_cell.length_a"][0])
             b = float(mmcif_dict["_cell.length_b"][0])
@@ -268,7 +284,9 @@ class PDBParser(Bio.PDB.PDBParser):
                 lines = handle.readlines()
                 if not lines:
                     raise ValueError("Empty file.")
-                sequences, is_het = self._parse(lines, chains, parse_hetatms=parse_hetatms)
+                sequences, is_het = self._parse(
+                    lines, chains, parse_hetatms=parse_hetatms
+                )
 
             self.structure_builder.set_header(self.header)
             # Return the Structure instance
@@ -285,7 +303,9 @@ class PDBParser(Bio.PDB.PDBParser):
         # Extract the header; return the rest of the file
         self.header, coords_trailer = self._get_header(header_coords_trailer)
         # Parse the atomic data; return the PDB file trailer
-        self.trailer, sequences, is_het = self._parse_coordinates(coords_trailer, chains, parse_hetatms)
+        self.trailer, sequences, is_het = self._parse_coordinates(
+            coords_trailer, chains, parse_hetatms
+        )
         return sequences, is_het
 
     def _parse_coordinates(self, coords_trailer, chains=[], parse_hetatms=False):
@@ -408,7 +428,13 @@ class PDBParser(Bio.PDB.PDBParser):
                             resname, hetatm_flag, resseq, icode
                         )
                         if hetatm_flag == " ":
-                            resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else current_resname[:-1] if (len(current_resname) == 2) else current_resname
+                            resname1 = (
+                                seq1(current_resname, custom_map=custom_map)
+                                if len(current_resname) == 3
+                                else current_resname[:-1]
+                                if (len(current_resname) == 2)
+                                else current_resname
+                            )
                             sequences[current_chain_id] = resname1
                     except PDBConstructionException as message:
                         self._handle_PDB_exception(message, global_line_counter)
@@ -420,7 +446,13 @@ class PDBParser(Bio.PDB.PDBParser):
                             resname, hetatm_flag, resseq, icode
                         )
                         if hetatm_flag == " ":
-                            resname1 = seq1(current_resname, custom_map=custom_map) if len(current_resname) == 3 else r[:-1] if (len(current_resname) == 2) else r
+                            resname1 = (
+                                seq1(current_resname, custom_map=custom_map)
+                                if len(current_resname) == 3
+                                else r[:-1]
+                                if (len(current_resname) == 2)
+                                else r
+                            )
                             sequences[current_chain_id] += resname1
                         else:
                             sequences[current_chain_id] = current_resname
