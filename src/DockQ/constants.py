@@ -7,6 +7,9 @@ INTERFACE_THRESHOLD_PEPTIDE: float = 8.0
 CLASH_THRESHOLD: float = 2.0
 BOND_TOLERANCE: float = 0.4
 
+# Taken from "Beatriz Cordero, Verónica Gómez, Ana E. Platero-Prats, Marc Revés,
+# Jorge Echeverría, Eduard Cremades, Flavia Barragán and Santiago Alvarez (2008).
+# "Covalent radii revisited". Dalton Trans. (21): 2832–2838
 COVALENT_RADIUS: Dict = {
     "H": 0.31,
     "HE": 0.28,

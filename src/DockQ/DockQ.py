@@ -269,7 +269,9 @@ def calc_DockQ(
 ):
 
     fnat_threshold = FNAT_THRESHOLD if not capri_peptide else FNAT_THRESHOLD_PEPTIDE
-    interface_threshold = INTERFACE_THRESHOLD if not capri_peptide else INTERFACE_THRESHOLD_PEPTIDE
+    interface_threshold = (
+        INTERFACE_THRESHOLD if not capri_peptide else INTERFACE_THRESHOLD_PEPTIDE
+    )
 
     # total number of native contacts is calculated on untouched native structure
     ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1], "ref")
