@@ -235,24 +235,24 @@ def calc_sym_corrected_lrmsd(
     sample_graph = create_graph(sample_ligand_atoms, sample_ligand_atoms_ele)
     ref_graph = create_graph(ref_ligand_atoms, ref_ligand_atoms_ele)
 
-    min_Lrms = float("inf")
+    min_lrms = float("inf")
     best_mapping = None
 
     for isomorphism in nx.vf2pp_all_isomorphisms(sample_graph, ref_graph):
         model_i = list(isomorphism.keys())
         native_i = list(isomorphism.values())
 
-        Lrms = super_imposer._rms(
+        lrms = super_imposer._rms(
             sample_rotated_ligand_atoms[model_i], ref_ligand_atoms[native_i]
         )
-        if Lrms < min_Lrms:
+        if lrms < min_lrms:
             best_mapping = isomorphism
-            min_Lrms = Lrms
-    dockq_f1 = dockq = dockq_formula(0, 0, min_Lrms)
+            min_lrms = lrms
+    dockq_f1 = dockq = dockq_formula(0, 0, min_lrms)
     info = {
         "DockQ_F1": dockq_f1,
         "DockQ": dockq,
-        "Lrms": min_Lrms,
+        "Lrms": min_lrms,
         "mapping": best_mapping,
         "is_het": sample_ligand.is_het,
     }
@@ -365,20 +365,20 @@ def calc_DockQ(
     rot, tran = super_imposer.get_rotran()
     rotated_sample_atoms = np.dot(ligand_atoms_sample, rot) + tran
 
-    Lrms = super_imposer._rms(
+    lrms = super_imposer._rms(
         ligand_atoms_native, rotated_sample_atoms
     )  # using the private _rms function which does not superimpose
 
     info = {}
     F1 = f1(nat_correct, nonnat_count, nat_total)
-    info["DockQ_F1"] = dockq_formula(F1, irms, Lrms)
-    info["DockQ"] = dockq_formula(fnat, irms, Lrms)
+    info["DockQ_F1"] = dockq_formula(F1, irms, lrms)
+    info["DockQ"] = dockq_formula(fnat, irms, lrms)
     if low_memory:
         return info
 
     info["F1"] = F1
     info["irms"] = irms
-    info["Lrms"] = Lrms
+    info["Lrms"] = lrms
     info["fnat"] = fnat
     info["nat_correct"] = nat_correct
     info["nat_total"] = nat_total
@@ -402,11 +402,11 @@ def f1(tp, fp, p):
     return 2 * tp / (tp + fp + p)
 
 
-def dockq_formula(fnat, irms, Lrms):
+def dockq_formula(fnat, irms, lrms):
     return (
         float(fnat)
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
-        + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
+        + 1 / (1 + (lrms / 8.5) * (lrms / 8.5))
     ) / 3
 
 
@@ -725,7 +725,7 @@ def group_chains(
             alignment = format_alignment(aln)
             n_mismatches = alignment["matches"].count(".")
 
-            if n_mismatches > 0 and n_mismatches < 10:
+            if 0 < n_mismatches < 10:
                 mismatch_dict[(query_chain, ref_chain)] = n_mismatches
 
             if n_mismatches <= allowed_mismatches:
@@ -841,7 +841,7 @@ def get_all_chain_maps(
                     for i, native_chain in enumerate(native_chains_to_combo)
                 }
             )
-        yield (chain_map)
+        yield chain_map
 
 
 def get_chain_map_from_dockq(result):
@@ -1034,7 +1034,7 @@ def print_results(
             )
 
 
-def print_header(verbose=False, capri_peptide=False, small_molecule=False):
+def print_header(verbose=False, capri_peptide=False):
     reference = (
         "*   Ref: Mirabello and Wallner, 'DockQ v2: Improved automatic  *\n"
         "*   quality measure for protein multimers, nucleic acids       *\n"
