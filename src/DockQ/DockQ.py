@@ -268,9 +268,9 @@ def calc_DockQ(
     low_memory=False,
 ):
 
-    fnat_threshold = 4.0 if capri_peptide else 5.0
-    interface_threshold = 8.0 if capri_peptide else 10.0
-    clash_threshold = 2.0
+    fnat_threshold = FNAT_THRESHOLD if not capri_peptide else FNAT_THRESHOLD_PEPTIDE
+    interface_threshold = INTERFACE_THRESHOLD if not capri_peptide else INTERFACE_THRESHOLD_PEPTIDE
+
     # total number of native contacts is calculated on untouched native structure
     ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1], "ref")
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold ** 2)[
@@ -387,7 +387,7 @@ def calc_DockQ(
     info["nonnat_count"] = nonnat_count
     info["model_total"] = model_total
     info["clashes"] = np.nonzero(
-        np.asarray(sample_res_distances) < clash_threshold ** 2
+        np.asarray(sample_res_distances) < CLASH_THRESHOLD ** 2
     )[0].shape[0]
     info["len1"] = ref_group1_size
     info["len2"] = ref_group2_size

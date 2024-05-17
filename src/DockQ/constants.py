@@ -1,5 +1,10 @@
 from typing import Dict
 
+FNAT_THRESHOLD: float = 5.0
+FNAT_THRESHOLD_PEPTIDE: float = 4.0
+INTERFACE_THRESHOLD: float = 10.0
+INTERFACE_THRESHOLD_PEPTIDE: float = 8.0
+CLASH_THRESHOLD: float = 2.0
 BOND_TOLERANCE: float = 0.4
 
 COVALENT_RADIUS: Dict = {
