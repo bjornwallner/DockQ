@@ -989,8 +989,8 @@ def print_header(verbose=False, capri_peptide=False, small_molecule=False):
     header = (
         "****************************************************************\n"
         "*                       DockQ                                  *\n"
-        "*   Scoring function for biomolecular models                   *\n"
-        "*   DockQ score legend (proteins and nucleic acids only):      *\n"
+        "*   Docking scoring for biomolecular models                    *\n"
+        "*   DockQ score legend:                                        *\n"
         "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n"
         "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n"
         "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n"
