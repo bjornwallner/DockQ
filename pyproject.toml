@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dockq"
-version = "2.0"
+version = "2.1"
 authors = [
   { name="Claudio Mirabello", email="claudio.mirabello@scilifelab.se" },
   { name="Bjorn Wallner", email="bjorn.wallner@liu.se" },
 ]
-description = "A Quality Measure for Protein-Protein Docking Models"
+description = "A Quality Measure for Protein, Nucleic Acids and Small Ligand Docking Models"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["tqdm", "biopython >= 1.79", "networkx"]
+dependencies = ["biopython >= 1.79", "networkx", "parallelbar"]
 
 [project.urls]
 Homepage = "https://github.com/bjornwallner/DockQ"
