@@ -2,13 +2,24 @@ import warnings
 import numpy as np
 import Bio
 from Bio.PDB.MMCIF2Dict import MMCIF2Dict
-from Bio.PDB.StructureBuilder import StructureBuilder
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
+from Bio.PDB.PDBExceptions import PDBConstructionException
 from Bio.PDB.PDBParser import as_handle
+from Bio.SeqUtils import seq1
+
+custom_map = {"MSE": "M", "CME": "C"}
 
 
 class MMCIFParser(Bio.PDB.MMCIFParser):
-    def get_structure(self, structure_id, filename, chains=[]):
+    def get_structure(
+        self,
+        structure_id,
+        filename,
+        chains=[],
+        parse_hetatms=False,
+        auth_chains=True,
+        model_number=0,
+    ):
         """Return the structure.
 
         Arguments:
@@ -16,25 +27,33 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
          - filename - name of mmCIF file, OR an open text mode file handle
 
         """
-        self.auth_chains = True
+        self.auth_chains = auth_chains
         self.auth_residues = True
         with warnings.catch_warnings():
             if self.QUIET:
                 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
             self._mmcif_dict = MMCIF2Dict(filename)
-            self._build_structure(structure_id, chains)
+            sequences, is_het = self._build_structure(
+                structure_id, chains, parse_hetatms=parse_hetatms
+            )
             self._structure_builder.set_header(self._get_header())
 
-        return self._structure_builder.get_structure()
+        structure = self._structure_builder.get_structure()
+        model = structure[model_number]
+        for chain in model:
+            chain.sequence = sequences[chain.id]
+            chain.is_het = is_het[chain.id]
+        return model
 
-    def _build_structure(self, structure_id, chains):
+    def _build_structure(self, structure_id, chains, parse_hetatms):
         # two special chars as placeholders in the mmCIF format
         # for item values that cannot be explicitly assigned
         # see: pdbx/mmcif syntax web page
         _unassigned = {".", "?"}
 
         mmcif_dict = self._mmcif_dict
-
+        sequences = {}
+        is_het = {}
         atom_serial_list = mmcif_dict["_atom_site.id"]
         atom_id_list = mmcif_dict["_atom_site.label_atom_id"]
         residue_id_list = mmcif_dict["_atom_site.label_comp_id"]
@@ -99,7 +118,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             if chains and chainid not in chains:
                 continue
             fieldname = fieldname_list[i]
-            if fieldname == "HETATM":
+            if fieldname == "HETATM" and not parse_hetatms:
                 continue
             element = element_list[i].upper() if element_list else None
             if element == "H":
@@ -123,7 +142,6 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             y = y_list[i]
             z = z_list[i]
             resname = residue_id_list[i]
-
             altloc = alt_list[i]
             if altloc in _unassigned:
                 altloc = " "
@@ -154,7 +172,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 occupancy = float(occupancy_list[i])
             except ValueError:
                 raise PDBConstructionException("Invalid or missing occupancy") from None
-            hetatm_flag = " "
+            hetatm_flag = " " if fieldname != "HETATM" else "H"
 
             resseq = (hetatm_flag, int_resseq, icode)
 
@@ -175,6 +193,10 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
 
             if current_chain_id != chainid:
                 current_chain_id = chainid
+                if current_chain_id not in sequences:
+                    sequences[current_chain_id] = ""
+                if current_chain_id not in is_het:
+                    is_het[current_chain_id] = None
                 structure_builder.init_chain(current_chain_id)
                 current_residue_id = None
                 current_resname = None
@@ -182,6 +204,18 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             if current_residue_id != resseq or current_resname != resname:
                 current_residue_id = resseq
                 current_resname = resname
+                if hetatm_flag == " ":
+                    resname1 = (
+                        seq1(current_resname, custom_map=custom_map)
+                        if len(current_resname) == 3
+                        else current_resname[:-1]
+                        if (len(current_resname) == 2)
+                        else current_resname
+                    )
+                    sequences[current_chain_id] += resname1
+                else:
+                    sequences[current_chain_id] = resname
+                    is_het[current_chain_id] = resname
                 structure_builder.init_residue(resname, hetatm_flag, int_resseq, icode)
 
             coord = np.array((x, y, z), "f")
@@ -209,6 +243,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                 anisou_array = np.array(mapped_anisou, "f")
                 structure_builder.set_anisou(anisou_array)
         # Now try to set the cell
+
         try:
             a = float(mmcif_dict["_cell.length_a"][0])
             b = float(mmcif_dict["_cell.length_b"][0])
@@ -224,10 +259,11 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
             structure_builder.set_symmetry(spacegroup, cell)
         except Exception:
             pass  # no cell found, so just ignore
+        return sequences, is_het
 
 
 class PDBParser(Bio.PDB.PDBParser):
-    def get_structure(self, id, file, chains):
+    def get_structure(self, id, file, chains, parse_hetatms, model_number=0):
         """Return the structure.
 
         Arguments:
@@ -248,22 +284,31 @@ class PDBParser(Bio.PDB.PDBParser):
                 lines = handle.readlines()
                 if not lines:
                     raise ValueError("Empty file.")
-                self._parse(lines, chains)
+                sequences, is_het = self._parse(
+                    lines, chains, parse_hetatms=parse_hetatms
+                )
 
             self.structure_builder.set_header(self.header)
             # Return the Structure instance
             structure = self.structure_builder.get_structure()
+            model = structure[model_number]
 
-        return structure
+            for chain in model:
+                chain.sequence = sequences[chain.id]
+                chain.is_het = is_het[chain.id]
+        return model
 
-    def _parse(self, header_coords_trailer, chains):
+    def _parse(self, header_coords_trailer, chains, parse_hetatms):
         """Parse the PDB file (PRIVATE)."""
         # Extract the header; return the rest of the file
         self.header, coords_trailer = self._get_header(header_coords_trailer)
         # Parse the atomic data; return the PDB file trailer
-        self.trailer = self._parse_coordinates(coords_trailer, chains)
+        self.trailer, sequences, is_het = self._parse_coordinates(
+            coords_trailer, chains, parse_hetatms
+        )
+        return sequences, is_het
 
-    def _parse_coordinates(self, coords_trailer, chains=[]):
+    def _parse_coordinates(self, coords_trailer, chains=[], parse_hetatms=False):
         """Parse the atomic data in the PDB file (PRIVATE)."""
         allowed_records = {
             "ATOM  ",
@@ -272,6 +317,8 @@ class PDBParser(Bio.PDB.PDBParser):
             "ENDMDL",
             "TER   ",
         }
+        sequences = {}
+        is_het = {}
         local_line_counter = 0
         structure_builder = self.structure_builder
         current_model_id = 0
@@ -289,9 +336,9 @@ class PDBParser(Bio.PDB.PDBParser):
             structure_builder.set_line_counter(global_line_counter)
             if not line.strip():
                 continue  # skip empty lines
-            elif record_type == "HETATM":
+            elif record_type == "HETATM" and not parse_hetatms:
                 continue
-            elif record_type == "ATOM  ":
+            elif record_type == "ATOM  " or record_type == "HETATM":
                 # Initialize the Model - there was no explicit MODEL record
                 if not model_open:
                     structure_builder.init_model(current_model_id)
@@ -315,14 +362,18 @@ class PDBParser(Bio.PDB.PDBParser):
                     name = split_list[0]
                 altloc = line[16]
                 resname = line[17:20].strip()
+                hetatm_flag = " "
+                if record_type == "HETATM":  # hetero atom flag
+                    # if a small molecule and the name matches what we're looking for
+                    hetatm_flag = "H"
+
                 try:
                     serial_number = int(line[6:11])
                 except Exception:
                     serial_number = 0
                 resseq = int(line[22:26].split()[0])  # sequence identifier
                 icode = line[26]  # insertion code
-                hetero_flag = " "
-                residue_id = (hetero_flag, resseq, icode)
+                residue_id = (hetatm_flag, resseq, icode)
                 # atomic coordinates
                 try:
                     x = float(line[30:38])
@@ -370,10 +421,21 @@ class PDBParser(Bio.PDB.PDBParser):
                     structure_builder.init_chain(current_chain_id)
                     current_residue_id = residue_id
                     current_resname = resname
+                    if current_chain_id not in is_het:
+                        is_het[current_chain_id] = None
                     try:
                         structure_builder.init_residue(
-                            resname, hetero_flag, resseq, icode
+                            resname, hetatm_flag, resseq, icode
                         )
+                        if hetatm_flag == " ":
+                            resname1 = (
+                                seq1(current_resname, custom_map=custom_map)
+                                if len(current_resname) == 3
+                                else current_resname[:-1]
+                                if (len(current_resname) == 2)
+                                else current_resname
+                            )
+                            sequences[current_chain_id] = resname1
                     except PDBConstructionException as message:
                         self._handle_PDB_exception(message, global_line_counter)
                 elif current_residue_id != residue_id or current_resname != resname:
@@ -381,8 +443,20 @@ class PDBParser(Bio.PDB.PDBParser):
                     current_resname = resname
                     try:
                         structure_builder.init_residue(
-                            resname, hetero_flag, resseq, icode
+                            resname, hetatm_flag, resseq, icode
                         )
+                        if hetatm_flag == " ":
+                            resname1 = (
+                                seq1(current_resname, custom_map=custom_map)
+                                if len(current_resname) == 3
+                                else r[:-1]
+                                if (len(current_resname) == 2)
+                                else r
+                            )
+                            sequences[current_chain_id] += resname1
+                        else:
+                            sequences[current_chain_id] = current_resname
+                            is_het[current_chain_id] = current_resname
                     except PDBConstructionException as message:
                         self._handle_PDB_exception(message, global_line_counter)
 
@@ -418,7 +492,7 @@ class PDBParser(Bio.PDB.PDBParser):
             elif record_type == "END   " or record_type == "CONECT":
                 # End of atomic data, return the trailer
                 self.line_counter += local_line_counter
-                return coords_trailer[local_line_counter:]
+                return coords_trailer[local_line_counter:], sequences, is_het
             elif record_type == "ENDMDL":
                 model_open = 0
                 current_chain_id = None
@@ -435,4 +509,4 @@ class PDBParser(Bio.PDB.PDBParser):
             local_line_counter += 1
         # EOF (does not end in END or CONECT)
         self.line_counter = self.line_counter + local_line_counter
-        return []
+        return [], sequences, is_het

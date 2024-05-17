@@ -11,7 +11,7 @@
 ****************************************************************
 Model  : examples/6qwn-assembly1.cif.gz
 Native : examples/6qwn-assembly2.cif.gz
-Total DockQ over 1 native interfaces: 0.872 with AF:BG model:native mapping
+Total DockQ-capri_peptide over 1 native interfaces: 0.872 with AF:BG model:native mapping
 Native chains: B, G
 	Model chains: A, F
 	DockQ: 0.872

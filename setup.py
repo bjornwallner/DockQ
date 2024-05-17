@@ -3,12 +3,17 @@ from Cython.Build import cythonize
 import numpy
 
 extensions = [
-        Extension(
-            "DockQ.operations", sources=["src/DockQ/operations.pyx"],
-            include_dirs=[numpy.get_include()],
-        ),
-    ]
+    Extension(
+        "DockQ.operations",
+        ["src/DockQ/operations.pyx"],
+        include_dirs=[numpy.get_include()],
+    ),
+]
 
 setup(
-    ext_modules=cythonize(extensions)
+    name="dockq",
+    ext_modules=cythonize(extensions),
+    package_data={
+        "src/DockQ": ["operations.pyx"],
+    },
 )

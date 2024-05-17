@@ -1,7 +1,7 @@
 ![CI status](https://github.com/bjornwallner/DockQ/actions/workflows/main.yml/badge.svg)
 
 # DockQ
-**A Quality Measure for Protein-Protein Docking Models**
+**A Quality Measure for Protein, Nucleic Acids and Small Molecule Docking Models**
 
 ## Installation
 
@@ -29,41 +29,51 @@ $ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb
 
 ****************************************************************
 *                       DockQ                                  *
-*   Scoring function for protein-protein docking models        *
-*   Statistics on CAPRI data:                                  *
+*   Docking scoring for biomolecular models                    *
+*   DockQ score legend:                                        *
 *    0.00 <= DockQ <  0.23 - Incorrect                         *
 *    0.23 <= DockQ <  0.49 - Acceptable quality                *
 *    0.49 <= DockQ <  0.80 - Medium quality                    *
 *            DockQ >= 0.80 - High quality                      *
-*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *
-*   protein-protein docking models                             *
-*                            doi:10.1371/journal.pone.0161879  *
+*   Ref: Mirabello and Wallner, 'DockQ v2: Improved automatic  *
+*   quality measure for protein multimers, nucleic acids       *
+*   and small molecules'                                       *
+*                                                              *
 *   For comments, please email: bjorn.wallner@.liu.se          *
 ****************************************************************
 Model  : examples/1A2K_r_l_b.model.pdb
 Native : examples/1A2K_r_l_b.pdb
-Total DockQ over 3 native interfaces: 1.959
+Total DockQ over 3 native interfaces: 0.653 with BAC:ABC model:native mapping
 Native chains: A, B
-        Model chains: B, A
-        DockQ_F1: 0.996
-        DockQ: 0.994
-        irms: 0.000
-        Lrms: 0.000
-        fnat: 0.983
+	Model chains: B, A
+	DockQ: 0.994
+	irms: 0.000
+	Lrms: 0.000
+	fnat: 0.983
+	fnonnat: 0.008
+	clashes: 0.000
+	F1: 0.987
+	DockQ_F1: 0.996
 Native chains: A, C
-        Model chains: B, C
-        DockQ_F1: 0.567
-        DockQ: 0.511
-        irms: 1.237
-        Lrms: 6.864
-        fnat: 0.333
+	Model chains: B, C
+	DockQ: 0.511
+	irms: 1.237
+	Lrms: 6.864
+	fnat: 0.333
+	fnonnat: 0.000
+	clashes: 0.000
+	F1: 0.500
+	DockQ_F1: 0.567
 Native chains: B, C
-        Model chains: A, C
-        DockQ_F1: 0.500
-        DockQ: 0.453
-        irms: 2.104
-        Lrms: 8.131
-        fnat: 0.500
+	Model chains: A, C
+	DockQ: 0.453
+	irms: 2.104
+	Lrms: 8.131
+	fnat: 0.500
+	fnonnat: 0.107
+	clashes: 0.000
+	F1: 0.641
+	DockQ_F1: 0.500
 ```
 
 A more compact output option is available with the flag `--short`:
@@ -137,14 +147,40 @@ Then DockQ will find the interface in the model that best matches the WX interfa
 --mapping *:WXY
 ```
 
+## Scoring small molecule docking poses
+
+Small molecules in PDB or mmCIF files can be scored and the mapping optimized in the same way as for proteins. Just add the flag `--small_molecules`:
+
+```
+# Compare docking of hemoglobin chains (chain A and B in native) as well as HEM and PO4 groups (chains E, F, G)
+$ DockQ examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG --short
+
+Total DockQ-small_molecules over 7 native interfaces: 0.614 with ABDCF:ABEFG model:native mapping
+DockQ 0.950 irms 0.455 Lrms 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
+Lrms 0.592  mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
+Lrms 28.986 mapping AC:AF (PO4) examples/1HHO_hem.cif A C -> examples/2HHB_hem.cif A F
+Lrms 2.264  mapping AF:AG (HEM) examples/1HHO_hem.cif A F -> examples/2HHB_hem.cif A G
+Lrms 1.267  mapping BD:BE (HEM) examples/1HHO_hem.cif B D -> examples/2HHB_hem.cif B E
+Lrms 27.937 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
+Lrms 1.351  mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
+```
+
+Only LRMSD is reported for small molecules.
+
+**NB: Small molecules must be in the PDB/mmCIF files. They also must have separate chain identifiers** (the `label_asym_id` field is used in mmCIF formatted files).
+
+## Scoring DNA/RNA poses
+
+Interfaces involving nucleic acids are seamlessly scored along with protein interfaces. The DockQ score is calculated for protein-NA or NA-NA interfaces in the same way as for protein-protein interfaces (two DockQ scores are reported for double helix chains).
+
 **Other uses**
 
 Run DockQ with `-h/--help` to see a list of the available flags:
 
 ```
-bash$ DockQ -h
-
-usage: DockQ [-h] [--capri_peptide] [--short] [--verbose] [--no_align] [--n_cpu n_cpu] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES] [--mapping MODELCHAINS:NATIVECHAINS]
+usage: DockQ [-h] [--capri_peptide] [--small_molecule] [--short] [--verbose] [--no_align] [--n_cpu CPU]
+             [--max_chunk CHUNK] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES]
+             [--mapping MODELCHAINS:NATIVECHAINS]
              <model> <native>
 
 DockQ - Quality measure for protein-protein docking models
@@ -156,17 +192,23 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --capri_peptide       use version for capri_peptide (DockQ cannot not be trusted for this setting)
+  --small_molecule      If the docking pose of a small molecule should be evaluated
   --short               Short output
   --verbose, -v         Verbose output
-  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues instead
-  --n_cpu n_cpu         Number of cores to use
+  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues
+                        instead
+  --n_cpu CPU           Number of cores to use
+  --max_chunk CHUNK     Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)
   --optDockQF1          Optimize on DockQ_F1 instead of DockQ
   --allowed_mismatches ALLOWED_MISMATCHES
                         Number of allowed mismatches when mapping model sequence to native sequence.
   --mapping MODELCHAINS:NATIVECHAINS
-                        Specify a chain mapping between model and native structure. If the native contains two chains "H" and "L" while the model contains two chains "A" and "B",
-                        and chain A is a model of native chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'. This can also help limit the
-                        search to specific native interfaces. For example, if the native is a tetramer (ABCD) but the user is only interested in the interface between chains B and
+                        Specify a chain mapping between model and native structure. If the native contains two chains
+                        "H" and "L" while the model contains two chains "A" and "B", and chain A is a model of native
+                        chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'.
+                        This can also help limit the search to specific native interfaces. For example, if the native
+                        is a tetramer (ABCD) but the user is only interested in the interface between chains B and C,
+                        the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
                         C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
 ```
 

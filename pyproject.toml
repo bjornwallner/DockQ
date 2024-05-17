@@ -1,6 +1,27 @@
 [build-system]
-name = "DockQ"
-version = "2.0"
-requires = ["setuptools", "cython", "tqdm", "numpy ~= 1.21", "biopython >= 1.79"]
+requires = ["setuptools>=68", "cython", "numpy ~= 1.21",]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "dockq"
+version = "2.1"
+authors = [
+  { name="Claudio Mirabello", email="claudio.mirabello@scilifelab.se" },
+  { name="Bjorn Wallner", email="bjorn.wallner@liu.se" },
+]
+description = "A Quality Measure for Protein, Nucleic Acids and Small Ligand Docking Models"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["biopython >= 1.79", "networkx", "parallelbar"]
+
+[project.urls]
+Homepage = "https://github.com/bjornwallner/DockQ"
+Issues = "https://github.com/bjornwallner/DockQ/issues"
+
+[project.scripts]
+DockQ = "DockQ.__main__:main"

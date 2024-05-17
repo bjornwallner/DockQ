@@ -1,0 +1,8 @@
+test
+.coverage
+*.c
+build/
+*__pycache__*
+*.ipynb*
+*.egg-info
+*.cpython-39-x86_64-linux-gnu.so
