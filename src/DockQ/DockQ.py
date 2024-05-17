@@ -195,7 +195,7 @@ def calc_sym_corrected_lrmsd(
     )
 
     ref_receptor_atoms, sample_receptor_atoms = np.asarray(
-        get_atoms_per_residue((aligned_ref_receptor, aligned_sample_receptor), what="receptor")
+        get_atoms_per_residue((aligned_ref_receptor, aligned_sample_receptor), what="receptor", atom_types=BACKBONE_ATOMS)
     )
 
     sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms()]
@@ -244,24 +244,7 @@ def calc_DockQ(
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = (
-        "CA",
-        "C",
-        "N",
-        "O",
-        "P",
-        "OP1",
-        "OP2",
-        "O2'",
-        "O3'",
-        "O4'",
-        "O5'",
-        "C1'",
-        "C2'",
-        "C3'",
-        "C4'",
-        "C5'",
-    )
+
     fnat_threshold = 4.0 if capri_peptide else 5.0
     interface_threshold = 8.0 if capri_peptide else 10.0
     clash_threshold = 2.0
@@ -318,7 +301,7 @@ def calc_DockQ(
         interacting_pairs,
         (aligned_sample_1, aligned_sample_2),
         (aligned_ref_1, aligned_ref_2),
-        atom_types=atom_for_sup,
+        atom_types=BACKBONE_ATOMS,
     )
     super_imposer = SVDSuperimposer()
     super_imposer.set(sample_interface_atoms, ref_interface_atoms)
@@ -345,10 +328,10 @@ def calc_DockQ(
     )
 
     receptor_atoms_native, receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains, what="receptor", atom_types=atom_for_sup)
+        get_atoms_per_residue(receptor_chains, what="receptor", atom_types=BACKBONE_ATOMS)
     )
     ligand_atoms_native, ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=BACKBONE_ATOMS)
     )
     # Set to align on receptor
     super_imposer.set(receptor_atoms_native, receptor_atoms_sample)
@@ -432,7 +415,6 @@ def align_chains(model_chain, native_chain, use_numbering=False):
         native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
 
     else:
-        custom_map = {"MSE": "M", "CME": "C"}
         model_sequence = model_chain.sequence
         native_sequence = native_chain.sequence
 
@@ -600,12 +582,11 @@ def create_graph(atom_list, atom_ids):
     G = nx.Graph()
 
     for i, atom_i in enumerate(atom_list):
-        cr_i = covalent_radius[atom_ids[i]]
+        cr_i = COVALENT_RADIUS[atom_ids[i]]
         for j, atom_j in enumerate(atom_list):
-            cr_j = covalent_radius[atom_ids[j]]
+            cr_j = COVALENT_RADIUS[atom_ids[j]]
             distance = np.linalg.norm(atom_i - atom_j)
-            threshold = (cr_i + cr_j + bond_tolerance) if i != j else 1
-            #print(atom_ids[i], atom_ids[j], threshold)
+            threshold = (cr_i + cr_j + BOND_TOLERANCE) if i != j else 1
             if distance < threshold:  # Adjust threshold as needed
                 G.add_edge(i, j)
 

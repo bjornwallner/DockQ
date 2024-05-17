@@ -1,8 +1,8 @@
 from typing import Dict
 
-bond_tolerance: float = 0.4
+BOND_TOLERANCE: float = 0.4
 
-covalent_radius: Dict = {
+COVALENT_RADIUS: Dict = {
     "H": 0.31,
     "HE": 0.28,
     "LI": 1.28,
@@ -122,3 +122,22 @@ covalent_radius: Dict = {
     "UUS": 2.0,
     "UUO": 2.0,
 }
+
+BACKBONE_ATOMS = (
+        "CA",
+        "C",
+        "N",
+        "O",
+        "P",
+        "OP1",
+        "OP2",
+        "O2'",
+        "O3'",
+        "O4'",
+        "O5'",
+        "C1'",
+        "C2'",
+        "C3'",
+        "C4'",
+        "C5'",
+    )
