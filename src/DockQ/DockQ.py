@@ -191,16 +191,23 @@ def calc_sym_corrected_lrmsd(
     else:
         return  # both ligands, no lrmsd
 
+    ref_res_distances = get_residue_distances(ref_receptor, ref_ligand, "ref")
+    receptor_interface, _ = get_interacting_pairs(
+        # working with squared thresholds to avoid using sqrt
+        ref_res_distances,
+        threshold=INTERFACE_THRESHOLD ** 2,
+    )
+    if not receptor_interface:
+        return
     aligned_sample_receptor, aligned_ref_receptor = get_aligned_residues(
         sample_receptor, ref_receptor, receptor_alignment
     )
-
-    ref_receptor_atoms, sample_receptor_atoms = np.asarray(
-        get_atoms_per_residue(
-            (aligned_ref_receptor, aligned_sample_receptor),
-            what="receptor",
-            atom_types=BACKBONE_ATOMS,
-        )
+    # get a copy of each structure, then only keep backbone atoms
+    sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
+        (receptor_interface, ()),
+        (aligned_sample_receptor, ()),
+        (aligned_ref_receptor, ()),
+        atom_types=BACKBONE_ATOMS,
     )
 
     sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms()]
@@ -224,9 +231,9 @@ def calc_sym_corrected_lrmsd(
         ]
     )
 
-    # Set to align on receptor
+    # Set to align on receptor interface
     super_imposer = SVDSuperimposer()
-    super_imposer.set(ref_receptor_atoms, sample_receptor_atoms)
+    super_imposer.set(ref_interface_atoms, sample_interface_atoms)
     super_imposer.run()
     rot, tran = super_imposer.get_rotran()
 
@@ -320,7 +327,6 @@ def calc_DockQ(
         ref_res_distances,
         threshold=interface_threshold ** 2,
     )
-
     # get a copy of each structure, then only keep backbone atoms
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
         interacting_pairs,
