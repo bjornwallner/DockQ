@@ -155,14 +155,11 @@ Small molecules in PDB or mmCIF files can be scored and the mapping optimized in
 # Compare docking of hemoglobin chains (chain A and B in native) as well as HEM and PO4 groups (chains E, F, G)
 $ DockQ examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG --short
 
-Total DockQ-small_molecules over 7 native interfaces: 0.614 with ABDCF:ABEFG model:native mapping
+Total DockQ-small_molecules over 4 native interfaces: 0.659 with ABDCF:ABEFG model:native mapping
 DockQ 0.950 irms 0.455 Lrms 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
-Lrms 0.592  mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
-Lrms 28.986 mapping AC:AF (PO4) examples/1HHO_hem.cif A C -> examples/2HHB_hem.cif A F
-Lrms 2.264  mapping AF:AG (HEM) examples/1HHO_hem.cif A F -> examples/2HHB_hem.cif A G
-Lrms 1.267  mapping BD:BE (HEM) examples/1HHO_hem.cif B D -> examples/2HHB_hem.cif B E
-Lrms 27.937 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
-Lrms 1.351  mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
+Lrms 0.585 mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
+Lrms 28.096 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
+Lrms 1.311 mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
 ```
 
 Only LRMSD is reported for small molecules.
@@ -178,10 +175,7 @@ Interfaces involving nucleic acids are seamlessly scored along with protein inte
 Run DockQ with `-h/--help` to see a list of the available flags:
 
 ```
-usage: DockQ [-h] [--capri_peptide] [--small_molecule] [--short] [--verbose] [--no_align] [--n_cpu CPU]
-             [--max_chunk CHUNK] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES]
-             [--mapping MODELCHAINS:NATIVECHAINS]
-             <model> <native>
+usage: DockQ [-h] [--capri_peptide] [--small_molecule] [--short] [--verbose] [--no_align] [--n_cpu CPU] [--max_chunk CHUNK] [--optDockQF1] [--allowed_mismatches ALLOWED_MISMATCHES] [--mapping MODELCHAINS:NATIVECHAINS] <model> <native>
 
 DockQ - Quality measure for protein-protein docking models
 
@@ -195,24 +189,19 @@ optional arguments:
   --small_molecule      If the docking pose of a small molecule should be evaluated
   --short               Short output
   --verbose, -v         Verbose output
-  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues
-                        instead
+  --no_align            Do not align native and model using sequence alignments, but use the numbering of residues instead
   --n_cpu CPU           Number of cores to use
   --max_chunk CHUNK     Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)
   --optDockQF1          Optimize on DockQ_F1 instead of DockQ
   --allowed_mismatches ALLOWED_MISMATCHES
                         Number of allowed mismatches when mapping model sequence to native sequence.
   --mapping MODELCHAINS:NATIVECHAINS
-                        Specify a chain mapping between model and native structure. If the native contains two chains
-                        "H" and "L" while the model contains two chains "A" and "B", and chain A is a model of native
-                        chain H and chain B is a model of native chain L, the flag can be set as: '--mapping AB:HL'.
-                        This can also help limit the search to specific native interfaces. For example, if the native
-                        is a tetramer (ABCD) but the user is only interested in the interface between chains B and C,
-                        the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
-                        C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
+                        Specify a chain mapping between model and native structure. If the native contains two chains "H" and "L" while the model contains two chains "A" and "B", and chain A is a model of native chain H and chain B is a model
+                        of native chain L, the flag can be set as: '--mapping AB:HL'. This can also help limit the search to specific native interfaces. For example, if the native is a tetramer (ABCD) but the user is only interested in the
+                        interface between chains B and C, the flag can be set as: '--mapping :BC' or the equivalent '--mapping *:BC'.
 ```
 
-**Import as a python module**
+**Importing DockQ as python module**
 
 Once DockQ is installed with pip, it can also be used as a module in your python code:
 
@@ -247,3 +236,11 @@ run_on_all_native_interfaces(model, native, chain_map=chain_map)
    'chain_map': {'A': 'A', 'B': 'B'}}},
  0.9425398964102757)
 ```
+
+**Merge multiple chains in a single receptor or ligand**
+
+See issue [#33](https://github.com/bjornwallner/DockQ/issues/33) if you want to merge multiple chains (e.g. heavy and light antibody chains) into a single receptor or ligand
+
+## Citing DockQ v2
+
+If you use DockQ v2, please cite the preprint: https://doi.org/10.1101/2024.05.28.596225 
