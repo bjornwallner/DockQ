@@ -688,7 +688,6 @@ def load_PDB(path, chains=[], small_molecule=False, n_model=0):
             parse_hetatms=small_molecule,
             model_number=n_model,
         )
-        model.id = np.random.rand()
     except Exception:
         pdb_parser = MMCIFParser(QUIET=True)
         model = pdb_parser.get_structure(
@@ -699,7 +698,7 @@ def load_PDB(path, chains=[], small_molecule=False, n_model=0):
             auth_chains=not small_molecule,
             model_number=n_model,
         )
-
+    model.id = path
     return model
 
 
