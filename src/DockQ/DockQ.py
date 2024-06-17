@@ -8,6 +8,7 @@ import itertools
 from collections import Counter
 from argparse import ArgumentParser
 from functools import lru_cache, partial
+import io
 
 import numpy as np
 from Bio import Align
@@ -679,11 +680,18 @@ def run_on_all_native_interfaces(
 
 
 def load_PDB(path, chains=[], small_molecule=False, n_model=0):
+    # If `path` is already a file handle, use it directly.
+    if isinstance(path, io.IOBase):
+        file = path
+    # Otherwise, assume it's a file-path, and open it.
+    else:
+        file = (gzip.open if path.endswith(".gz") else open)(path, "rt")
+
     try:
         pdb_parser = PDBParser(QUIET=True)
         model = pdb_parser.get_structure(
             "-",
-            (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            file,
             chains=chains,
             parse_hetatms=small_molecule,
             model_number=n_model,
@@ -692,7 +700,7 @@ def load_PDB(path, chains=[], small_molecule=False, n_model=0):
         pdb_parser = MMCIFParser(QUIET=True)
         model = pdb_parser.get_structure(
             "-",
-            (gzip.open if path.endswith(".gz") else open)(path, "rt"),
+            file,
             chains=chains,
             parse_hetatms=small_molecule,
             auth_chains=not small_molecule,
