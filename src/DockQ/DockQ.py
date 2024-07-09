@@ -11,15 +11,14 @@ from functools import lru_cache, partial
 
 import numpy as np
 from Bio import Align
-from Bio.SeqUtils import seq1
 from Bio.SVDSuperimposer import SVDSuperimposer
 from parallelbar import progress_map
-
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
     from .operations import residue_distances, get_fnat_stats
     from .parsers import PDBParser, MMCIFParser
+    from .constants import *
 except ImportError:
     warnings.warn(
         """WARNING: It looks like cython is not working,
@@ -27,6 +26,7 @@ except ImportError:
     )
     from operations_nocy import residue_distances, get_fnat_stats
     from parsers import PDBParser, MMCIFParser
+    from constants import *
 
 
 def parse_args():
@@ -46,6 +46,11 @@ def parse_args():
         (DockQ cannot not be trusted for this setting)",
     )
     parser.add_argument(
+        "--small_molecule",
+        help="If the docking pose of a small molecule should be evaluated",
+        action="store_true",
+    )
+    parser.add_argument(
         "--short", default=False, action="store_true", help="Short output"
     )
     parser.add_argument(
@@ -53,7 +58,7 @@ def parse_args():
     )
     parser.add_argument(
         "--no_align",
-        default=False,
+        # default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
@@ -161,6 +166,106 @@ def get_residue_distances(chain1, chain2, what, all_atom=True):
     return model_res_distances
 
 
+def calc_sym_corrected_lrmsd(
+    sample_chains,
+    ref_chains,
+    alignments,
+):
+    import networkx as nx
+
+    is_het_sample_0 = bool(sample_chains[0].is_het)
+    is_het_sample_1 = bool(sample_chains[1].is_het)
+
+    if is_het_sample_0 and not is_het_sample_1:
+        sample_ligand = sample_chains[0]
+        sample_receptor = sample_chains[1]
+        ref_ligand = ref_chains[0]
+        ref_receptor = ref_chains[1]
+        receptor_alignment = alignments[1]
+    elif not is_het_sample_0 and is_het_sample_1:
+        sample_ligand = sample_chains[1]
+        sample_receptor = sample_chains[0]
+        ref_ligand = ref_chains[1]
+        ref_receptor = ref_chains[0]
+        receptor_alignment = alignments[0]
+    else:
+        return  # both ligands, no lrmsd
+
+    ref_res_distances = get_residue_distances(ref_receptor, ref_ligand, "ref")
+    receptor_interface, _ = get_interacting_pairs(
+        # working with squared thresholds to avoid using sqrt
+        ref_res_distances,
+        threshold=INTERFACE_THRESHOLD ** 2,
+    )
+    if not receptor_interface:
+        return
+    aligned_sample_receptor, aligned_ref_receptor = get_aligned_residues(
+        sample_receptor, ref_receptor, receptor_alignment
+    )
+    # get a copy of each structure, then only keep backbone atoms
+    sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
+        (receptor_interface, ()),
+        (aligned_sample_receptor, ()),
+        (aligned_ref_receptor, ()),
+        atom_types=BACKBONE_ATOMS,
+    )
+
+    sample_ligand_atoms_ids = [atom.id for atom in sample_ligand.get_atoms()]
+    sample_ligand_atoms_ele = [atom.element for atom in sample_ligand.get_atoms()]
+
+    ref_ligand_atoms_ids = [atom.id for atom in ref_ligand.get_atoms()]
+    ref_ligand_atoms_ele = [atom.element for atom in ref_ligand.get_atoms()]
+
+    sample_ligand_atoms = np.array(
+        [
+            atom.coord
+            for atom in sample_ligand.get_atoms()
+            if atom.id in ref_ligand_atoms_ids
+        ]
+    )
+    ref_ligand_atoms = np.array(
+        [
+            atom.coord
+            for atom in ref_ligand.get_atoms()
+            if atom.id in sample_ligand_atoms_ids
+        ]
+    )
+
+    # Set to align on receptor interface
+    super_imposer = SVDSuperimposer()
+    super_imposer.set(ref_interface_atoms, sample_interface_atoms)
+    super_imposer.run()
+    rot, tran = super_imposer.get_rotran()
+
+    sample_rotated_ligand_atoms = np.dot(sample_ligand_atoms, rot) + tran
+
+    sample_graph = create_graph(sample_ligand_atoms, sample_ligand_atoms_ele)
+    ref_graph = create_graph(ref_ligand_atoms, ref_ligand_atoms_ele)
+
+    min_lrms = float("inf")
+    best_mapping = None
+
+    for isomorphism in nx.vf2pp_all_isomorphisms(sample_graph, ref_graph):
+        model_i = list(isomorphism.keys())
+        native_i = list(isomorphism.values())
+
+        lrms = super_imposer._rms(
+            sample_rotated_ligand_atoms[model_i], ref_ligand_atoms[native_i]
+        )
+        if lrms < min_lrms:
+            best_mapping = isomorphism
+            min_lrms = lrms
+    dockq_f1 = dockq = dockq_formula(0, 0, min_lrms)
+    info = {
+        "DockQ_F1": dockq_f1,
+        "DockQ": dockq,
+        "Lrms": min_lrms,
+        "mapping": best_mapping,
+        "is_het": sample_ligand.is_het,
+    }
+    return info
+
+
 # @profile
 def calc_DockQ(
     sample_chains,
@@ -169,27 +274,12 @@ def calc_DockQ(
     capri_peptide=False,
     low_memory=False,
 ):
-    atom_for_sup = (
-        "CA",
-        "C",
-        "N",
-        "O",
-        "P",
-        "OP1",
-        "OP2",
-        "O2'",
-        "O3'",
-        "O4'",
-        "O5'",
-        "C1'",
-        "C2'",
-        "C3'",
-        "C4'",
-        "C5'",
+
+    fnat_threshold = FNAT_THRESHOLD if not capri_peptide else FNAT_THRESHOLD_PEPTIDE
+    interface_threshold = (
+        INTERFACE_THRESHOLD if not capri_peptide else INTERFACE_THRESHOLD_PEPTIDE
     )
-    fnat_threshold = 4.0 if capri_peptide else 5.0
-    interface_threshold = 8.0 if capri_peptide else 10.0
-    clash_threshold = 2.0
+
     # total number of native contacts is calculated on untouched native structure
     ref_res_distances = get_residue_distances(ref_chains[0], ref_chains[1], "ref")
     nat_total = np.nonzero(np.asarray(ref_res_distances) < fnat_threshold ** 2)[
@@ -211,6 +301,7 @@ def calc_DockQ(
     sample_res_distances = get_residue_distances(
         aligned_sample_1, aligned_sample_2, "sample"
     )
+
     if ref_res_distances.shape != sample_res_distances.shape:
         ref_res_distances = get_residue_distances(aligned_ref_1, aligned_ref_2, "ref")
 
@@ -236,13 +327,12 @@ def calc_DockQ(
         ref_res_distances,
         threshold=interface_threshold ** 2,
     )
-
     # get a copy of each structure, then only keep backbone atoms
     sample_interface_atoms, ref_interface_atoms = get_interface_atoms(
         interacting_pairs,
         (aligned_sample_1, aligned_sample_2),
         (aligned_ref_1, aligned_ref_2),
-        atom_types=atom_for_sup,
+        atom_types=BACKBONE_ATOMS,
     )
     super_imposer = SVDSuperimposer()
     super_imposer.set(sample_interface_atoms, ref_interface_atoms)
@@ -269,10 +359,12 @@ def calc_DockQ(
     )
 
     receptor_atoms_native, receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(receptor_chains, what="receptor", atom_types=atom_for_sup)
+        get_atoms_per_residue(
+            receptor_chains, what="receptor", atom_types=BACKBONE_ATOMS
+        )
     )
     ligand_atoms_native, ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=atom_for_sup)
+        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=BACKBONE_ATOMS)
     )
     # Set to align on receptor
     super_imposer.set(receptor_atoms_native, receptor_atoms_sample)
@@ -281,22 +373,20 @@ def calc_DockQ(
     rot, tran = super_imposer.get_rotran()
     rotated_sample_atoms = np.dot(ligand_atoms_sample, rot) + tran
 
-    Lrms = super_imposer._rms(
+    lrms = super_imposer._rms(
         ligand_atoms_native, rotated_sample_atoms
     )  # using the private _rms function which does not superimpose
 
     info = {}
-    F1=f1(nat_correct, nonnat_count, nat_total)
-    info["DockQ_F1"] = dockq_formula(
-       F1, irms, Lrms
-    )
-    info["DockQ"] = dockq_formula(fnat, irms, Lrms)
+    F1 = f1(nat_correct, nonnat_count, nat_total)
+    info["DockQ_F1"] = dockq_formula(F1, irms, lrms)
+    info["DockQ"] = dockq_formula(fnat, irms, lrms)
     if low_memory:
         return info
-    
+
     info["F1"] = F1
     info["irms"] = irms
-    info["Lrms"] = Lrms
+    info["Lrms"] = lrms
     info["fnat"] = fnat
     info["nat_correct"] = nat_correct
     info["nat_total"] = nat_total
@@ -305,12 +395,13 @@ def calc_DockQ(
     info["nonnat_count"] = nonnat_count
     info["model_total"] = model_total
     info["clashes"] = np.nonzero(
-        np.asarray(sample_res_distances) < clash_threshold ** 2
+        np.asarray(sample_res_distances) < CLASH_THRESHOLD ** 2
     )[0].shape[0]
     info["len1"] = ref_group1_size
     info["len2"] = ref_group2_size
     info["class1"] = class1
     info["class2"] = class2
+    info["is_het"] = False
 
     return info
 
@@ -319,11 +410,11 @@ def f1(tp, fp, p):
     return 2 * tp / (tp + fp + p)
 
 
-def dockq_formula(fnat, irms, Lrms):
+def dockq_formula(fnat, irms, lrms):
     return (
         float(fnat)
         + 1 / (1 + (irms / 1.5) * (irms / 1.5))
-        + 1 / (1 + (Lrms / 8.5) * (Lrms / 8.5))
+        + 1 / (1 + (lrms / 8.5) * (lrms / 8.5))
     ) / 3
 
 
@@ -355,30 +446,8 @@ def align_chains(model_chain, native_chain, use_numbering=False):
         native_sequence = "".join([chr(resn + min_resn) for resn in native_numbering])
 
     else:
-        custom_map = {"MSE": "M", "CME": "C"}
-        model_sequence = [
-            residue.get_resname() for residue in model_chain.get_residues()
-        ]
-        native_sequence = [
-            residue.get_resname() for residue in native_chain.get_residues()
-        ]
-        model_sequence = "".join(
-            seq1(r, custom_map=custom_map)
-            if len(r) == 3
-            else r[:-1]
-            if (len(r) == 2)
-            else r
-            for r in model_sequence
-        )
-
-        native_sequence = "".join(
-            seq1(r, custom_map=custom_map)
-            if len(r) == 3
-            else r[:-1]
-            if len(r) == 2
-            else r
-            for r in native_sequence
-        )
+        model_sequence = model_chain.sequence
+        native_sequence = native_chain.sequence
 
     aligner = Align.PairwiseAligner()
     aligner.match = 5
@@ -508,6 +577,7 @@ def run_on_chains(
     native_chains,
     no_align=False,
     capri_peptide=False,
+    small_molecule=True,
     low_memory=False,
 ):
     # realign each model chain against the corresponding native chain
@@ -521,14 +591,38 @@ def run_on_chains(
         alignment = format_alignment(aln)
         alignments.append(tuple(alignment.values()))
 
-    info = calc_DockQ(
-        model_chains,
-        native_chains,
-        alignments=tuple(alignments),
-        capri_peptide=capri_peptide,
-        low_memory=low_memory,
-    )
+    if not small_molecule:
+        info = calc_DockQ(
+            model_chains,
+            native_chains,
+            alignments=tuple(alignments),
+            capri_peptide=capri_peptide,
+            low_memory=low_memory,
+        )
+    else:
+        info = calc_sym_corrected_lrmsd(
+            model_chains,
+            native_chains,
+            alignments=tuple(alignments),
+        )
     return info
+
+
+def create_graph(atom_list, atom_ids):
+    import networkx as nx
+
+    G = nx.Graph()
+
+    for i, atom_i in enumerate(atom_list):
+        cr_i = COVALENT_RADIUS[atom_ids[i]]
+        for j, atom_j in enumerate(atom_list):
+            cr_j = COVALENT_RADIUS[atom_ids[j]]
+            distance = np.linalg.norm(atom_i - atom_j)
+            threshold = (cr_i + cr_j + BOND_TOLERANCE) if i != j else 1
+            if distance < threshold:  # Adjust threshold as needed
+                G.add_edge(i, j)
+
+    return G
 
 
 def run_on_all_native_interfaces(
@@ -553,6 +647,9 @@ def run_on_all_native_interfaces(
                 for chain in [chain_map[chain_pair[0]], chain_map[chain_pair[1]]]
             ]
         )
+
+        small_molecule = native_chains[0].is_het or native_chains[1].is_het
+
         if len(set(model_chains)) < 2:
             continue
         if chain_pair[0] in chain_map and chain_pair[1] in chain_map:
@@ -561,6 +658,7 @@ def run_on_all_native_interfaces(
                 native_chains,
                 no_align=no_align,
                 capri_peptide=capri_peptide,
+                small_molecule=small_molecule,
                 low_memory=low_memory,
             )
             if info:
@@ -568,7 +666,7 @@ def run_on_all_native_interfaces(
                     chain_map[chain_pair[0]],
                     chain_map[chain_pair[1]],
                 )
-                info["chain_map"] = chain_map  # diagonstics
+                info["chain_map"] = chain_map  # diagnostics
                 result_mapping[chain_pair] = info
     total_dockq = sum(
         [
@@ -576,27 +674,31 @@ def run_on_all_native_interfaces(
             for result in result_mapping.values()
         ]
     )
+
     return result_mapping, total_dockq
 
 
-def load_PDB(path, chains=[], n_model=0):
+def load_PDB(path, chains=[], small_molecule=False, n_model=0):
     try:
         pdb_parser = PDBParser(QUIET=True)
-        structure = pdb_parser.get_structure(
+        model = pdb_parser.get_structure(
             "-",
             (gzip.open if path.endswith(".gz") else open)(path, "rt"),
             chains=chains,
+            parse_hetatms=small_molecule,
+            model_number=n_model,
         )
-        model = structure[n_model]
     except Exception:
         pdb_parser = MMCIFParser(QUIET=True)
-        structure = pdb_parser.get_structure(
+        model = pdb_parser.get_structure(
             "-",
             (gzip.open if path.endswith(".gz") else open)(path, "rt"),
-            chains=None,
+            chains=chains,
+            parse_hetatms=small_molecule,
+            auth_chains=not small_molecule,
+            model_number=n_model,
         )
-        model = structure[n_model]
-
+    model.id = path
     return model
 
 
@@ -615,17 +717,28 @@ def group_chains(
     chain_clusters = {chain: [] for chain in ref_chains}
 
     for query_chain, ref_chain in alignment_targets:
-        aln = align_chains(
-            query_structure[query_chain], ref_structure[ref_chain], use_numbering=None
-        )
-        alignment = format_alignment(aln)
-        n_mismatches = alignment["matches"].count(".")
+        qc = query_structure[query_chain]
+        rc = ref_structure[ref_chain]
 
-        if n_mismatches > 0 and n_mismatches < 10:
-            mismatch_dict[(query_chain, ref_chain)] = n_mismatches
+        het_qc = qc.is_het
+        het_rc = rc.is_het
 
-        if n_mismatches <= allowed_mismatches:
-            # 100% sequence identity, 100% coverage of native sequence in model sequence
+        if het_qc is None and het_rc is None:
+            aln = align_chains(
+                qc,
+                rc,
+                use_numbering=False,
+            )
+            alignment = format_alignment(aln)
+            n_mismatches = alignment["matches"].count(".")
+
+            if 0 < n_mismatches < 10:
+                mismatch_dict[(query_chain, ref_chain)] = n_mismatches
+
+            if n_mismatches <= allowed_mismatches:
+                # 100% sequence identity, 100% coverage of native sequence in model sequence
+                chain_clusters[ref_chain].append(query_chain)
+        elif het_qc and het_rc and het_qc == het_rc:
             chain_clusters[ref_chain].append(query_chain)
 
     chains_without_match = [
@@ -641,7 +754,7 @@ def group_chains(
     return chain_clusters, reverse_map
 
 
-def format_mapping(mapping_str):
+def format_mapping(mapping_str, small_molecule=None):
     mapping = dict()
     model_chains = None
     native_chains = None
@@ -697,12 +810,17 @@ def product_without_dupl(*args, repeat=1):
     for prod in result:
         yield tuple(prod)
 
+
 def count_chain_combinations(chain_clusters):
     clusters = [tuple(li) for li in chain_clusters.values()]
     number_of_combinations = np.prod(
-            [int(math.factorial(len(a))/math.factorial(len(a)-b)) for a,b in Counter(clusters).items()]
-    ) 
+        [
+            int(math.factorial(len(a)) / math.factorial(len(a) - b))
+            for a, b in Counter(clusters).items()
+        ]
+    )
     return number_of_combinations
+
 
 def get_all_chain_maps(
     chain_clusters,
@@ -730,7 +848,7 @@ def get_all_chain_maps(
                     for i, native_chain in enumerate(native_chains_to_combo)
                 }
             )
-        yield (chain_map)
+        yield chain_map
 
 
 def get_chain_map_from_dockq(result):
@@ -741,27 +859,19 @@ def get_chain_map_from_dockq(result):
     return chain_map
 
 
-def get_best_mapping(result_mappings, optDockF1=False):
-    total_dockq = 0
-    for result_mapping in result_mappings:
-        total_dockq = sum(
-            [
-                result["DockQ_F1" if optDockQF1 else "DockQ"]
-                for result in result_mapping.values()
-            ]
-        )
-        if total_dockq > best_dockq:
-            best_dockq = total_dockq
-    return best_result, best_dockq
-
-
 # @profile
 def main():
     args = parse_args()
-    initial_mapping, model_chains, native_chains = format_mapping(args.mapping)
-    model_structure = load_PDB(args.model, chains=model_chains)
-    native_structure = load_PDB(args.native, chains=native_chains)
 
+    initial_mapping, model_chains, native_chains = format_mapping(
+        args.mapping, args.small_molecule
+    )
+    model_structure = load_PDB(
+        args.model, chains=model_chains, small_molecule=args.small_molecule
+    )
+    native_structure = load_PDB(
+        args.native, chains=native_chains, small_molecule=args.small_molecule
+    )
     # check user-given chains are in the structures
     model_chains = [c.id for c in model_structure] if not model_chains else model_chains
     native_chains = (
@@ -791,7 +901,6 @@ def main():
         native_chains_to_combo,
         args.allowed_mismatches,
     )
-
     chain_maps = get_all_chain_maps(
         chain_clusters,
         initial_mapping,
@@ -800,9 +909,7 @@ def main():
         native_chains_to_combo,
     )
 
-    num_chain_combinations = count_chain_combinations(
-        chain_clusters)
- 
+    num_chain_combinations = count_chain_combinations(chain_clusters)
     # copy iterator to use later
     chain_maps, chain_maps_ = itertools.tee(chain_maps)
 
@@ -842,9 +949,9 @@ def main():
             best_result, total_dockq = run_on_all_native_interfaces(
                 model_structure,
                 native_structure,
-                best_mapping,
-                args.no_align,
-                args.capri_peptide,
+                chain_map=best_mapping,
+                no_align=args.no_align,
+                capri_peptide=args.capri_peptide,
                 low_memory=False,
             )
 
@@ -860,62 +967,99 @@ def main():
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
     info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
-    print_results(info, args.short, args.verbose, args.capri_peptide)
+    print_results(
+        info, args.short, args.verbose, args.capri_peptide, args.small_molecule
+    )
 
 
-def print_results(info, short=False, verbose=False, capri_peptide=False):
-    items = ["DockQ", "irms", "Lrms", "fnat","fnonnat","clashes","F1","DockQ_F1"]
+def print_results(
+    info, short=False, verbose=False, capri_peptide=False, small_molecule=False
+):
+
+    score = (
+        "DockQ-small_molecules"
+        if small_molecule
+        else "DockQ-capri_peptide"
+        if capri_peptide
+        else "DockQ"
+    )
     if short:
-        capri_peptide_str = "-capri_peptide" if capri_peptide else ""
         print(
-            f"Total DockQ{capri_peptide_str} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
+            f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
-            
-            score_str=" ".join([f"{item} {results[item]:.3f}" for item in items])
+            reported_measures = (
+                [
+                    "DockQ",
+                    "irms",
+                    "Lrms",
+                    "fnat",
+                    "fnonnat",
+                    "clashes",
+                    "F1",
+                    "DockQ_F1",
+                ]
+                if not results["is_het"]
+                else ["Lrms"]
+            )
+            hetname = f" ({results['is_het']})" if results["is_het"] else ""
+            score_str = " ".join(
+                [f"{item} {results[item]:.3f}" for item in reported_measures]
+            )
             print(
-                f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
+                f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]}{hetname} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
             )
     else:
         print_header(verbose, capri_peptide)
         print(f"Model  : {info['model']}")
         print(f"Native : {info['native']}")
         print(
-            f"Total DockQ over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
+            f"Total {score} over {len(info['best_result'])} native interfaces: {info['GlobalDockQ']:.3f} with {info['best_mapping_str']} model:native mapping"
         )
         for chains, results in info["best_result"].items():
-            print(f"Native chains: {chains[0]}, {chains[1]}")
+            reported_measures = (
+                [
+                    "DockQ",
+                    "irms",
+                    "Lrms",
+                    "fnat",
+                    "fnonnat",
+                    "clashes",
+                    "F1",
+                    "DockQ_F1",
+                ]
+                if not results["is_het"]
+                else ["Lrms"]
+            )
+            hetname = f" ({results['is_het']})" if results["is_het"] else ""
+            print(f"Native chains: {chains[0]}, {chains[1]}{hetname}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
-            print("\n".join([f"\t{item}: {results[item]:.3f}" for item in items]))
+            print(
+                "\n".join(
+                    [f"\t{item}: {results[item]:.3f}" for item in reported_measures]
+                )
+            )
 
 
 def print_header(verbose=False, capri_peptide=False):
     reference = (
-        "*   Ref: S. Basu and B. Wallner, DockQ: A quality measure for  *\n"
-        "*   protein-protein docking models                             *\n"
-        "*                            doi:10.1371/journal.pone.0161879  *\n"
+        "*   Ref: Mirabello and Wallner, 'DockQ v2: Improved automatic  *\n"
+        "*   quality measure for protein multimers, nucleic acids       *\n"
+        "*   and small molecules'                                       *\n"
+        "*                                                              *\n"
         "*   For comments, please email: bjorn.wallner@.liu.se          *"
     )
-    if not capri_peptide:
-        header = (
-            "****************************************************************\n"
-            "*                       DockQ                                  *\n"
-            "*   Scoring function for protein-protein docking models        *\n"
-            "*   Statistics on CAPRI data:                                  *\n"
-            "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n"
-            "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n"
-            "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n"
-            "*            DockQ >= 0.80 - High quality                      *"
-        )
-    else:
-        header = (
-            "****************************************************************\n"
-            "*                DockQ-CAPRI peptide                           *\n"
-            "*   Do not trust any thing you read....                        *\n"
-            "*   OBS THE DEFINITION OF Fnat and iRMS are different for      *\n"
-            "*   peptides in CAPRI                                          *\n"
-            "*                                                              *"
-        )
+
+    header = (
+        "****************************************************************\n"
+        "*                       DockQ                                  *\n"
+        "*   Docking scoring for biomolecular models                    *\n"
+        "*   DockQ score legend:                                        *\n"
+        "*    0.00 <= DockQ <  0.23 - Incorrect                         *\n"
+        "*    0.23 <= DockQ <  0.49 - Acceptable quality                *\n"
+        "*    0.49 <= DockQ <  0.80 - Medium quality                    *\n"
+        "*            DockQ >= 0.80 - High quality                      *"
+    )
 
     if verbose:
         notice = (
