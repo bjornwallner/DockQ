@@ -27,10 +27,6 @@ def residue_distances(float [:,:] atom_coordinates1, float [:,:] atom_coordinate
                     this_d = (atom_coordinates1[x][0] - atom_coordinates2[y][0])**2 + (atom_coordinates1[x][1] - atom_coordinates2[y][1])**2 + (atom_coordinates1[x][2] - atom_coordinates2[y][2])**2
                     if this_d < min_d:
                         min_d = this_d
-                        if min_d > 400.0:
-                            break
-                if min_d > 400.0:
-                    break
             res_distances[i, j] = min_d
             cum_j_atoms = cum_j_atoms + j_atoms
         cum_i_atoms = cum_i_atoms + i_atoms
