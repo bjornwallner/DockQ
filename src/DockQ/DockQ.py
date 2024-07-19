@@ -319,7 +319,7 @@ def calc_DockQ(
 
     if capri_peptide:
         ref_res_distances = get_residue_distances(
-            ref_chains[0], ref_chains[1], "ref", all_atom=False
+            aligned_ref_1, aligned_ref_2, "ref", all_atom=False
         )
     # Get interfacial atoms from reference, and corresponding atoms from sample
     interacting_pairs = get_interacting_pairs(
