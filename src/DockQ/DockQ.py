@@ -24,9 +24,9 @@ except ImportError:
         """WARNING: It looks like cython is not working,
          falling back on native python. This will make DockQ slower"""
     )
-    from operations_nocy import residue_distances, get_fnat_stats
-    from parsers import PDBParser, MMCIFParser
-    from constants import *
+    from .operations_nocy import residue_distances, get_fnat_stats
+    from .parsers import PDBParser, MMCIFParser
+    from .constants import *
 
 
 def parse_args():
