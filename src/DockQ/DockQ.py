@@ -258,7 +258,7 @@ def calc_sym_corrected_lrmsd(
     info = {
         "DockQ_F1": dockq_f1,
         "DockQ": dockq,
-        "Lrms": min_lrms,
+        "LRMSD": min_lrms,
         "mapping": best_mapping,
         "is_het": sample_ligand.is_het,
     }
@@ -384,8 +384,8 @@ def calc_DockQ(
         return info
 
     info["F1"] = F1
-    info["irms"] = irms
-    info["Lrms"] = lrms
+    info["iRMSD"] = irms
+    info["LRMSD"] = lrms
     info["fnat"] = fnat
     info["nat_correct"] = nat_correct
     info["nat_total"] = nat_total
@@ -990,8 +990,8 @@ def print_results(
             reported_measures = (
                 [
                     "DockQ",
-                    "irms",
-                    "Lrms",
+                    "iRMSD",
+                    "LRMSD",
                     "fnat",
                     "fnonnat",
                     "clashes",
@@ -999,7 +999,7 @@ def print_results(
                     "DockQ_F1",
                 ]
                 if not results["is_het"]
-                else ["Lrms"]
+                else ["LRMSD"]
             )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             score_str = " ".join(
@@ -1019,8 +1019,8 @@ def print_results(
             reported_measures = (
                 [
                     "DockQ",
-                    "irms",
-                    "Lrms",
+                    "iRMSD",
+                    "LRMSD",
                     "fnat",
                     "fnonnat",
                     "clashes",
@@ -1028,7 +1028,7 @@ def print_results(
                     "DockQ_F1",
                 ]
                 if not results["is_het"]
-                else ["Lrms"]
+                else ["LRMSD"]
             )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             print(f"Native chains: {chains[0]}, {chains[1]}{hetname}")
@@ -1064,7 +1064,7 @@ def print_header(verbose=False, capri_peptide=False):
         notice = (
             "*   For the record:                                            *\n"
             f"*   Definition of contact <{'5A' if not capri_peptide else '4A'} (Fnat)                           *\n"
-            f"*   Definition of interface <{'10A all heavy atoms (iRMS)       ' if not capri_peptide else '8A CB (iRMS)                     '} *\n"
+            f"*   Definition of interface <{'10A all heavy atoms (iRMSD)      ' if not capri_peptide else '8A CB (iRMSD)                    '} *\n"
             "****************************************************************"
         )
     else:

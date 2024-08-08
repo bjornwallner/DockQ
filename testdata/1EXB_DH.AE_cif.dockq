@@ -17,8 +17,8 @@ Total DockQ over 1 native interfaces: 0.775 with DH:AE model:native mapping
 Native chains: A, E
 	Model chains: D, H
 	DockQ: 0.775
-	irms: 0.711
-	Lrms: 2.831
+	iRMSD: 0.711
+	LRMSD: 2.831
 	fnat: 0.609
 	fnonnat: 0.125
 	clashes: 0.000
