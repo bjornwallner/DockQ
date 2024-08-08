@@ -674,7 +674,6 @@ def run_on_all_native_interfaces(
             for result in result_mapping.values()
         ]
     )
-
     return result_mapping, total_dockq
 
 
@@ -983,6 +982,10 @@ def main():
     else:  # skip multi-threading for single jobs (skip the bar basically)
         best_mapping = next(chain_maps)
         best_result, best_dockq = run_chain_map(best_mapping)
+
+    if not best_result:
+        logging.error("Could not find interfaces in the native model. Please double check the inputs or select different chains with the --mapping flag.")
+        sys.exit(1)
 
     info = dict()
     info["model"] = args.model
