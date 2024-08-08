@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "cython", "numpy ~= 1.21",]
+requires = ["setuptools>=68", "cython", "numpy < 2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["biopython >= 1.79", "networkx", "parallelbar"]
+dependencies = ["numpy < 2.0", "biopython >= 1.79", "networkx", "parallelbar"]
 
 [project.urls]
 Homepage = "https://github.com/bjornwallner/DockQ"
