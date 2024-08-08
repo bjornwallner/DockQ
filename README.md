@@ -5,7 +5,13 @@
 
 ## Installation
 
-Clone the repository, then install the necessary libraries with `pip`:
+With `pip`:
+
+```
+pip install DockQ
+```
+
+To get the latest commit: clone the repository, then install with `pip`:
 
 ```
 git clone https://github.com/bjornwallner/DockQ/
@@ -47,8 +53,8 @@ Total DockQ over 3 native interfaces: 0.653 with BAC:ABC model:native mapping
 Native chains: A, B
 	Model chains: B, A
 	DockQ: 0.994
-	irms: 0.000
-	Lrms: 0.000
+	iRMSD: 0.000
+	LRMSD: 0.000
 	fnat: 0.983
 	fnonnat: 0.008
 	clashes: 0.000
@@ -57,8 +63,8 @@ Native chains: A, B
 Native chains: A, C
 	Model chains: B, C
 	DockQ: 0.511
-	irms: 1.237
-	Lrms: 6.864
+	iRMSD: 1.237
+	LRMSD: 6.864
 	fnat: 0.333
 	fnonnat: 0.000
 	clashes: 0.000
@@ -67,8 +73,8 @@ Native chains: A, C
 Native chains: B, C
 	Model chains: A, C
 	DockQ: 0.453
-	irms: 2.104
-	Lrms: 8.131
+	iRMSD: 2.104
+	LRMSD: 8.131
 	fnat: 0.500
 	fnonnat: 0.107
 	clashes: 0.000
@@ -81,9 +87,9 @@ A more compact output option is available with the flag `--short`:
 ```
 $ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --short
 
-DockQ 0.994 DockQ_F1 0.996 Fnat 0.983 iRMS 0.000 LRMS 0.000 Fnonnat 0.008 clashes 0 mapping BA:AB examples/1A2K_r_l_b.model.pdb B A -> examples/1A2K_r_l_b.pdb A B
-DockQ 0.511 DockQ_F1 0.567 Fnat 0.333 iRMS 1.237 LRMS 6.864 Fnonnat 0.000 clashes 0 mapping BC:AC examples/1A2K_r_l_b.model.pdb B C -> examples/1A2K_r_l_b.pdb A C
-DockQ 0.453 DockQ_F1 0.500 Fnat 0.500 iRMS 2.104 LRMS 8.131 Fnonnat 0.107 clashes 0 mapping AC:BC examples/1A2K_r_l_b.model.pdb A C -> examples/1A2K_r_l_b.pdb B C
+DockQ 0.994 DockQ_F1 0.996 Fnat 0.983 iRMSD 0.000 LRMSD 0.000 Fnonnat 0.008 clashes 0 mapping BA:AB examples/1A2K_r_l_b.model.pdb B A -> examples/1A2K_r_l_b.pdb A B
+DockQ 0.511 DockQ_F1 0.567 Fnat 0.333 iRMSD 1.237 LRMSD 6.864 Fnonnat 0.000 clashes 0 mapping BC:AC examples/1A2K_r_l_b.model.pdb B C -> examples/1A2K_r_l_b.pdb A C
+DockQ 0.453 DockQ_F1 0.500 Fnat 0.500 iRMSD 2.104 LRMSD 8.131 Fnonnat 0.107 clashes 0 mapping AC:BC examples/1A2K_r_l_b.model.pdb A C -> examples/1A2K_r_l_b.pdb B C
 
 ```
 
@@ -156,10 +162,10 @@ Small molecules in PDB or mmCIF files can be scored and the mapping optimized in
 $ DockQ examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG --short
 
 Total DockQ-small_molecules over 4 native interfaces: 0.659 with ABDCF:ABEFG model:native mapping
-DockQ 0.950 irms 0.455 Lrms 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
-Lrms 0.585 mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
-Lrms 28.096 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
-Lrms 1.311 mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
+DockQ 0.950 IRMSD 0.455 LRMSD 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
+LRMSD 0.585 mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
+LRMSD 28.096 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
+LRMSD 1.311 mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G
 ```
 
 Only LRMSD is reported for small molecules.
@@ -218,8 +224,8 @@ run_on_all_native_interfaces(model, native, chain_map=chain_map)
 
 ({('A', 'B'): {'DockQ_F1': 0.9437927182141027,
    'DockQ': 0.9425398964102757,
-   'irms': 0.3753064373774967,
-   'Lrms': 0.5535111803522507,
+   'iRMSD': 0.3753064373774967,
+   'LRMSD': 0.5535111803522507,
    'fnat': 0.8907563025210085,
    'nat_correct': 106,
    'nat_total': 119,
