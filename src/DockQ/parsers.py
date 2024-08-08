@@ -287,7 +287,6 @@ class PDBParser(Bio.PDB.PDBParser):
                 sequences, is_het = self._parse(
                     lines, chains, parse_hetatms=parse_hetatms
                 )
-
             self.structure_builder.set_header(self.header)
             # Return the Structure instance
             structure = self.structure_builder.get_structure()
@@ -421,6 +420,8 @@ class PDBParser(Bio.PDB.PDBParser):
                     structure_builder.init_chain(current_chain_id)
                     current_residue_id = residue_id
                     current_resname = resname
+                    if current_chain_id not in sequences:
+                        sequences[current_chain_id] = ""
                     if current_chain_id not in is_het:
                         is_het[current_chain_id] = None
                     try:
@@ -436,6 +437,9 @@ class PDBParser(Bio.PDB.PDBParser):
                                 else current_resname
                             )
                             sequences[current_chain_id] = resname1
+                        else:
+                            sequences[current_chain_id] = current_resname
+                            is_het[current_chain_id] = current_resname
                     except PDBConstructionException as message:
                         self._handle_PDB_exception(message, global_line_counter)
                 elif current_residue_id != residue_id or current_resname != resname:
