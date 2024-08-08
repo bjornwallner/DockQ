@@ -3,8 +3,9 @@
 import sys
 import gzip
 import math
-import warnings
+import logging
 import itertools
+import traceback
 from collections import Counter
 from argparse import ArgumentParser
 from functools import lru_cache, partial
@@ -20,7 +21,7 @@ try:
     from .parsers import PDBParser, MMCIFParser
     from .constants import *
 except ImportError:
-    warnings.warn(
+    logging.warning(
         """Invoking DockQ as script rather than binary. This will slow down computations."""
     )
     from operations_nocy import residue_distances, get_fnat_stats
@@ -716,9 +717,24 @@ def group_chains(
     chain_clusters = {chain: [] for chain in ref_chains}
 
     for query_chain, ref_chain in alignment_targets:
-        qc = query_structure[query_chain]
-        rc = ref_structure[ref_chain]
-
+        try:
+            qc = query_structure[query_chain]
+        except KeyError:
+            logging.error(f"""The specified model chain {query_chain} is not found in the PDB structure.
+This is possibly due to using the wrong chain identifier in --mapping,
+or forgetting to specify --small_molecule if this is a HETATM chain.
+If working with mmCIF files, make sure you use the right chain identifier.
+            """)
+            print(traceback.format_exc())
+            sys.exit(1)
+        try:
+            rc = ref_structure[ref_chain]
+        except KeyError:
+            logging.error(f"""The specified native chain {ref_chain} is not found in the PDB structure.
+This is possibly due to using the wrong chain identifier in --mapping,
+or forgetting to specify --small_molecule if this is a HETATM chain.
+If working with mmCIF files, make sure you use the right chain identifier.
+            """)    
         het_qc = qc.is_het
         het_rc = rc.is_het
 
@@ -739,16 +755,21 @@ def group_chains(
                 chain_clusters[ref_chain].append(query_chain)
         elif het_qc and het_rc and het_qc == het_rc:
             chain_clusters[ref_chain].append(query_chain)
-
     chains_without_match = [
         chain for chain in chain_clusters if not chain_clusters[chain]
     ]
 
+    if mismatch_dict:
+        logging.warning(f"""Some chains have a limited number of sequence mismatches and are treated as non-homologous. 
+Try increasing the --allowed_mismatches for the following: {", ".join(f"Model chain {c[1]}, native chain {c[0]}: {m} mismatches" for c, m in mismatch_dict.items())}
+if they should be treated as homologous.""")
+
     if chains_without_match:
-        print(
-            f"For these chains {chains_without_match} no match was found between model and native, try increasing the --allowed_mismatches from {allowed_mismatches}"
+        logging.error(
+            f"For chains {chains_without_match} no identical corresponding chain was found between in the native."
         )
-        print(f"Current number of alignments with 1-10 mismatches: {mismatch_dict}")
+        sys.exit(1)
+
 
     return chain_clusters, reverse_map
 
@@ -762,7 +783,7 @@ def format_mapping(mapping_str, small_molecule=None):
 
     model_mapping, native_mapping = mapping_str.split(":")
     if not native_mapping:
-        print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
+        logging.error("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
     else:
         # :ABC or *:ABC only use those natives chains, permute model chains
@@ -811,13 +832,18 @@ def product_without_dupl(*args, repeat=1):
 
 
 def count_chain_combinations(chain_clusters):
-    clusters = [tuple(li) for li in chain_clusters.values()]
-    number_of_combinations = np.prod(
-        [
-            int(math.factorial(len(a)) / math.factorial(len(a) - b))
-            for a, b in Counter(clusters).items()
-        ]
-    )
+    try:
+        clusters = [tuple(li) for li in chain_clusters.values()]
+        number_of_combinations = np.prod(
+            [
+                int(math.factorial(len(a)) / math.factorial(len(a) - b))
+                for a, b in Counter(clusters).items()
+            ]
+        )
+    except ValueError:
+        logging.error("""Couldn't find a match between each model-native chain specified in the mapping.
+Make sure that all chains in your model have a homologous chain in the native, or specify the right subset of chains with --mapping""")
+        sys.exit()
     return number_of_combinations
 
 
