@@ -162,7 +162,7 @@ Small molecules in PDB or mmCIF files can be scored and the mapping optimized in
 $ DockQ examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG --short
 
 Total DockQ-small_molecules over 4 native interfaces: 0.659 with ABDCF:ABEFG model:native mapping
-DockQ 0.950 IRMSD 0.455 LRMSD 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
+DockQ 0.950 iRMSD 0.455 LRMSD 1.451 fnat 0.964 fnonnat 0.070 clashes 0.000 F1 0.946 DockQ_F1 0.945 mapping AB:AB examples/1HHO_hem.cif A B -> examples/2HHB_hem.cif A B
 LRMSD 0.585 mapping AD:AE (HEM) examples/1HHO_hem.cif A D -> examples/2HHB_hem.cif A E
 LRMSD 28.096 mapping BC:BF (PO4) examples/1HHO_hem.cif B C -> examples/2HHB_hem.cif B F
 LRMSD 1.311 mapping BF:BG (HEM) examples/1HHO_hem.cif B F -> examples/2HHB_hem.cif B G

@@ -77,12 +77,6 @@ def parse_args():
         help="Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)",
     )
     parser.add_argument(
-        "--optDockQF1",
-        default=False,
-        action="store_true",
-        help="Optimize on DockQ_F1 instead of DockQ",
-    )
-    parser.add_argument(
         "--allowed_mismatches",
         default=0,
         type=int,
@@ -255,9 +249,8 @@ def calc_sym_corrected_lrmsd(
         if lrms < min_lrms:
             best_mapping = isomorphism
             min_lrms = lrms
-    dockq_f1 = dockq = dockq_formula(0, 0, min_lrms)
+    dockq = dockq_formula(0, 0, min_lrms)
     info = {
-        "DockQ_F1": dockq_f1,
         "DockQ": dockq,
         "LRMSD": min_lrms,
         "mapping": best_mapping,
@@ -379,7 +372,6 @@ def calc_DockQ(
 
     info = {}
     F1 = f1(nat_correct, nonnat_count, nat_total)
-    info["DockQ_F1"] = dockq_formula(F1, irms, lrms)
     info["DockQ"] = dockq_formula(fnat, irms, lrms)
     if low_memory:
         return info
@@ -632,7 +624,6 @@ def run_on_all_native_interfaces(
     no_align=False,
     capri_peptide=False,
     low_memory=False,
-    optDockQF1=False,
 ):
     """Given a native-model chain map, finds all non-null native interfaces
     and runs DockQ for each native-model pair of interfaces"""
@@ -670,7 +661,7 @@ def run_on_all_native_interfaces(
                 result_mapping[chain_pair] = info
     total_dockq = sum(
         [
-            result["DockQ_F1" if optDockQF1 else "DockQ"]
+            result["DockQ"]
             for result in result_mapping.values()
         ]
     )
@@ -1023,16 +1014,15 @@ def print_results(
                     "LRMSD",
                     "fnat",
                     "fnonnat",
-                    "clashes",
                     "F1",
-                    "DockQ_F1",
+                    "clashes",
                 ]
                 if not results["is_het"]
                 else ["LRMSD"]
             )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             score_str = " ".join(
-                [f"{item} {results[item]:.3f}" for item in reported_measures]
+                [f"{item} {results[item]:.3f}" if item != "clashes" else f"{item} {results[item]}" for item in reported_measures]
             )
             print(
                 f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]}{hetname} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
@@ -1052,9 +1042,8 @@ def print_results(
                     "LRMSD",
                     "fnat",
                     "fnonnat",
-                    "clashes",
                     "F1",
-                    "DockQ_F1",
+                    "clashes",
                 ]
                 if not results["is_het"]
                 else ["LRMSD"]
@@ -1064,7 +1053,7 @@ def print_results(
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
             print(
                 "\n".join(
-                    [f"\t{item}: {results[item]:.3f}" for item in reported_measures]
+                    [f"\t{item}: {results[item]:.3f}" if item != "clashes" else f"\t{item}: {results[item]}" for item in reported_measures]
                 )
             )
 

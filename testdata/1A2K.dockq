@@ -21,9 +21,8 @@ Native chains: A, B
 	LRMSD: 0.000
 	fnat: 0.983
 	fnonnat: 0.008
-	clashes: 0.000
 	F1: 0.987
-	DockQ_F1: 0.996
+	clashes: 0
 Native chains: A, C
 	Model chains: B, C
 	DockQ: 0.511
@@ -31,9 +30,8 @@ Native chains: A, C
 	LRMSD: 6.864
 	fnat: 0.333
 	fnonnat: 0.000
-	clashes: 0.000
 	F1: 0.500
-	DockQ_F1: 0.567
+	clashes: 0
 Native chains: B, C
 	Model chains: A, C
 	DockQ: 0.453
@@ -41,6 +39,5 @@ Native chains: B, C
 	LRMSD: 8.131
 	fnat: 0.500
 	fnonnat: 0.107
-	clashes: 0.000
 	F1: 0.641
-	DockQ_F1: 0.500
+	clashes: 0

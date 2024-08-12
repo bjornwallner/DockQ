@@ -21,6 +21,5 @@ Native chains: A, B
 	LRMSD: 1.516
 	fnat: 0.533
 	fnonnat: 0.238
-	clashes: 2.000
 	F1: 0.627
-	DockQ_F1: 0.731
+	clashes: 2
