@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dockq"
-version = "2.1.1"
+version = "2.1.2"
 authors = [
   { name="Claudio Mirabello", email="claudio.mirabello@scilifelab.se" },
   { name="Bjorn Wallner", email="bjorn.wallner@liu.se" },
 ]
 description = "A Quality Measure for Protein, Nucleic Acids and Small Ligand Docking Models"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
