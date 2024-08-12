@@ -11,7 +11,7 @@ With `pip`:
 pip install DockQ
 ```
 
-To get the latest commit: clone the repository, then install with `pip`:
+Or, if you want the latest commit: clone the repository and run `pip` within the repo directory:
 
 ```
 git clone https://github.com/bjornwallner/DockQ/
@@ -57,9 +57,8 @@ Native chains: A, B
 	LRMSD: 0.000
 	fnat: 0.983
 	fnonnat: 0.008
-	clashes: 0.000
 	F1: 0.987
-	DockQ_F1: 0.996
+	clashes: 0
 Native chains: A, C
 	Model chains: B, C
 	DockQ: 0.511
@@ -67,9 +66,8 @@ Native chains: A, C
 	LRMSD: 6.864
 	fnat: 0.333
 	fnonnat: 0.000
-	clashes: 0.000
 	F1: 0.500
-	DockQ_F1: 0.567
+	clashes: 0
 Native chains: B, C
 	Model chains: A, C
 	DockQ: 0.453
@@ -77,9 +75,8 @@ Native chains: B, C
 	LRMSD: 8.131
 	fnat: 0.500
 	fnonnat: 0.107
-	clashes: 0.000
-	F1: 0.641
-	DockQ_F1: 0.500
+    F1: 0.641
+	clashes: 0
 ```
 
 A more compact output option is available with the flag `--short`:
@@ -87,10 +84,16 @@ A more compact output option is available with the flag `--short`:
 ```
 $ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --short
 
-DockQ 0.994 DockQ_F1 0.996 Fnat 0.983 iRMSD 0.000 LRMSD 0.000 Fnonnat 0.008 clashes 0 mapping BA:AB examples/1A2K_r_l_b.model.pdb B A -> examples/1A2K_r_l_b.pdb A B
-DockQ 0.511 DockQ_F1 0.567 Fnat 0.333 iRMSD 1.237 LRMSD 6.864 Fnonnat 0.000 clashes 0 mapping BC:AC examples/1A2K_r_l_b.model.pdb B C -> examples/1A2K_r_l_b.pdb A C
-DockQ 0.453 DockQ_F1 0.500 Fnat 0.500 iRMSD 2.104 LRMSD 8.131 Fnonnat 0.107 clashes 0 mapping AC:BC examples/1A2K_r_l_b.model.pdb A C -> examples/1A2K_r_l_b.pdb B C
+Total DockQ over 3 native interfaces: 0.653 with BAC:ABC model:native mapping
+DockQ 0.994 iRMSD 0.000 LRMSD 0.000 fnat 0.983 fnonnat 0.008 F1 0.987 clashes 0 mapping BA:AB examples/1A2K_r_l_b.model.pdb B A -> examples/1A2K_r_l_b.pdb A B
+DockQ 0.511 iRMSD 1.237 LRMSD 6.864 fnat 0.333 fnonnat 0.000 F1 0.500 clashes 0 mapping BC:AC examples/1A2K_r_l_b.model.pdb B C -> examples/1A2K_r_l_b.pdb A C
+DockQ 0.453 iRMSD 2.104 LRMSD 8.131 fnat 0.500 fnonnat 0.107 F1 0.641 clashes 0 mapping AC:BC examples/1A2K_r_l_b.model.pdb A C -> examples/1A2K_r_l_b.pdb B C
+```
 
+A dictionary containing the complete results data can be dumped in JSON format with the `--json filename.json` flag:
+
+```
+$ DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --json filename.json
 ```
 
 ## Model/Native chain mapping
@@ -246,6 +249,16 @@ run_on_all_native_interfaces(model, native, chain_map=chain_map)
 **Merge multiple chains in a single receptor or ligand**
 
 See issue [#33](https://github.com/bjornwallner/DockQ/issues/33) if you want to merge multiple chains (e.g. heavy and light antibody chains) into a single receptor or ligand
+
+## Legend of outputs
+
+* `DockQ`: DockQ score as defined in the [original DockQ paper](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0161879)
+* `iRMSD`: RMSD of interfacial residues
+* `LRMSD`: Ligand RMSD
+* `fnat`: Fraction of retrieved native contacts (same as Recall or TPR)
+* `fnonnat`: Fraction of predicted contacts that are not native (same as FPR)
+* `F1`: Harmonic mean of the precision and recall in predicted interfacial contacts
+* `clashes`: number of clashing interfacial residues in model (distance between residues below 2Å)
 
 ## Citing DockQ v2
 
