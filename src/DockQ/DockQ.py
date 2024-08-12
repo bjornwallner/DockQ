@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import json
 import gzip
 import math
 import logging
@@ -54,11 +55,13 @@ def parse_args():
         "--short", default=False, action="store_true", help="Short output"
     )
     parser.add_argument(
+        "--json", default=None, metavar="out.json", help="Write outputs to a chosen json file"
+    )
+    parser.add_argument(
         "--verbose", "-v", default=False, action="store_true", help="Verbose output"
     )
     parser.add_argument(
         "--no_align",
-        # default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
@@ -658,7 +661,7 @@ def run_on_all_native_interfaces(
                     chain_map[chain_pair[1]],
                 )
                 info["chain_map"] = chain_map  # diagnostics
-                result_mapping[chain_pair] = info
+                result_mapping["".join(chain_pair)] = info
     total_dockq = sum(
         [
             result["DockQ"]
@@ -986,6 +989,11 @@ def main():
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
     info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
+    
+    if args.json:
+        with open(args.json, "w") as fp:
+            json.dump(info, fp)
+
     print_results(
         info, args.short, args.verbose, args.capri_peptide, args.small_molecule
     )
