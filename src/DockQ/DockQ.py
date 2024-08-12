@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import sys
+import json
 import gzip
 import math
-import warnings
+import logging
 import itertools
+import traceback
 from collections import Counter
 from argparse import ArgumentParser
 from functools import lru_cache, partial
@@ -20,9 +22,8 @@ try:
     from .parsers import PDBParser, MMCIFParser
     from .constants import *
 except ImportError:
-    warnings.warn(
-        """WARNING: It looks like cython is not working,
-         falling back on native python. This will make DockQ slower"""
+    logging.warning(
+        """Invoking DockQ as script rather than binary. This will slow down computations."""
     )
     from operations_nocy import residue_distances, get_fnat_stats
     from parsers import PDBParser, MMCIFParser
@@ -54,11 +55,13 @@ def parse_args():
         "--short", default=False, action="store_true", help="Short output"
     )
     parser.add_argument(
+        "--json", default=None, metavar="out.json", help="Write outputs to a chosen json file"
+    )
+    parser.add_argument(
         "--verbose", "-v", default=False, action="store_true", help="Verbose output"
     )
     parser.add_argument(
         "--no_align",
-        # default=False,
         action="store_true",
         help="Do not align native and model using sequence alignments, but use the numbering of residues instead",
     )
@@ -75,12 +78,6 @@ def parse_args():
         type=int,
         metavar="CHUNK",
         help="Maximum size of chunks given to the cores, actual chunksize is min(max_chunk,combos/cpus)",
-    )
-    parser.add_argument(
-        "--optDockQF1",
-        default=False,
-        action="store_true",
-        help="Optimize on DockQ_F1 instead of DockQ",
     )
     parser.add_argument(
         "--allowed_mismatches",
@@ -255,11 +252,10 @@ def calc_sym_corrected_lrmsd(
         if lrms < min_lrms:
             best_mapping = isomorphism
             min_lrms = lrms
-    dockq_f1 = dockq = dockq_formula(0, 0, min_lrms)
+    dockq = dockq_formula(0, 0, min_lrms)
     info = {
-        "DockQ_F1": dockq_f1,
         "DockQ": dockq,
-        "Lrms": min_lrms,
+        "LRMSD": min_lrms,
         "mapping": best_mapping,
         "is_het": sample_ligand.is_het,
     }
@@ -379,14 +375,13 @@ def calc_DockQ(
 
     info = {}
     F1 = f1(nat_correct, nonnat_count, nat_total)
-    info["DockQ_F1"] = dockq_formula(F1, irms, lrms)
     info["DockQ"] = dockq_formula(fnat, irms, lrms)
     if low_memory:
         return info
 
     info["F1"] = F1
-    info["irms"] = irms
-    info["Lrms"] = lrms
+    info["iRMSD"] = irms
+    info["LRMSD"] = lrms
     info["fnat"] = fnat
     info["nat_correct"] = nat_correct
     info["nat_total"] = nat_total
@@ -632,7 +627,6 @@ def run_on_all_native_interfaces(
     no_align=False,
     capri_peptide=False,
     low_memory=False,
-    optDockQF1=False,
 ):
     """Given a native-model chain map, finds all non-null native interfaces
     and runs DockQ for each native-model pair of interfaces"""
@@ -667,14 +661,13 @@ def run_on_all_native_interfaces(
                     chain_map[chain_pair[1]],
                 )
                 info["chain_map"] = chain_map  # diagnostics
-                result_mapping[chain_pair] = info
+                result_mapping["".join(chain_pair)] = info
     total_dockq = sum(
         [
-            result["DockQ_F1" if optDockQF1 else "DockQ"]
+            result["DockQ"]
             for result in result_mapping.values()
         ]
     )
-
     return result_mapping, total_dockq
 
 
@@ -717,9 +710,24 @@ def group_chains(
     chain_clusters = {chain: [] for chain in ref_chains}
 
     for query_chain, ref_chain in alignment_targets:
-        qc = query_structure[query_chain]
-        rc = ref_structure[ref_chain]
-
+        try:
+            qc = query_structure[query_chain]
+        except KeyError:
+            logging.error(f"""The specified model chain {query_chain} is not found in the PDB structure.
+This is possibly due to using the wrong chain identifier in --mapping,
+or forgetting to specify --small_molecule if this is a HETATM chain.
+If working with mmCIF files, make sure you use the right chain identifier.
+            """)
+            print(traceback.format_exc())
+            sys.exit(1)
+        try:
+            rc = ref_structure[ref_chain]
+        except KeyError:
+            logging.error(f"""The specified native chain {ref_chain} is not found in the PDB structure.
+This is possibly due to using the wrong chain identifier in --mapping,
+or forgetting to specify --small_molecule if this is a HETATM chain.
+If working with mmCIF files, make sure you use the right chain identifier.
+            """)    
         het_qc = qc.is_het
         het_rc = rc.is_het
 
@@ -740,16 +748,21 @@ def group_chains(
                 chain_clusters[ref_chain].append(query_chain)
         elif het_qc and het_rc and het_qc == het_rc:
             chain_clusters[ref_chain].append(query_chain)
-
     chains_without_match = [
         chain for chain in chain_clusters if not chain_clusters[chain]
     ]
 
+    if mismatch_dict:
+        logging.warning(f"""Some chains have a limited number of sequence mismatches and are treated as non-homologous. 
+Try increasing the --allowed_mismatches for the following: {", ".join(f"Model chain {c[1]}, native chain {c[0]}: {m} mismatches" for c, m in mismatch_dict.items())}
+if they should be treated as homologous.""")
+
     if chains_without_match:
-        print(
-            f"For these chains {chains_without_match} no match was found between model and native, try increasing the --allowed_mismatches from {allowed_mismatches}"
+        logging.error(
+            f"For chains {chains_without_match} no identical corresponding chain was found between in the native."
         )
-        print(f"Current number of alignments with 1-10 mismatches: {mismatch_dict}")
+        sys.exit(1)
+
 
     return chain_clusters, reverse_map
 
@@ -763,7 +776,7 @@ def format_mapping(mapping_str, small_molecule=None):
 
     model_mapping, native_mapping = mapping_str.split(":")
     if not native_mapping:
-        print("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
+        logging.error("When using --mapping, native chains must be set (e.g. ABC:ABC or :ABC)")
         sys.exit()
     else:
         # :ABC or *:ABC only use those natives chains, permute model chains
@@ -812,13 +825,18 @@ def product_without_dupl(*args, repeat=1):
 
 
 def count_chain_combinations(chain_clusters):
-    clusters = [tuple(li) for li in chain_clusters.values()]
-    number_of_combinations = np.prod(
-        [
-            int(math.factorial(len(a)) / math.factorial(len(a) - b))
-            for a, b in Counter(clusters).items()
-        ]
-    )
+    try:
+        clusters = [tuple(li) for li in chain_clusters.values()]
+        number_of_combinations = np.prod(
+            [
+                int(math.factorial(len(a)) / math.factorial(len(a) - b))
+                for a, b in Counter(clusters).items()
+            ]
+        )
+    except ValueError:
+        logging.error("""Couldn't find a match between each model-native chain specified in the mapping.
+Make sure that all chains in your model have a homologous chain in the native, or specify the right subset of chains with --mapping""")
+        sys.exit()
     return number_of_combinations
 
 
@@ -959,6 +977,10 @@ def main():
         best_mapping = next(chain_maps)
         best_result, best_dockq = run_chain_map(best_mapping)
 
+    if not best_result:
+        logging.error("Could not find interfaces in the native model. Please double check the inputs or select different chains with the --mapping flag.")
+        sys.exit(1)
+
     info = dict()
     info["model"] = args.model
     info["native"] = args.native
@@ -967,6 +989,11 @@ def main():
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
     info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
+    
+    if args.json:
+        with open(args.json, "w") as fp:
+            json.dump(info, fp)
+
     print_results(
         info, args.short, args.verbose, args.capri_peptide, args.small_molecule
     )
@@ -991,20 +1018,19 @@ def print_results(
             reported_measures = (
                 [
                     "DockQ",
-                    "irms",
-                    "Lrms",
+                    "iRMSD",
+                    "LRMSD",
                     "fnat",
                     "fnonnat",
-                    "clashes",
                     "F1",
-                    "DockQ_F1",
+                    "clashes",
                 ]
                 if not results["is_het"]
-                else ["Lrms"]
+                else ["LRMSD"]
             )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             score_str = " ".join(
-                [f"{item} {results[item]:.3f}" for item in reported_measures]
+                [f"{item} {results[item]:.3f}" if item != "clashes" else f"{item} {results[item]}" for item in reported_measures]
             )
             print(
                 f"{score_str} mapping {results['chain1']}{results['chain2']}:{chains[0]}{chains[1]}{hetname} {info['model']} {results['chain1']} {results['chain2']} -> {info['native']} {chains[0]} {chains[1]}"
@@ -1020,23 +1046,22 @@ def print_results(
             reported_measures = (
                 [
                     "DockQ",
-                    "irms",
-                    "Lrms",
+                    "iRMSD",
+                    "LRMSD",
                     "fnat",
                     "fnonnat",
-                    "clashes",
                     "F1",
-                    "DockQ_F1",
+                    "clashes",
                 ]
                 if not results["is_het"]
-                else ["Lrms"]
+                else ["LRMSD"]
             )
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             print(f"Native chains: {chains[0]}, {chains[1]}{hetname}")
             print(f"\tModel chains: {results['chain1']}, {results['chain2']}")
             print(
                 "\n".join(
-                    [f"\t{item}: {results[item]:.3f}" for item in reported_measures]
+                    [f"\t{item}: {results[item]:.3f}" if item != "clashes" else f"\t{item}: {results[item]}" for item in reported_measures]
                 )
             )
 
@@ -1065,7 +1090,7 @@ def print_header(verbose=False, capri_peptide=False):
         notice = (
             "*   For the record:                                            *\n"
             f"*   Definition of contact <{'5A' if not capri_peptide else '4A'} (Fnat)                           *\n"
-            f"*   Definition of interface <{'10A all heavy atoms (iRMS)       ' if not capri_peptide else '8A CB (iRMS)                     '} *\n"
+            f"*   Definition of interface <{'10A all heavy atoms (iRMSD)      ' if not capri_peptide else '8A CB (iRMSD)                    '} *\n"
             "****************************************************************"
         )
     else:

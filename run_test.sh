@@ -3,10 +3,12 @@ set -euo pipefail
 
 rm -f test .coverage
 
+PYTHON=${1:-"python"}
+
 if command -v coverage &> /dev/null; then
     binary="coverage run --parallel-mode -m DockQ.DockQ "
 else
-    binary="DockQ"
+    binary="$PYTHON -m DockQ.DockQ"
 fi
 
 $binary examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
@@ -49,9 +51,11 @@ diff <(grep -v "*" test) <(grep -v "*" testdata/6q2n_peptide.dockq)
 $binary examples/1HHO_hem.cif examples/2HHB_hem.cif --small_molecule --mapping :ABEFG > test
 
 # Test that cython version behaves the same as nocython
-python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
+$PYTHON src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > test
 diff <(grep -v "*" test) <(grep -v "*" testdata/1A2K.dockq)
-python src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
+$PYTHON src/DockQ/DockQ.py examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb --no_align > test
 diff <(grep -v "*" test) <(grep -v "*" testdata/1A2K.dockq)
 
-coverage combine
+if command -v coverage &> /dev/null; then
+	coverage combine
+fi

@@ -1,3 +1,3 @@
 Total DockQ over 2 native interfaces: 0.998 with ABC:ABC model:native mapping
-DockQ 0.995 irms 0.000 Lrms 0.000 fnat 0.985 fnonnat 0.000 clashes 0.000 F1 0.993 DockQ_F1 0.998 mapping AC:AC examples/1EXB_r_l_b.model.pdb A C -> examples/1EXB_r_l_b.pdb A C
-DockQ 1.000 irms 0.000 Lrms 0.000 fnat 1.000 fnonnat 0.000 clashes 0.000 F1 1.000 DockQ_F1 1.000 mapping BC:BC examples/1EXB_r_l_b.model.pdb B C -> examples/1EXB_r_l_b.pdb B C
+DockQ 0.995 iRMSD 0.000 LRMSD 0.000 fnat 0.985 fnonnat 0.000 F1 0.993 clashes 0 mapping AC:AC examples/1EXB_r_l_b.model.pdb A C -> examples/1EXB_r_l_b.pdb A C
+DockQ 1.000 iRMSD 0.000 LRMSD 0.000 fnat 1.000 fnonnat 0.000 F1 1.000 clashes 0 mapping BC:BC examples/1EXB_r_l_b.model.pdb B C -> examples/1EXB_r_l_b.pdb B C
