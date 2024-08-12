@@ -179,7 +179,7 @@ Only LRMSD is reported for small molecules.
 
 Interfaces involving nucleic acids are seamlessly scored along with protein interfaces. The DockQ score is calculated for protein-NA or NA-NA interfaces in the same way as for protein-protein interfaces (two DockQ scores are reported for double helix chains).
 
-**Other uses**
+## Other uses
 
 Run DockQ with `-h/--help` to see a list of the available flags:
 
