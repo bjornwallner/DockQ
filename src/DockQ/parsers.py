@@ -208,7 +208,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
                     resname1 = (
                         seq1(current_resname, custom_map=custom_map)
                         if len(current_resname) == 3
-                        else current_resname[:-1]
+                        else current_resname[-1]
                         if (len(current_resname) == 2)
                         else current_resname
                     )
@@ -432,7 +432,7 @@ class PDBParser(Bio.PDB.PDBParser):
                             resname1 = (
                                 seq1(current_resname, custom_map=custom_map)
                                 if len(current_resname) == 3
-                                else current_resname[:-1]
+                                else current_resname[-1]
                                 if (len(current_resname) == 2)
                                 else current_resname
                             )
@@ -453,7 +453,7 @@ class PDBParser(Bio.PDB.PDBParser):
                             resname1 = (
                                 seq1(current_resname, custom_map=custom_map)
                                 if len(current_resname) == 3
-                                else current_resname[:-1]
+                                else current_resname[-1]
                                 if (len(current_resname) == 2)
                                 else current_resname
                             )
