@@ -475,87 +475,9 @@ def list_atoms_per_residue(chain, what):
     return np.array(n_atoms_per_residue).astype(int)
 
 
-@lru_cache
-def get_atoms_per_residue(
-    chains,
-    what,
-    atom_types=("CA", "C", "N", "O", "P"),
-):
-    ref_chain, mod_chain = chains
-    ref_backbone = []
-    mod_backbone = []
-    for ref_res, mod_res in zip(ref_chain, mod_chain):
-        ref_atoms = list(ref_res.get_atoms())
-        mod_atoms = list(mod_res.get_atoms())
-        ref_atoms_ids = [atom.id for atom in ref_atoms]
-        mod_atoms_ids = [atom.id for atom in mod_atoms]
-        
-        for atom_type in atom_types:
-            try:
-                ref_i = ref_atoms_ids.index(atom_type)
-                mod_i = mod_atoms_ids.index(atom_type)
-                ref_backbone += [ref_atoms[ref_i].coord]
-                mod_backbone += [mod_atoms[mod_i].coord]
-            except:
-                continue
-    return np.asarray(ref_backbone), np.asarray(mod_backbone)
-
-
 def get_interacting_pairs(distances, threshold):
     interacting_pairs = np.nonzero(np.asarray(distances) < threshold)
     return tuple(interacting_pairs[0]), tuple(interacting_pairs[1])
-
-
-@lru_cache
-def get_interface_atoms(
-    interacting_pairs,
-    model_chains,
-    ref_chains,
-    atom_types=[],
-):
-    ref_interface = []
-    mod_interface = []
-
-    ref_residues_group1 = [res for res in ref_chains[0]]
-    ref_residues_group2 = [res for res in ref_chains[1]]
-
-    mod_residues_group1 = [res for res in model_chains[0]]
-    mod_residues_group2 = [res for res in model_chains[1]]
-    # remove duplicate residues
-    interface_residues_group1 = set(interacting_pairs[0])
-    interface_residues_group2 = set(interacting_pairs[1])
-
-    for i in interface_residues_group1:
-        ref_atoms = [atom for atom in ref_residues_group1[i].get_atoms()]
-        mod_atoms = [atom for atom in mod_residues_group1[i].get_atoms()]
-        ref_atoms_ids = [atom.id for atom in ref_atoms]
-        mod_atoms_ids = [atom.id for atom in mod_atoms]
-        
-        for atom_type in atom_types:
-            try:
-                ref_i = ref_atoms_ids.index(atom_type)
-                mod_i = mod_atoms_ids.index(atom_type)
-                ref_interface += [ref_atoms[ref_i].coord]
-                mod_interface += [mod_atoms[mod_i].coord]
-            except:
-                continue
-
-    for j in interface_residues_group2:
-        ref_atoms = [atom for atom in ref_residues_group2[j].get_atoms()]
-        mod_atoms = [atom for atom in mod_residues_group2[j].get_atoms()]
-        ref_atoms_ids = [atom.id for atom in ref_atoms]
-        mod_atoms_ids = [atom.id for atom in mod_atoms]
-        
-        for atom_type in atom_types:
-            try:
-                ref_i = ref_atoms_ids.index(atom_type)
-                mod_i = mod_atoms_ids.index(atom_type)
-                ref_interface += [ref_atoms[ref_i].coord]
-                mod_interface += [mod_atoms[mod_i].coord]
-            except:
-                continue
-
-    return np.asarray(mod_interface), np.asarray(ref_interface)
 
 
 @lru_cache
