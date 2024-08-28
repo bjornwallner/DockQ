@@ -536,32 +536,30 @@ def get_interface_atoms(
         mod_atoms = [atom for atom in mod_residues_group1[i].get_atoms()]
         ref_atoms_ids = [atom.id for atom in ref_atoms]
         mod_atoms_ids = [atom.id for atom in mod_atoms]
-        ref_interface += [
-            atom.coord
-            for atom in ref_atoms
-            if atom.id in atom_types and atom.id in mod_atoms_ids
-        ]
-        mod_interface += [
-            atom.coord
-            for atom in mod_atoms
-            if atom.id in atom_types and atom.id in ref_atoms_ids
-        ]
+        
+        for atom_type in atom_types:
+            try:
+                ref_i = ref_atoms_ids.index(atom_type)
+                mod_i = mod_atoms_ids.index(atom_type)
+                ref_interface += [ref_atoms[ref_i].coord]
+                mod_interface += [mod_atoms[mod_i].coord]
+            except:
+                continue
 
     for j in interface_residues_group2:
         ref_atoms = [atom for atom in ref_residues_group2[j].get_atoms()]
         mod_atoms = [atom for atom in mod_residues_group2[j].get_atoms()]
         ref_atoms_ids = [atom.id for atom in ref_atoms]
         mod_atoms_ids = [atom.id for atom in mod_atoms]
-        ref_interface += [
-            atom.coord
-            for atom in ref_atoms
-            if atom.id in atom_types and atom.id in mod_atoms_ids
-        ]
-        mod_interface += [
-            atom.coord
-            for atom in mod_atoms
-            if atom.id in atom_types and atom.id in ref_atoms_ids
-        ]
+        
+        for atom_type in atom_types:
+            try:
+                ref_i = ref_atoms_ids.index(atom_type)
+                mod_i = mod_atoms_ids.index(atom_type)
+                ref_interface += [ref_atoms[ref_i].coord]
+                mod_interface += [mod_atoms[mod_i].coord]
+            except:
+                continue
 
     return np.asarray(mod_interface), np.asarray(ref_interface)
 
