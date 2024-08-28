@@ -354,14 +354,10 @@ def calc_DockQ(
         else ("ligand", "receptor")
     )
 
-    receptor_atoms_native, receptor_atoms_sample = np.asarray(
-        get_atoms_per_residue(
+    receptor_atoms_native, receptor_atoms_sample = get_atoms_per_residue(
             receptor_chains, what="receptor", atom_types=BACKBONE_ATOMS
         )
-    )
-    ligand_atoms_native, ligand_atoms_sample = np.asarray(
-        get_atoms_per_residue(ligand_chains, what="ligand", atom_types=BACKBONE_ATOMS)
-    )
+    ligand_atoms_native, ligand_atoms_sample = get_atoms_per_residue(ligand_chains, what="ligand", atom_types=BACKBONE_ATOMS)
     # Set to align on receptor
     super_imposer.set(receptor_atoms_native, receptor_atoms_sample)
     super_imposer.run()
@@ -490,21 +486,24 @@ def get_atoms_per_residue(
     what,
     atom_types=("CA", "C", "N", "O", "P"),
 ):
-    chain1, chain2 = chains
-    atoms1 = [
-        atom.coord
-        for res1, res2 in zip(chain1, chain2)
-        for atom in res1.get_atoms()
-        if atom.id in atom_types and atom.id in [a.id for a in res2.get_atoms()]
-    ]
-
-    atoms2 = [
-        atom.coord
-        for res1, res2 in zip(chain1, chain2)
-        for atom in res2.get_atoms()
-        if atom.id in atom_types and atom.id in [a.id for a in res1.get_atoms()]
-    ]
-    return atoms1, atoms2
+    ref_chain, mod_chain = chains
+    ref_backbone = []
+    mod_backbone = []
+    for ref_res, mod_res in zip(ref_chain, mod_chain):
+        ref_atoms = list(ref_res.get_atoms())
+        mod_atoms = list(mod_res.get_atoms())
+        ref_atoms_ids = [atom.id for atom in ref_atoms]
+        mod_atoms_ids = [atom.id for atom in mod_atoms]
+        
+        for atom_type in atom_types:
+            try:
+                ref_i = ref_atoms_ids.index(atom_type)
+                mod_i = mod_atoms_ids.index(atom_type)
+                ref_backbone += [ref_atoms[ref_i].coord]
+                mod_backbone += [mod_atoms[mod_i].coord]
+            except:
+                continue
+    return np.asarray(ref_backbone), np.asarray(mod_backbone)
 
 
 def get_interacting_pairs(distances, threshold):
