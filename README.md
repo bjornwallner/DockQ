@@ -212,7 +212,7 @@ optional arguments:
 
 **Importing DockQ as python module**
 
-Once DockQ is installed with pip, it can also be used as a module in your python code:
+Once DockQ is installed with pip, it can also be used as a module in your python code (note that in this case the chain mapping has to be provided in the form native:model, not model:native):
 
 ```{python}
 from DockQ.DockQ import load_PDB, run_on_all_native_interfaces
@@ -220,7 +220,7 @@ from DockQ.DockQ import load_PDB, run_on_all_native_interfaces
 model = load_PDB("examples/1A2K_r_l_b.model.pdb")
 native = load_PDB("examples/1A2K_r_l_b.pdb")
 
-# model:native chain map dictionary for two interfaces
+# native:model chain map dictionary for two interfaces
 chain_map = {"A":"A", "B":"B"}
 # returns a dictionary containing the results and the total DockQ score
 run_on_all_native_interfaces(model, native, chain_map=chain_map)
