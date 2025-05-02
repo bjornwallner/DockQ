@@ -626,14 +626,21 @@ def run_on_all_native_interfaces(
         if len(set(model_chains)) < 2:
             continue
         if chain_pair[0] in chain_map and chain_pair[1] in chain_map:
-            info = run_on_chains(
-                model_chains,
-                native_chains,
-                no_align=no_align,
-                capri_peptide=capri_peptide,
-                small_molecule=small_molecule,
-                low_memory=low_memory,
-            )
+            try:
+                info = run_on_chains(
+                    model_chains,
+                    native_chains,
+                    no_align=no_align,
+                    capri_peptide=capri_peptide,
+                    small_molecule=small_molecule,
+                    low_memory=low_memory,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Error while calculating DockQ for {chain_pair[0]}-{chain_pair[1]}: {e}. Skipping..."
+                )
+                print(traceback.format_exc())
+                continue
             if info:
                 info["chain1"], info["chain2"] = (
                     chain_map[chain_pair[0]],
