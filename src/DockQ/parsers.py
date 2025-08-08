@@ -14,7 +14,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
     def get_structure(
         self,
         structure_id,
-        filename,
+        file,
         chains=[],
         parse_hetatms=False,
         auth_chains=True,
@@ -24,7 +24,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
 
         Arguments:
          - structure_id - string, the id that will be used for the structure
-         - filename - name of mmCIF file, OR an open text mode file handle
+         - file - name of mmCIF file, OR an open text mode file handle
 
         """
         self.auth_chains = auth_chains
@@ -32,7 +32,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
         with warnings.catch_warnings():
             if self.QUIET:
                 warnings.filterwarnings("ignore", category=PDBConstructionWarning)
-            self._mmcif_dict = MMCIF2Dict(filename)
+            self._mmcif_dict = MMCIF2Dict(file)
             sequences, is_het = self._build_structure(
                 structure_id, chains, parse_hetatms=parse_hetatms
             )
@@ -43,6 +43,7 @@ class MMCIFParser(Bio.PDB.MMCIFParser):
         for chain in model:
             chain.sequence = sequences[chain.id]
             chain.is_het = is_het[chain.id]
+        file.close()
         return model
 
     def _build_structure(self, structure_id, chains, parse_hetatms):
@@ -295,6 +296,7 @@ class PDBParser(Bio.PDB.PDBParser):
             for chain in model:
                 chain.sequence = sequences[chain.id]
                 chain.is_het = is_het[chain.id]
+        file.close()
         return model
 
     def _parse(self, header_coords_trailer, chains, parse_hetatms):
