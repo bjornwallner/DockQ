@@ -260,6 +260,6 @@ See issue [#33](https://github.com/bjornwallner/DockQ/issues/33) if you want to 
 * `F1`: Harmonic mean of the precision and recall in predicted interfacial contacts
 * `clashes`: number of clashing interfacial residues in model (distance between residues below 2Å)
 
-## Citing DockQ v2
+## Citing DockQ
 
-If you use DockQ v2, please cite the preprint: https://doi.org/10.1101/2024.05.28.596225 
+If you use DockQ, please cite: [https://doi.org/10.1101/2024.05.28.596225 ](https://doi.org/10.1093/bioinformatics/btae586)
