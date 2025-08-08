@@ -262,4 +262,4 @@ See issue [#33](https://github.com/bjornwallner/DockQ/issues/33) if you want to 
 
 ## Citing DockQ
 
-If you use DockQ, please cite: [https://doi.org/10.1101/2024.05.28.596225 ](https://doi.org/10.1093/bioinformatics/btae586)
+If you use DockQ, please cite: [10.1093/bioinformatics/btae586](https://academic.oup.com/bioinformatics/article/40/10/btae586/7796530)
