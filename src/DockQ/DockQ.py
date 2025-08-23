@@ -275,6 +275,7 @@ def calc_DockQ(
     alignments,
     capri_peptide=False,
     low_memory=False,
+    ligand_chain_idx=None,
 ):
 
     fnat_threshold = FNAT_THRESHOLD if not capri_peptide else FNAT_THRESHOLD_PEPTIDE
@@ -356,21 +357,26 @@ def calc_DockQ(
     # assign which chains constitute the receptor, ligand
     ref_group1_size = len(ref_chains[0])
     ref_group2_size = len(ref_chains[1])
+    if ligand_chain_idx is None:
+        ligand_last = ref_group1_size > ref_group2_size
+    else:
+        ligand_last = (ligand_chain_idx == 1)
     receptor_chains = (
         (aligned_ref_1, aligned_sample_1)
-        if ref_group1_size > ref_group2_size
+        if ligand_last
         else (aligned_ref_2, aligned_sample_2)
     )
     ligand_chains = (
         (aligned_ref_1, aligned_sample_1)
-        if ref_group1_size <= ref_group2_size
+        if not ligand_last
         else (aligned_ref_2, aligned_sample_2)
     )
     class1, class2 = (
         ("receptor", "ligand")
-        if ref_group1_size > ref_group2_size
+        if ligand_last
         else ("ligand", "receptor")
     )
+
 
     receptor_atoms_native, receptor_atoms_sample = subset_atoms(
         receptor_chains[0],
@@ -553,6 +559,7 @@ def run_on_chains(
     capri_peptide=False,
     small_molecule=True,
     low_memory=False,
+    ligand_chain_idx=None,
 ):
     # realign each model chain against the corresponding native chain
     alignments = []
@@ -572,6 +579,7 @@ def run_on_chains(
             alignments=tuple(alignments),
             capri_peptide=capri_peptide,
             low_memory=low_memory,
+            ligand_chain_idx=ligand_chain_idx,
         )
     else:
         info = calc_sym_corrected_lrmsd(
