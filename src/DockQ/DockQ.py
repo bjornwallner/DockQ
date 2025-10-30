@@ -3,6 +3,7 @@
 import sys
 import gzip
 import math
+import pickle
 import warnings
 import itertools
 from collections import Counter
@@ -13,6 +14,7 @@ import numpy as np
 from Bio import Align
 from Bio.SVDSuperimposer import SVDSuperimposer
 from parallelbar import progress_map
+from scipy.special import softmax
 
 # fallback in case the cython version doesn't work, though it will be slower
 try:
@@ -103,7 +105,12 @@ def parse_args():
             in the interface between chains B and C, the flag can be set as: '--mapping :BC'
             or the equivalent '--mapping *:BC'.""",
     )
-
+    parser.add_argument(
+        "--distogram",
+        default=0,
+        type=str,
+        help="Path to .pkl file containing distograms",
+    )
     return parser.parse_args()
 
 
@@ -959,6 +966,22 @@ def main():
         best_mapping = next(chain_maps)
         best_result, best_dockq = run_chain_map(best_mapping)
 
+    if args.distogram is not None:
+        #native_structure = load_PDB(
+        #    args.native, chains=list(best_mapping.keys()), small_molecule=args.small_molecule
+        #)
+        pred_dgram, pae = load_distogram(args.distogram)
+        struct_dgram = to_distogram(model_structure)
+#        matches = ""
+#        for native_chain in best_mapping.keys():
+#            model_chain = best_mapping[native_chain]
+#            alignment = format_alignment(align_chains(model_structure[model_chain], native_structure[native_chain], use_numbering=False))
+#            matches += alignment["matches"]
+#        indexes = np.where(np.array(list(matches)) == "|")[0]
+        kl = KL(pred_dgram, struct_dgram)
+        best_result[tuple(best_mapping.keys())]["kl"] = 1.0/kl
+        best_result[tuple(best_mapping.keys())]["mean_pae"] = 1/np.mean(pae) # the higher the better
+
     info = dict()
     info["model"] = args.model
     info["native"] = args.native
@@ -967,11 +990,56 @@ def main():
     info["GlobalDockQ"] = best_dockq / len(best_result)
     info["best_mapping"] = best_mapping
     info["best_mapping_str"] = f"{format_mapping_string(best_mapping)}"
+    
     print_results(
         info, args.short, args.verbose, args.capri_peptide, args.small_molecule
     )
 
 
+def load_distogram(filepath):
+    with open(filepath, "rb") as p:
+        results = pickle.load(p)
+        distogram = results["distogram"]
+        distogram_softmax = softmax(results["distogram"]["logits"], axis=2)
+        if "predicted_aligned_error" in results:
+            pae = results["predicted_aligned_error"]
+        else:
+            pae = None
+    return distogram_softmax, pae
+
+
+def squared_difference(x, y):
+    return np.square(x - y)
+
+def KL(P,Q):
+    P = P + 1e-8
+    Q = Q + 1e-8
+    div = P * np.log(P / Q)
+
+    divergence = np.mean(np.sum(P * np.log(P / Q), axis=-1))
+    return divergence
+
+
+def to_distogram(pdb):
+    min_bin = 2.3125
+    max_bin = 21.6875
+    num_bins = 64
+    lower_breaks = np.linspace(min_bin, max_bin, num_bins)
+    lower_breaks = np.square(lower_breaks)
+    upper_breaks = np.concatenate([lower_breaks[1:],
+                                  np.array([1e8], dtype=np.float32)], axis=-1)
+    
+    residues = [res for res in pdb.get_residues() if res.get_id()[0] == " "]
+    positions = np.asarray([r["CB"].get_coord() if "CB" in r else r["CA"].get_coord() for r in residues])
+    dist2 = np.sum(
+      squared_difference(
+          np.expand_dims(positions, axis=-2),
+          np.expand_dims(positions, axis=-3)),
+      axis=-1, keepdims=True)
+    distogram = ((dist2 > lower_breaks).astype(np.float32) *
+            (dist2 < upper_breaks).astype(np.float32))
+    return distogram
+    
 def print_results(
     info, short=False, verbose=False, capri_peptide=False, small_molecule=False
 ):
@@ -1002,6 +1070,10 @@ def print_results(
                 if not results["is_het"]
                 else ["Lrms"]
             )
+            
+            if "kl" in results:
+                reported_measures.append("kl")
+                reported_measures.append("mean_pae")
             hetname = f" ({results['is_het']})" if results["is_het"] else ""
             score_str = " ".join(
                 [f"{item} {results[item]:.3f}" for item in reported_measures]
