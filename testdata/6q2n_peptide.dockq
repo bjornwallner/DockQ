@@ -15,10 +15,9 @@ Total DockQ-capri_peptide over 1 native interfaces: 0.872 with AF:BG model:nativ
 Native chains: B, G
 	Model chains: A, F
 	DockQ: 0.872
-	irms: 0.588
-	Lrms: 0.982
+	iRMSD: 0.588
+	LRMSD: 0.982
 	fnat: 0.762
 	fnonnat: 0.158
-	clashes: 0.000
 	F1: 0.800
-	DockQ_F1: 0.885
+	clashes: 0
