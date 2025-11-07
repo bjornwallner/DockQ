@@ -103,7 +103,12 @@ def parse_args():
             in the interface between chains B and C, the flag can be set as: '--mapping :BC'
             or the equivalent '--mapping *:BC'.""",
     )
-
+    parser.add_argument(
+        "--exclude_interface",
+        default=None,
+        metavar="NATIVECHAIN1_NATIVECHAIN2",
+        help="""Exclude one pair of chains from the results (automatic mapping will still keep all chains into account)""",
+    )
     return parser.parse_args()
 
 
@@ -878,6 +883,7 @@ def main():
     native_chains = (
         [c.id for c in native_structure] if not native_chains else native_chains
     )
+    excluded_native_chains = "".join(args.exclude_interface.split("_")) if args.exclude_interface else None
 
     if len(model_chains) < 2 or len(native_chains) < 2:
         print("Need at least two chains in the two inputs\n")
@@ -965,6 +971,9 @@ def main():
             "Could not find interfaces in the native model. Please double check the inputs or select different chains with the --mapping flag."
         )
         sys.exit(1)
+
+    if excluded_native_chains is not None:
+        best_result = {chains:result for chains, result in best_result.items() if chains not in excluded_native_chains}
 
     info = dict()
     info["model"] = args.model
