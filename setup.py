@@ -11,9 +11,10 @@ extensions = [
 ]
 
 setup(
-    name="dockq",
     ext_modules=cythonize(extensions),
     package_data={
-        "src/DockQ": ["operations.pyx"],
+        "DockQ": ["operations.pyx"],
     },
+    packages=["DockQ"],
+    package_dir={"": "src"},
 )

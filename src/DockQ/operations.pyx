@@ -1,6 +1,7 @@
 #cython: language_level=3
 import numpy as np
 cimport numpy as np
+np.import_array() 
 import cython
 
 @cython.boundscheck(False)
