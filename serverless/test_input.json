@@ -1,0 +1,6 @@
+{
+  "input": {
+    "model_url": "https://raw.githubusercontent.com/bjornwallner/DockQ/master/examples/1A2K_r_l_b.model.pdb",
+    "native_url": "https://raw.githubusercontent.com/bjornwallner/DockQ/master/examples/1A2K_r_l_b.pdb"
+  }
+}

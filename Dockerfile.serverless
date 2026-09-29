@@ -1,0 +1,25 @@
+# DockQ image for RunPod Serverless
+#
+# Build:  docker build -f Dockerfile.serverless -t dockq-serverless .
+# Local test (uses serverless/test_input.json):
+#         docker run --rm dockq-serverless python -u /opt/DockQ/serverless/handler.py --test_input "$(cat serverless/test_input.json)"
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Compiler is needed to build the Cython extension (DockQ.operations)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/DockQ
+COPY . .
+
+RUN pip install --upgrade pip \
+    && pip install . -r serverless/requirements.txt \
+    && DockQ examples/1A2K_r_l_b.model.pdb examples/1A2K_r_l_b.pdb > /dev/null
+
+CMD ["python", "-u", "/opt/DockQ/serverless/handler.py"]
